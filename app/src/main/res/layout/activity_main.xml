@@ -37,16 +37,33 @@
 
         </LinearLayout>
 
-        <!-- ČERVENÁ ČÁRA – 80% šířky pomocí marginů -->
-        <View
+        <!-- ČERVENÁ ČÁRA – 80% šířky pomocí LinearLayout s weight -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_marginStart="10%"
-            android:layout_marginEnd="10%"
-            android:background="@color/red"
-            android:layout_gravity="center_horizontal"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginBottom="8dp">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="2dp"
+                android:background="@color/red" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_weight="3"
+                android:layout_height="2dp"
+                android:background="@color/red" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="2dp"
+                android:background="@color/red" />
+
+        </LinearLayout>
 
         <!-- SEKCE: ZOBRAZENÉ POLOŽKY -->
         <TextView
