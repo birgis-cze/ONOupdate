@@ -1,5 +1,7 @@
 package com.tankono.widget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -61,6 +63,21 @@ class MainActivity : AppCompatActivity() {
         
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(this).enqueue(workRequest)
+
+        // FORCE WIDGET UPDATE
+        try {
+            val appWidgetManager = AppWidgetManager.getInstance(this)
+            val componentName = ComponentName(this, TankONOWidget::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            if (appWidgetIds.isNotEmpty()) {
+                TankONOWidget.updateAllWidgets(this)
+                DebugHelper.log(this, "MainActivity", "Widget force update: ${appWidgetIds.size} widgetů")
+            } else {
+                DebugHelper.log(this, "MainActivity", "Widget není na ploše")
+            }
+        } catch (e: Exception) {
+            DebugHelper.log(this, "MainActivity", "Chyba force update: ${e.message}")
+        }
     }
 
     private fun initViews() {

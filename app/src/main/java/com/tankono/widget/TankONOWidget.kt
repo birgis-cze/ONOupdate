@@ -20,6 +20,9 @@ class TankONOWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        DebugHelper.log(context, "TankONOWidget", "onUpdate volán, počet widgetů: ${appWidgetIds.size}")
+        
+        // OKAMŽITÁ AKTUALIZACE PŘI PŘIDÁNÍ WIDGETU
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(context).enqueue(workRequest)
         
@@ -30,14 +33,18 @@ class TankONOWidget : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
+        DebugHelper.log(context, "TankONOWidget", "onReceive: ${intent.action}")
         
         if (intent.action == "UPDATE_WIDGET") {
+            // OKAMŽITÁ AKTUALIZACE PŘI KLIKNUTÍ
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(context).enqueue(workRequest)
             
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, TankONOWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            DebugHelper.log(context, "TankONOWidget", "UPDATE_WIDGET: ${appWidgetIds.size} widgetů")
+            
             for (appWidgetId in appWidgetIds) {
                 updateWidget(context, appWidgetManager, appWidgetId)
             }
@@ -46,9 +53,19 @@ class TankONOWidget : AppWidgetProvider() {
 
     companion object {
         fun updateAllWidgets(context: Context) {
+            DebugHelper.log(context, "TankONOWidget", "updateAllWidgets volán")
+            
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, TankONOWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            
+            DebugHelper.log(context, "TankONOWidget", "Nalezeno widgetů: ${appWidgetIds.size}")
+            
+            if (appWidgetIds.isEmpty()) {
+                DebugHelper.log(context, "TankONOWidget", "❌ Žádný widget na ploše!")
+                return
+            }
+            
             for (appWidgetId in appWidgetIds) {
                 updateWidget(context, appWidgetManager, appWidgetId)
             }
@@ -59,11 +76,16 @@ class TankONOWidget : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
+            DebugHelper.log(context, "TankONOWidget", "updateWidget ID: $appWidgetId")
+            
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
             val data = DataManager.getPrices(context)
             val timestamp = DataManager.getLastUpdate(context)
             val lastChangeDate = DataManager.getLastChangeDate(context)
 
+            DebugHelper.log(context, "TankONOWidget", "Data: ${if (data != null) "existují" else "null"}")
+
+            // KLIKNUTÍ NA WIDGET
             val intent = Intent(context, TankONOWidget::class.java)
             intent.action = "UPDATE_WIDGET"
             val pendingIntent = PendingIntent.getBroadcast(
@@ -72,7 +94,7 @@ class TankONOWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            // ČAS – datum poslední změny cen
+            // ČAS
             if (lastChangeDate > 0) {
                 val formatter = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
                 views.setTextViewText(R.id.tv_time, formatter.format(Date(lastChangeDate)))
@@ -159,6 +181,7 @@ class TankONOWidget : AppWidgetProvider() {
             }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+            DebugHelper.log(context, "TankONOWidget", "Widget ID $appWidgetId aktualizován")
         }
 
         private fun getTrendIcon(trend: Int): Int {
