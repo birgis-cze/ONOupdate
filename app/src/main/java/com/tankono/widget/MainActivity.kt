@@ -59,6 +59,9 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         updateLastUpdateTime()
         
+        // LOGOVÁNÍ SYSTÉMOVÝCH INFORMACÍ
+        DebugHelper.logSystemInfo(this)
+        
         TankONOWidgetScheduler.scheduleUpdates(this)
         
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
