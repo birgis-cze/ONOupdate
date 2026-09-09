@@ -263,7 +263,7 @@
 
         </LinearLayout>
 
-        <!-- TLAČÍTKA -->
+        <!-- TLAČÍTKA AKCE -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -289,12 +289,38 @@
 
         </LinearLayout>
 
+        <!-- TLAČÍTKA DEBUG -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btn_show_log"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Zobrazit log"
+                android:backgroundTint="@color/red"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_clear_log"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Smazat log"
+                android:backgroundTint="@color/red" />
+
+        </LinearLayout>
+
         <!-- STAV AKTUALIZACE -->
         <TextView
             android:id="@+id/tv_last_update"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Poslední aktualizace: --:--:--"
+            android:text="Poslední změna cen: --\nPoslední aktualizace: --"
             android:textSize="12sp"
             android:textColor="#666666"
             android:gravity="center"

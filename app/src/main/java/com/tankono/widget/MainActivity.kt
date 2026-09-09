@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
@@ -20,6 +21,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: SharedPreferences
 
+    // Komponenty nastavení
     private lateinit var switchN95: SwitchMaterial
     private lateinit var switchN95p: SwitchMaterial
     private lateinit var switchN98: SwitchMaterial
@@ -39,6 +41,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var btnSave: Button
     private lateinit var btnUpdateNow: Button
+    private lateinit var btnShowLog: Button
+    private lateinit var btnClearLog: Button
     private lateinit var tvLastUpdate: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
+        // Přepínače položek
         switchN95 = findViewById(R.id.switch_n95)
         switchN95p = findViewById(R.id.switch_n95p)
         switchN98 = findViewById(R.id.switch_n98)
@@ -73,13 +78,17 @@ class MainActivity : AppCompatActivity() {
         switchEuro = findViewById(R.id.switch_euro)
         switchHideIcon = findViewById(R.id.switch_hide_icon)
 
+        // EditText pro časy
         etPeakStart = findViewById(R.id.et_peak_start)
         etPeakEnd = findViewById(R.id.et_peak_end)
         etPeakInterval = findViewById(R.id.et_peak_interval)
         etOffPeakInterval = findViewById(R.id.et_off_peak_interval)
 
+        // Tlačítka
         btnSave = findViewById(R.id.btn_save)
         btnUpdateNow = findViewById(R.id.btn_update_now)
+        btnShowLog = findViewById(R.id.btn_show_log)
+        btnClearLog = findViewById(R.id.btn_clear_log)
         tvLastUpdate = findViewById(R.id.tv_last_update)
     }
 
@@ -114,6 +123,27 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
         }
 
+        // ZOBRAZENÍ DEBUG LOGU
+        btnShowLog.setOnClickListener {
+            val logContent = DebugHelper.getLogContent(this)
+            AlertDialog.Builder(this)
+                .setTitle("📋 Debug log")
+                .setMessage(logContent)
+                .setPositiveButton("OK", null)
+                .setNeutralButton("Smazat log") { _, _ ->
+                    DebugHelper.clearLog(this)
+                    Toast.makeText(this, "Log smazán", Toast.LENGTH_SHORT).show()
+                }
+                .show()
+        }
+
+        // SMAZÁNÍ LOGU
+        btnClearLog.setOnClickListener {
+            DebugHelper.clearLog(this)
+            Toast.makeText(this, "Log smazán", Toast.LENGTH_SHORT).show()
+        }
+
+        // Skrytí ikony
         switchHideIcon.setOnCheckedChangeListener { _, isChecked ->
             val state = if (isChecked) {
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED
@@ -156,12 +186,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateLastUpdateTime() {
         val lastUpdate = DataManager.getLastUpdate(this)
+        val lastChange = DataManager.getLastChangeDate(this)
+        
+        val text = StringBuilder()
+        text.append("Poslední změna cen: ")
+        if (lastChange > 0) {
+            val date = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+            text.append(date.format(Date(lastChange)))
+        } else {
+            text.append("--")
+        }
+        
+        text.append("\nPoslední aktualizace: ")
         if (lastUpdate > 0) {
             val date = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-            tvLastUpdate.text = "Poslední aktualizace: ${date.format(Date(lastUpdate))}"
+            text.append(date.format(Date(lastUpdate)))
         } else {
-            tvLastUpdate.text = "Poslední aktualizace: --:--:--"
+            text.append("--")
         }
+        
+        tvLastUpdate.text = text.toString()
     }
 
     companion object {

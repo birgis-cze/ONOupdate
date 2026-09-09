@@ -6,17 +6,12 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
@@ -29,95 +24,127 @@ class UpdateWorker(
         private const val TAG = "UpdateWorker"
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "tankono_channel"
-        
-        // Klíče pro uložení
-        const val KEY_LAST_CHANGE_DATE = "last_change_date"
-        const val KEY_LAST_UPDATE_ATTEMPT = "last_update_attempt"
     }
 
     override suspend fun doWork(): Result {
+        val ctx = applicationContext
+        DebugHelper.log(ctx, TAG, "=== AKTUALIZACE SPUŠTĚNA ===")
+        
         return try {
-            Log.d(TAG, "Aktualizace spuštěna")
+            // 1. KONTROLA INTERNETU
+            DebugHelper.log(ctx, TAG, "Krok 1: Kontrola internetu...")
+            if (!isNetworkAvailable(ctx)) {
+                DebugHelper.log(ctx, TAG, "❌ Není dostupné internetové připojení")
+                return Result.failure()
+            }
+            DebugHelper.log(ctx, TAG, "✅ Internet dostupný")
             
             val client = OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
                 .build()
 
-            // 1. STÁHNEME CENÍK
+            // 2. STAŽENÍ CENÍKU
+            DebugHelper.log(ctx, TAG, "Krok 2: Stahování cen...")
             val cenikRequest = Request.Builder()
                 .url("https://m.tank-ono.cz/cz/index.php?page=cenik")
                 .header("User-Agent", "Mozilla/5.0 (Android) Tasker/1.0")
                 .build()
 
             val cenikResponse = client.newCall(cenikRequest).execute()
+            DebugHelper.log(ctx, TAG, "HTTP cenik: ${cenikResponse.code}")
+            
             if (!cenikResponse.isSuccessful) {
-                Log.e(TAG, "HTTP chyba cenik: ${cenikResponse.code}")
+                DebugHelper.log(ctx, TAG, "❌ HTTP chyba cenik: ${cenikResponse.code}")
                 return Result.failure()
             }
 
             val cenikHtml = cenikResponse.body?.string() ?: run {
-                Log.e(TAG, "Prázdná odpověď cenik")
+                DebugHelper.log(ctx, TAG, "❌ Prázdná odpověď cenik")
                 return Result.failure()
             }
-            
-            // 2. STÁHNEME AKTUALITY (pro datum poslední změny)
+            DebugHelper.log(ctx, TAG, "✅ Cenik načten, délka: ${cenikHtml.length} znaků")
+            DebugHelper.log(ctx, TAG, "Prvních 200 znaků: ${cenikHtml.take(200)}")
+
+            // 3. STAŽENÍ AKTUALIT
+            DebugHelper.log(ctx, TAG, "Krok 3: Stahování aktualit...")
             val aktualityRequest = Request.Builder()
                 .url("https://m.tank-ono.cz/cz/index.php?page=aktuality")
                 .header("User-Agent", "Mozilla/5.0 (Android) Tasker/1.0")
                 .build()
 
             val aktualityResponse = client.newCall(aktualityRequest).execute()
+            DebugHelper.log(ctx, TAG, "HTTP aktuality: ${aktualityResponse.code}")
+            
             val aktualityHtml = if (aktualityResponse.isSuccessful) {
                 aktualityResponse.body?.string() ?: ""
             } else {
-                Log.e(TAG, "HTTP chyba aktuality: ${aktualityResponse.code}")
+                DebugHelper.log(ctx, TAG, "⚠️ HTTP chyba aktuality: ${aktualityResponse.code}")
                 ""
             }
-            
-            // 3. PARSOVÁNÍ CEN
-            val priceData = parseCenik(cenikHtml)
-            
-            // 4. PARSOVÁNÍ DATUMU POSLEDNÍ ZMĚNY
-            val lastChangeDate = parseLastChangeDate(aktualityHtml)
-            
-            // 5. ULOŽENÍ
-            if (priceData != null) {
-                val previous = DataManager.getPrices(applicationContext)
-                DataManager.savePrices(applicationContext, priceData)
-                DataManager.saveLastUpdate(applicationContext, System.currentTimeMillis())
-                
-                // Uložíme datum poslední změny cen
-                if (lastChangeDate != null) {
-                    DataManager.saveLastChangeDate(applicationContext, lastChangeDate)
-                }
+            DebugHelper.log(ctx, TAG, "Aktuality načteny, délka: ${aktualityHtml.length} znaků")
 
-                if (previous != null) {
-                    checkAndNotify(applicationContext, previous, priceData)
-                }
-
-                TankONOWidget.updateAllWidgets(applicationContext)
-                Log.d(TAG, "Aktualizace úspěšná, poslední změna: $lastChangeDate")
-                Result.success()
-            } else {
-                Log.e(TAG, "Parsování cen selhalo")
-                Result.failure()
+            // 4. PARSOVÁNÍ CEN
+            DebugHelper.log(ctx, TAG, "Krok 4: Parsování cen...")
+            val priceData = parseCenik(ctx, cenikHtml)
+            
+            if (priceData == null) {
+                DebugHelper.log(ctx, TAG, "❌ Parsování cen selhalo")
+                DebugHelper.log(ctx, TAG, "Hledané řádky 'divrow2': ${Jsoup.parse(cenikHtml).select("div.divrow2").size}")
+                return Result.failure()
             }
+            DebugHelper.log(ctx, TAG, "✅ Ceny parsovány: N95=${priceData.n95}, Diesel=${priceData.diesel}")
+
+            // 5. PARSOVÁNÍ DATUMU POSLEDNÍ ZMĚNY
+            DebugHelper.log(ctx, TAG, "Krok 5: Parsování data poslední změny...")
+            val lastChangeDate = parseLastChangeDate(ctx, aktualityHtml)
+            DebugHelper.log(ctx, TAG, "Datum poslední změny: ${if (lastChangeDate != null) java.util.Date(lastChangeDate) else "Nenalezeno"}")
+
+            // 6. ULOŽENÍ DAT
+            DebugHelper.log(ctx, TAG, "Krok 6: Ukládání dat...")
+            val previous = DataManager.getPrices(ctx)
+            DataManager.savePrices(ctx, priceData)
+            DataManager.saveLastUpdate(ctx, System.currentTimeMillis())
+            
+            if (lastChangeDate != null) {
+                DataManager.saveLastChangeDate(ctx, lastChangeDate)
+                DebugHelper.log(ctx, TAG, "✅ Datum poslední změny uloženo")
+            }
+
+            if (previous != null) {
+                checkAndNotify(ctx, previous, priceData)
+            }
+
+            // 7. AKTUALIZACE WIDGETU
+            DebugHelper.log(ctx, TAG, "Krok 7: Aktualizace widgetu...")
+            TankONOWidget.updateAllWidgets(ctx)
+            
+            DebugHelper.log(ctx, TAG, "=== ✅ AKTUALIZACE ÚSPĚŠNÁ ===")
+            Result.success()
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Chyba: ${e.message}", e)
+            DebugHelper.log(ctx, TAG, "❌ CHYBA: ${e.message}")
+            e.printStackTrace()
             Result.failure()
         }
     }
 
-    /**
-     * PARSOVÁNÍ CENÍKU
-     */
-    private fun parseCenik(html: String): PriceData? {
+    private fun isNetworkAvailable(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val activeNetwork = cm.activeNetworkInfo
+            activeNetwork != null && activeNetwork.isConnected
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun parseCenik(context: Context, html: String): PriceData? {
         return try {
             val doc = Jsoup.parse(html)
-            
-            // Najdeme všechny řádky s cenami
             val priceRows = doc.select("div.divrow2")
+            
+            DebugHelper.log(context, TAG, "Nalezeno ${priceRows.size} řádků s cenami")
             
             var n95 = 0.0
             var n95p = 0.0
@@ -131,13 +158,13 @@ class UpdateWorker(
             var euroNakup = 0.0
 
             for (row in priceRows) {
-                // Název položky – podpora všech tříd
                 val labelElement = row.select("div.divprgw, div.divprbw, div.divpryb").first()
                 val label = labelElement?.text()?.trim() ?: continue
                 
-                // Cena v Kč
                 val priceElement = row.select("div.divprice").first()
                 val priceCzk = parsePriceFromElement(priceElement)
+                
+                DebugHelper.log(context, TAG, "Nalezena položka: '$label' = $priceCzk")
                 
                 when {
                     label.contains("NATURAL 95", ignoreCase = true) && !label.contains("+", ignoreCase = true) && !label.contains("98", ignoreCase = true) -> n95 = priceCzk
@@ -152,7 +179,7 @@ class UpdateWorker(
                 }
             }
             
-            // PARSOVÁNÍ KURZU EUR
+            // Kurz EUR
             val euroRows = doc.select("div.divrow2")
             for (row in euroRows) {
                 val labelElement = row.select("div.divexbw").first()
@@ -161,6 +188,7 @@ class UpdateWorker(
                 if (label.equals("EURO", ignoreCase = true)) {
                     val nakupElement = row.select("div.divexnak").first()
                     euroNakup = parsePriceFromElement(nakupElement)
+                    DebugHelper.log(context, TAG, "Kurz EUR: $euroNakup")
                     break
                 }
             }
@@ -179,14 +207,11 @@ class UpdateWorker(
                 lastUpdate = System.currentTimeMillis()
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Chyba parsování cen: ${e.message}", e)
+            DebugHelper.log(context, TAG, "Chyba parsování cen: ${e.message}")
             null
         }
     }
 
-    /**
-     * PARSOVÁNÍ CENY Z ELEMENTU – "42<sup>50</sup>" → 42.50
-     */
     private fun parsePriceFromElement(element: org.jsoup.nodes.Element?): Double {
         if (element == null) return 0.0
         
@@ -205,23 +230,20 @@ class UpdateWorker(
         }
     }
 
-    /**
-     * PARSOVÁNÍ DATUMU POSLEDNÍ ZMĚNY ZE STRÁNKY AKTUALITY
-     * Formát: "8.9.2026 (15:24:07)"
-     */
-    private fun parseLastChangeDate(html: String): Long? {
+    private fun parseLastChangeDate(context: Context, html: String): Long? {
         return try {
             val doc = Jsoup.parse(html)
             val newsElements = doc.select("div.divnews")
             
+            DebugHelper.log(context, TAG, "Nalezeno ${newsElements.size} aktualit")
+            
             if (newsElements.isEmpty()) return null
             
-            // První položka je nejnovější
             val firstNews = newsElements.first()
             val text = firstNews?.text() ?: return null
             
-            // Regulární výraz pro datum a čas
-            // Formát: "8.9.2026 (15:24:07) Zveřejněn nový ceník."
+            DebugHelper.log(context, TAG, "První aktualita: $text")
+            
             val pattern = Pattern.compile("(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})\\s*\\((\\d{2}):(\\d{2}):(\\d{2})\\)")
             val matcher = pattern.matcher(text)
             
@@ -233,17 +255,18 @@ class UpdateWorker(
                 val minute = matcher.group(5).toInt()
                 val second = matcher.group(6).toInt()
                 
-                // Vytvoříme Calendar a nastavíme čas
                 val calendar = java.util.Calendar.getInstance()
                 calendar.set(year, month - 1, day, hour, minute, second)
                 calendar.set(java.util.Calendar.MILLISECOND, 0)
                 
+                DebugHelper.log(context, TAG, "Parsované datum: $day.$month.$year $hour:$minute:$second")
                 calendar.timeInMillis
             } else {
+                DebugHelper.log(context, TAG, "❌ Nepodařilo se parsovat datum z textu: $text")
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Chyba parsování data: ${e.message}", e)
+            DebugHelper.log(context, TAG, "Chyba parsování data: ${e.message}")
             null
         }
     }
