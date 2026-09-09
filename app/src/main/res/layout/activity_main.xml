@@ -37,7 +37,7 @@
 
         </LinearLayout>
 
-        <!-- ČERVENÁ ČÁRA – 80% šířky pomocí LinearLayout s weight -->
+        <!-- ČERVENÁ ČÁRA -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -257,7 +257,7 @@
             android:id="@+id/tv_last_update"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Poslední aktualizace: --:--"
+            android:text="Poslední aktualizace: --:--:--"
             android:textSize="12sp"
             android:textColor="#666666"
             android:gravity="center"

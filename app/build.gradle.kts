@@ -11,8 +11,8 @@ android {
         applicationId = "com.tankono.widget"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         // Podpora pro všechny architektury (kompatibilita se staršími telefony)
         ndk {
@@ -34,8 +34,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // RELEASE BUILD POUŽÍVÁ DEBUG PODPIS PRO SNADNOST INSTALACE
-            // signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -47,8 +45,6 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
-    // ZDE NESMÍ BÝT buildFeatures !!!
 }
 
 dependencies {
@@ -59,5 +55,8 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.google.code.gson:gson:2.10.1")   // Gson pro DataManager
+    implementation("com.google.code.gson:gson:2.10.1")
+    
+    // ← PŘIDAT TUTO ZÁVISLOST PRO PREFERENCE
+    implementation("androidx.preference:preference-ktx:1.2.1")
 }
