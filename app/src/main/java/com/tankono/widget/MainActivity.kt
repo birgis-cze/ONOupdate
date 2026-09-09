@@ -2,10 +2,16 @@ package com.tankono.widget
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.*
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import com.google.android.material.switchmaterial.SwitchMaterial
 
 class MainActivity : AppCompatActivity() {
@@ -26,6 +32,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var btnSave: Button
     private lateinit var btnUpdateNow: Button
+    private lateinit var tvLastUpdate: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +43,7 @@ class MainActivity : AppCompatActivity() {
         initViews()
         loadSettings()
         setupListeners()
+        updateLastUpdateTime()
     }
 
     private fun initViews() {
@@ -55,6 +63,7 @@ class MainActivity : AppCompatActivity() {
         // Tlačítka
         btnSave = findViewById(R.id.btn_save)
         btnUpdateNow = findViewById(R.id.btn_update_now)
+        tvLastUpdate = findViewById(R.id.tv_last_update)
     }
 
     private fun loadSettings() {
@@ -82,27 +91,24 @@ class MainActivity : AppCompatActivity() {
 
         btnUpdateNow.setOnClickListener {
             // Okamžitá aktualizace
-            val workRequest = androidx.work.OneTimeWorkRequestBuilder<UpdateWorker>()
+            val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
                 .build()
-            androidx.work.WorkManager.getInstance(this).enqueue(workRequest)
+            WorkManager.getInstance(this).enqueue(workRequest)
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
         }
 
         // Skrytí ikony – okamžitá aplikace
         switchHideIcon.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                packageManager.setComponentEnabledSetting(
-                    componentName,
-                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    android.content.pm.PackageManager.DONT_KILL_APP
-                )
+            val state = if (isChecked) {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             } else {
-                packageManager.setComponentEnabledSetting(
-                    componentName,
-                    android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    android.content.pm.PackageManager.DONT_KILL_APP
-                )
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             }
+            packageManager.setComponentEnabledSetting(
+                componentName,
+                state,
+                PackageManager.DONT_KILL_APP
+            )
         }
     }
 
@@ -127,6 +133,16 @@ class MainActivity : AppCompatActivity() {
 
         // Restart scheduleru s novými časy
         TankONOWidgetScheduler.scheduleUpdates(this)
+    }
+
+    private fun updateLastUpdateTime() {
+        val lastUpdate = DataManager.getLastUpdate(this)
+        if (lastUpdate > 0) {
+            val date = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            tvLastUpdate.text = "Poslední aktualizace: ${date.format(java.util.Date(lastUpdate))}"
+        } else {
+            tvLastUpdate.text = "Poslední aktualizace: --:--:--"
+        }
     }
 
     companion object {
