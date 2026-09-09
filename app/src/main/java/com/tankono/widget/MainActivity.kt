@@ -52,6 +52,9 @@ class MainActivity : AppCompatActivity() {
         loadSettings()
         setupListeners()
         updateLastUpdateTime()
+        
+        // SPUSTÍ SCHEDULER PŘI SPUŠTĚNÍ APLIKACE
+        TankONOWidgetScheduler.scheduleUpdates(this)
     }
 
     private fun initViews() {

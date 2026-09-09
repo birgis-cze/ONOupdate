@@ -21,6 +21,11 @@ class TankONOWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        // PŘI AKTUALIZACI WIDGETU SPUSTÍME OKAMŽITOU AKTUALIZACI DAT
+        val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
+            .build()
+        WorkManager.getInstance(context).enqueue(workRequest)
+        
         for (appWidgetId in appWidgetIds) {
             updateWidget(context, appWidgetManager, appWidgetId)
         }
@@ -43,7 +48,9 @@ class TankONOWidget : AppWidgetProvider() {
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, TankONOWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            onUpdate(context, appWidgetManager, appWidgetIds)
+            for (appWidgetId in appWidgetIds) {
+                updateWidget(context, appWidgetManager, appWidgetId)
+            }
         }
     }
 
@@ -76,6 +83,33 @@ class TankONOWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
+            // Kontrola – pokud nejsou data, zobrazíme načítání
+            if (data == null || data.n95 == 0.0) {
+                views.setTextViewText(R.id.tv_time, "--:--")
+                
+                // Skryjeme všechny položky
+                val allTextIds = listOf(
+                    R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel,
+                    R.id.tv_diesel_plus, R.id.tv_lpg, R.id.tv_adblue,
+                    R.id.tv_om, R.id.tv_nm, R.id.tv_euro
+                )
+                val allTrendIds = listOf(
+                    R.id.tv_n95_trend, R.id.tv_n95p_trend, R.id.tv_n98_trend,
+                    R.id.tv_diesel_trend, R.id.tv_diesel_plus_trend, R.id.tv_lpg_trend,
+                    R.id.tv_adblue_trend, R.id.tv_om_trend, R.id.tv_nm_trend,
+                    R.id.tv_euro_trend
+                )
+                for (id in allTextIds) {
+                    views.setViewVisibility(id, android.view.View.GONE)
+                }
+                for (id in allTrendIds) {
+                    views.setViewVisibility(id, android.view.View.GONE)
+                }
+                
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+                return
+            }
+
             // Nastavení času
             if (timestamp > 0) {
                 val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -84,7 +118,7 @@ class TankONOWidget : AppWidgetProvider() {
                 views.setTextViewText(R.id.tv_time, "--:--")
             }
 
-            // Definice položek: klíč, ID textu, ID trendu
+            // Definice položek
             val keys = listOf("n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro")
             val textIds = listOf(
                 R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel, R.id.tv_diesel_plus,
@@ -98,57 +132,47 @@ class TankONOWidget : AppWidgetProvider() {
 
             val visibleKeys = visibleItems.map { it.first }.toSet()
 
-            if (data != null && data.n95 > 0) {
-                for (i in keys.indices) {
-                    val key = keys[i]
-                    val textId = textIds[i]
-                    val trendId = trendIds[i]
-                    val isVisible = key in visibleKeys
-                    
-                    if (isVisible) {
-                        val value = when (key) {
-                            "n95" -> data.n95
-                            "n95p" -> data.n95p
-                            "n98" -> data.n98
-                            "diesel" -> data.diesel
-                            "dieselPlus" -> data.dieselPlus
-                            "lpg" -> data.lpg
-                            "adBlue" -> data.adBlue
-                            "om" -> data.om
-                            "nm" -> data.nm
-                            "euro" -> data.euro
-                            else -> 0.0
-                        }
-                        
-                        val trend = when (key) {
-                            "n95" -> data.n95Trend
-                            "n95p" -> data.n95pTrend
-                            "n98" -> data.n98Trend
-                            "diesel" -> data.dieselTrend
-                            "dieselPlus" -> data.dieselPlusTrend
-                            "lpg" -> data.lpgTrend
-                            "adBlue" -> data.adBlueTrend
-                            "om" -> data.omTrend
-                            "nm" -> data.nmTrend
-                            "euro" -> data.euroTrend
-                            else -> 0
-                        }
-                        
-                        views.setTextViewText(textId, String.format("%.2f", value))
-                        views.setImageViewResource(trendId, getTrendIcon(trend))
-                        views.setViewVisibility(textId, android.view.View.VISIBLE)
-                        views.setViewVisibility(trendId, android.view.View.VISIBLE)
-                    } else {
-                        views.setViewVisibility(textId, android.view.View.GONE)
-                        views.setViewVisibility(trendId, android.view.View.GONE)
+            for (i in keys.indices) {
+                val key = keys[i]
+                val textId = textIds[i]
+                val trendId = trendIds[i]
+                val isVisible = key in visibleKeys
+                
+                if (isVisible) {
+                    val value = when (key) {
+                        "n95" -> data.n95
+                        "n95p" -> data.n95p
+                        "n98" -> data.n98
+                        "diesel" -> data.diesel
+                        "dieselPlus" -> data.dieselPlus
+                        "lpg" -> data.lpg
+                        "adBlue" -> data.adBlue
+                        "om" -> data.om
+                        "nm" -> data.nm
+                        "euro" -> data.euro
+                        else -> 0.0
                     }
-                }
-            } else {
-                // Žádná data – skryjeme všechny položky
-                for (textId in textIds) {
+                    
+                    val trend = when (key) {
+                        "n95" -> data.n95Trend
+                        "n95p" -> data.n95pTrend
+                        "n98" -> data.n98Trend
+                        "diesel" -> data.dieselTrend
+                        "dieselPlus" -> data.dieselPlusTrend
+                        "lpg" -> data.lpgTrend
+                        "adBlue" -> data.adBlueTrend
+                        "om" -> data.omTrend
+                        "nm" -> data.nmTrend
+                        "euro" -> data.euroTrend
+                        else -> 0
+                    }
+                    
+                    views.setTextViewText(textId, String.format("%.2f", value))
+                    views.setImageViewResource(trendId, getTrendIcon(trend))
+                    views.setViewVisibility(textId, android.view.View.VISIBLE)
+                    views.setViewVisibility(trendId, android.view.View.VISIBLE)
+                } else {
                     views.setViewVisibility(textId, android.view.View.GONE)
-                }
-                for (trendId in trendIds) {
                     views.setViewVisibility(trendId, android.view.View.GONE)
                 }
             }

@@ -8,6 +8,13 @@ import java.util.concurrent.TimeUnit
 object TankONOWidgetScheduler {
 
     fun scheduleUpdates(context: Context) {
+        val workManager = WorkManager.getInstance(context)
+        
+        // OKAMŽITÁ AKTUALIZACE PŘI SPUŠTĚNÍ
+        val immediateRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
+            .build()
+        workManager.enqueue(immediateRequest)
+
         // Základní – každou hodinu
         val hourlyRequest = PeriodicWorkRequestBuilder<UpdateWorker>(
             1, TimeUnit.HOURS
@@ -29,8 +36,6 @@ object TankONOWidgetScheduler {
             TimeUnit.MILLISECONDS
         ).build()
 
-        val workManager = WorkManager.getInstance(context)
-
         workManager.enqueueUniquePeriodicWork(
             "hourly_update",
             ExistingPeriodicWorkPolicy.KEEP,
@@ -42,11 +47,6 @@ object TankONOWidgetScheduler {
             ExistingPeriodicWorkPolicy.KEEP,
             peakRequest
         )
-
-        // IHNED SPUSTIT PRVNÍ AKTUALIZACI
-        val immediateRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
-            .build()
-        workManager.enqueue(immediateRequest)
     }
 
     private fun getInitialDelayToPeak(): Long {
