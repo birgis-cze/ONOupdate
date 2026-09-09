@@ -16,6 +16,8 @@ jobs:
       run: |
         sed -i 's/\r$//' gradlew
         chmod +x gradlew
+        ls -la gradle/wrapper/
+        file gradle/wrapper/gradle-wrapper.jar || echo "JAR file missing!"
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
