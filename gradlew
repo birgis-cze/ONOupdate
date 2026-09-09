@@ -136,7 +136,7 @@ fi
 
 collect_args() {
     set -- org.gradle.wrapper.GradleWrapperMain "$@"
-    set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS $@
+    set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "$@"
     for arg do
         arguments="$arguments $arg"
     done
