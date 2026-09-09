@@ -13,8 +13,12 @@ import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
+import org.jsoup.nodes.Document
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
+import java.util.regex.Pattern
 
 class UpdateWorker(
     context: Context,
@@ -25,6 +29,10 @@ class UpdateWorker(
         private const val TAG = "UpdateWorker"
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "tankono_channel"
+        
+        // Klíče pro uložení
+        const val KEY_LAST_CHANGE_DATE = "last_change_date"
+        const val KEY_LAST_UPDATE_ATTEMPT = "last_update_attempt"
     }
 
     override suspend fun doWork(): Result {
@@ -36,42 +44,63 @@ class UpdateWorker(
                 .readTimeout(15, TimeUnit.SECONDS)
                 .build()
 
-            val request = Request.Builder()
+            // 1. STÁHNEME CENÍK
+            val cenikRequest = Request.Builder()
                 .url("https://m.tank-ono.cz/cz/index.php?page=cenik")
                 .header("User-Agent", "Mozilla/5.0 (Android) Tasker/1.0")
                 .build()
 
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                Log.e(TAG, "HTTP chyba: ${response.code}")
+            val cenikResponse = client.newCall(cenikRequest).execute()
+            if (!cenikResponse.isSuccessful) {
+                Log.e(TAG, "HTTP chyba cenik: ${cenikResponse.code}")
                 return Result.failure()
             }
 
-            val html = response.body?.string() ?: run {
-                Log.e(TAG, "Prázdná odpověď")
+            val cenikHtml = cenikResponse.body?.string() ?: run {
+                Log.e(TAG, "Prázdná odpověď cenik")
                 return Result.failure()
             }
             
-            Log.d(TAG, "HTML načteno, délka: ${html.length}")
-            
-            val data = parseHtml(html)
-            Log.d(TAG, "Data parsována: ${data != null}")
+            // 2. STÁHNEME AKTUALITY (pro datum poslední změny)
+            val aktualityRequest = Request.Builder()
+                .url("https://m.tank-ono.cz/cz/index.php?page=aktuality")
+                .header("User-Agent", "Mozilla/5.0 (Android) Tasker/1.0")
+                .build()
 
-            if (data != null) {
+            val aktualityResponse = client.newCall(aktualityRequest).execute()
+            val aktualityHtml = if (aktualityResponse.isSuccessful) {
+                aktualityResponse.body?.string() ?: ""
+            } else {
+                Log.e(TAG, "HTTP chyba aktuality: ${aktualityResponse.code}")
+                ""
+            }
+            
+            // 3. PARSOVÁNÍ CEN
+            val priceData = parseCenik(cenikHtml)
+            
+            // 4. PARSOVÁNÍ DATUMU POSLEDNÍ ZMĚNY
+            val lastChangeDate = parseLastChangeDate(aktualityHtml)
+            
+            // 5. ULOŽENÍ
+            if (priceData != null) {
                 val previous = DataManager.getPrices(applicationContext)
-                DataManager.savePrices(applicationContext, data)
+                DataManager.savePrices(applicationContext, priceData)
                 DataManager.saveLastUpdate(applicationContext, System.currentTimeMillis())
-
-                if (previous != null) {
-                    checkAndNotify(applicationContext, previous, data)
+                
+                // Uložíme datum poslední změny cen
+                if (lastChangeDate != null) {
+                    DataManager.saveLastChangeDate(applicationContext, lastChangeDate)
                 }
 
-                // AKTUALIZACE WIDGETU
+                if (previous != null) {
+                    checkAndNotify(applicationContext, previous, priceData)
+                }
+
                 TankONOWidget.updateAllWidgets(applicationContext)
-                Log.d(TAG, "Aktualizace úspěšná")
+                Log.d(TAG, "Aktualizace úspěšná, poslední změna: $lastChangeDate")
                 Result.success()
             } else {
-                Log.e(TAG, "Parsování selhalo")
+                Log.e(TAG, "Parsování cen selhalo")
                 Result.failure()
             }
         } catch (e: Exception) {
@@ -80,23 +109,15 @@ class UpdateWorker(
         }
     }
 
-    private fun parsePriceWithSup(element: Element): Double {
-        return try {
-            val wholePart = element.ownText().trim()
-            val supElement = element.select("sup").first()
-            val decimalPart = supElement?.text()?.trim() ?: "00"
-            val priceStr = "$wholePart.$decimalPart".replace(",", ".")
-            priceStr.toDoubleOrNull() ?: 0.0
-        } catch (e: Exception) {
-            0.0
-        }
-    }
-
-    private fun parseHtml(html: String): PriceData? {
+    /**
+     * PARSOVÁNÍ CENÍKU
+     */
+    private fun parseCenik(html: String): PriceData? {
         return try {
             val doc = Jsoup.parse(html)
-            val table = doc.select("table").first() ?: return null
-            val rows = table.select("tr")
+            
+            // Najdeme všechny řádky s cenami
+            val priceRows = doc.select("div.divrow2")
             
             var n95 = 0.0
             var n95p = 0.0
@@ -107,40 +128,40 @@ class UpdateWorker(
             var adBlue = 0.0
             var om = 0.0
             var nm = 0.0
+            var euroNakup = 0.0
 
-            for (row in rows) {
-                val cells = row.select("td")
-                if (cells.size < 3) continue
+            for (row in priceRows) {
+                // Název položky – podpora všech tříd
+                val labelElement = row.select("div.divprgw, div.divprbw, div.divpryb").first()
+                val label = labelElement?.text()?.trim() ?: continue
                 
-                val name = cells[0].text().trim()
-                val czkPrice = parsePriceWithSup(cells[1])
+                // Cena v Kč
+                val priceElement = row.select("div.divprice").first()
+                val priceCzk = parsePriceFromElement(priceElement)
                 
                 when {
-                    name.contains("NATURAL 95", ignoreCase = true) && !name.contains("+", ignoreCase = true) && !name.contains("98", ignoreCase = true) -> n95 = czkPrice
-                    name.contains("NATURAL 95+", ignoreCase = true) -> n95p = czkPrice
-                    name.contains("NATURAL 98", ignoreCase = true) -> n98 = czkPrice
-                    name.equals("DIESEL", ignoreCase = true) -> diesel = czkPrice
-                    name.contains("DIESEL+", ignoreCase = true) -> dieselPlus = czkPrice
-                    name.contains("LPG", ignoreCase = true) -> lpg = czkPrice
-                    name.contains("AD BLUE", ignoreCase = true) -> adBlue = czkPrice
-                    name.equals("OM", ignoreCase = true) -> om = czkPrice
-                    name.equals("NM", ignoreCase = true) -> nm = czkPrice
+                    label.contains("NATURAL 95", ignoreCase = true) && !label.contains("+", ignoreCase = true) && !label.contains("98", ignoreCase = true) -> n95 = priceCzk
+                    label.contains("NATURAL 95+", ignoreCase = true) -> n95p = priceCzk
+                    label.contains("NATURAL 98", ignoreCase = true) -> n98 = priceCzk
+                    label.equals("DIESEL", ignoreCase = true) -> diesel = priceCzk
+                    label.contains("DIESEL+", ignoreCase = true) -> dieselPlus = priceCzk
+                    label.equals("LPG", ignoreCase = true) -> lpg = priceCzk
+                    label.equals("AD BLUE", ignoreCase = true) -> adBlue = priceCzk
+                    label.equals("OM", ignoreCase = true) -> om = priceCzk
+                    label.equals("NM", ignoreCase = true) -> nm = priceCzk
                 }
             }
             
-            var euro = 0.0
-            val euroTable = doc.select("table").getOrNull(1)
-            if (euroTable != null) {
-                val euroRows = euroTable.select("tr")
-                for (row in euroRows) {
-                    val cells = row.select("td")
-                    if (cells.size >= 3) {
-                        val label = cells[0].text().trim()
-                        if (label.contains("EURO", ignoreCase = true)) {
-                            euro = parsePriceWithSup(cells[1])
-                            break
-                        }
-                    }
+            // PARSOVÁNÍ KURZU EUR
+            val euroRows = doc.select("div.divrow2")
+            for (row in euroRows) {
+                val labelElement = row.select("div.divexbw").first()
+                val label = labelElement?.text()?.trim() ?: continue
+                
+                if (label.equals("EURO", ignoreCase = true)) {
+                    val nakupElement = row.select("div.divexnak").first()
+                    euroNakup = parsePriceFromElement(nakupElement)
+                    break
                 }
             }
 
@@ -154,11 +175,75 @@ class UpdateWorker(
                 adBlue = adBlue,
                 om = om,
                 nm = nm,
-                euro = euro,
+                euro = euroNakup,
                 lastUpdate = System.currentTimeMillis()
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Chyba parsování: ${e.message}", e)
+            Log.e(TAG, "Chyba parsování cen: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * PARSOVÁNÍ CENY Z ELEMENTU – "42<sup>50</sup>" → 42.50
+     */
+    private fun parsePriceFromElement(element: org.jsoup.nodes.Element?): Double {
+        if (element == null) return 0.0
+        
+        return try {
+            val wholePart = element.ownText().trim()
+            val supElement = element.select("sup").first()
+            val decimalPart = supElement?.text()?.trim() ?: "00"
+            
+            val cleanWhole = wholePart.replace(" ", "")
+            val cleanDecimal = decimalPart.replace(" ", "").padEnd(2, '0')
+            
+            val priceStr = "$cleanWhole.$cleanDecimal".replace(",", ".")
+            priceStr.toDoubleOrNull() ?: 0.0
+        } catch (e: Exception) {
+            0.0
+        }
+    }
+
+    /**
+     * PARSOVÁNÍ DATUMU POSLEDNÍ ZMĚNY ZE STRÁNKY AKTUALITY
+     * Formát: "8.9.2026 (15:24:07)"
+     */
+    private fun parseLastChangeDate(html: String): Long? {
+        return try {
+            val doc = Jsoup.parse(html)
+            val newsElements = doc.select("div.divnews")
+            
+            if (newsElements.isEmpty()) return null
+            
+            // První položka je nejnovější
+            val firstNews = newsElements.first()
+            val text = firstNews?.text() ?: return null
+            
+            // Regulární výraz pro datum a čas
+            // Formát: "8.9.2026 (15:24:07) Zveřejněn nový ceník."
+            val pattern = Pattern.compile("(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})\\s*\\((\\d{2}):(\\d{2}):(\\d{2})\\)")
+            val matcher = pattern.matcher(text)
+            
+            if (matcher.find()) {
+                val day = matcher.group(1).toInt()
+                val month = matcher.group(2).toInt()
+                val year = matcher.group(3).toInt()
+                val hour = matcher.group(4).toInt()
+                val minute = matcher.group(5).toInt()
+                val second = matcher.group(6).toInt()
+                
+                // Vytvoříme Calendar a nastavíme čas
+                val calendar = java.util.Calendar.getInstance()
+                calendar.set(year, month - 1, day, hour, minute, second)
+                calendar.set(java.util.Calendar.MILLISECOND, 0)
+                
+                calendar.timeInMillis
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Chyba parsování data: ${e.message}", e)
             null
         }
     }

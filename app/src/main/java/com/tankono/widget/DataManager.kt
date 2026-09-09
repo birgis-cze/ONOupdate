@@ -9,11 +9,11 @@ object DataManager {
     private const val PREFS_NAME = "tankono_prefs"
     private const val KEY_PRICES = "prices"
     private const val KEY_LAST_UPDATE = "last_update"
+    private const val KEY_LAST_CHANGE_DATE = "last_change_date"
     private const val KEY_CHANGE_NOTIFIED = "change_notified"
 
     private val gson = Gson()
     
-    // ULOŽENÍ POSLEDNÍCH CEN PRO TRENDY (BEZ CONTEXT)
     var oldPrices: PriceData? = null
         private set
 
@@ -21,9 +21,9 @@ object DataManager {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    // ULOŽENÍ CEN
+    // CENY
     fun savePrices(context: Context, data: PriceData) {
-        oldPrices = data  // Uložíme pro trendy
+        oldPrices = data
         val json = gson.toJson(data)
         getPrefs(context).edit().putString(KEY_PRICES, json).apply()
     }
@@ -37,7 +37,7 @@ object DataManager {
         }
     }
 
-    // ČAS POSLEDNÍ AKTUALIZACE
+    // ČAS POSLEDNÍHO POKUSU O AKTUALIZACI
     fun saveLastUpdate(context: Context, timestamp: Long) {
         getPrefs(context).edit().putLong(KEY_LAST_UPDATE, timestamp).apply()
     }
@@ -46,7 +46,16 @@ object DataManager {
         return getPrefs(context).getLong(KEY_LAST_UPDATE, 0)
     }
 
-    // NOTIFIKACE O ZMĚNĚ
+    // DATUM POSLEDNÍ ZMĚNY CEN (ZE STRÁNKY AKTUALITY)
+    fun saveLastChangeDate(context: Context, timestamp: Long) {
+        getPrefs(context).edit().putLong(KEY_LAST_CHANGE_DATE, timestamp).apply()
+    }
+
+    fun getLastChangeDate(context: Context): Long {
+        return getPrefs(context).getLong(KEY_LAST_CHANGE_DATE, 0)
+    }
+
+    // NOTIFIKACE
     fun saveChangeNotified(context: Context, notified: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_CHANGE_NOTIFIED, notified).apply()
     }

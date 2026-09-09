@@ -64,8 +64,9 @@ class TankONOWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
             val data = DataManager.getPrices(context)
             val timestamp = DataManager.getLastUpdate(context)
+            val lastChangeDate = DataManager.getLastChangeDate(context)
 
-            // KLIKNUTÍ
+            // KLIKNUTÍ NA WIDGET
             val intent = Intent(context, TankONOWidget::class.java)
             intent.action = "UPDATE_WIDGET"
             val pendingIntent = PendingIntent.getBroadcast(
@@ -74,31 +75,50 @@ class TankONOWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            // ČAS
-            if (timestamp > 0) {
+            // ============================================================
+            // 1. NASTAVENÍ ČASU – POUŽIJEME DATUM POSLEDNÍ ZMĚNY CEN
+            // ============================================================
+            if (lastChangeDate > 0) {
+                // Formát: "8.9. 15:24" – datum poslední změny cen
+                val formatter = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
+                views.setTextViewText(R.id.tv_time, formatter.format(Date(lastChangeDate)))
+            } else if (timestamp > 0) {
+                // FALLBACK – čas poslední aktualizace aplikace
                 val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
                 views.setTextViewText(R.id.tv_time, formatter.format(Date(timestamp)))
             } else {
                 views.setTextViewText(R.id.tv_time, "--:--")
             }
 
-            // ZJISTÍME VIDITELNÉ POLOŽKY
+            // ============================================================
+            // 2. ZJISTÍME VIDITELNÉ POLOŽKY Z NASTAVENÍ
+            // ============================================================
             val visibleItems = MainActivity.getVisibleItems(context)
             val visibleKeys = visibleItems.map { it.first }.toSet()
 
-            // DEFINICE POLOŽEK
-            val keys = listOf("n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro")
+            // ============================================================
+            // 3. DEFINICE POLOŽEK – KLÍČ, ID TEXTU, ID TRENDU
+            // ============================================================
+            val keys = listOf(
+                "n95", "n95p", "n98", "diesel", "dieselPlus", 
+                "lpg", "adBlue", "om", "nm", "euro"
+            )
             val textIds = listOf(
-                R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel, R.id.tv_diesel_plus,
-                R.id.tv_lpg, R.id.tv_adblue, R.id.tv_om, R.id.tv_nm, R.id.tv_euro
+                R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, 
+                R.id.tv_diesel, R.id.tv_diesel_plus,
+                R.id.tv_lpg, R.id.tv_adblue, 
+                R.id.tv_om, R.id.tv_nm, R.id.tv_euro
             )
             val trendIds = listOf(
-                R.id.tv_n95_trend, R.id.tv_n95p_trend, R.id.tv_n98_trend, R.id.tv_diesel_trend,
-                R.id.tv_diesel_plus_trend, R.id.tv_lpg_trend, R.id.tv_adblue_trend,
+                R.id.tv_n95_trend, R.id.tv_n95p_trend, R.id.tv_n98_trend,
+                R.id.tv_diesel_trend, R.id.tv_diesel_plus_trend, 
+                R.id.tv_lpg_trend, R.id.tv_adblue_trend,
                 R.id.tv_om_trend, R.id.tv_nm_trend, R.id.tv_euro_trend
             )
 
-            // POKUD DATA EXISTUJÍ
+            // ============================================================
+            // 4. ZOBRAZENÍ DAT
+            // ============================================================
             if (data != null && data.n95 > 0) {
                 for (i in keys.indices) {
                     val key = keys[i]
@@ -107,6 +127,7 @@ class TankONOWidget : AppWidgetProvider() {
                     val isVisible = key in visibleKeys
                     
                     if (isVisible) {
+                        // Získání hodnoty podle klíče
                         val value = when (key) {
                             "n95" -> data.n95
                             "n95p" -> data.n95p
@@ -121,6 +142,7 @@ class TankONOWidget : AppWidgetProvider() {
                             else -> 0.0
                         }
                         
+                        // Získání trendu podle klíče
                         val trend = when (key) {
                             "n95" -> data.n95Trend
                             "n95p" -> data.n95pTrend
