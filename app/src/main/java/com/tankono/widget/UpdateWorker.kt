@@ -12,9 +12,7 @@ import androidx.work.WorkerParameters
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import org.jsoup.nodes.Element
 import java.util.concurrent.TimeUnit
 
 class UpdateWorker(
@@ -68,32 +66,92 @@ class UpdateWorker(
         }
     }
 
+    /**
+     * Parsuje cenu z HTML elementu, který může obsahovat <sup> tag pro desetinnou část.
+     * Např: "42<sup>50</sup>" → 42.50
+     */
+    private fun parsePriceWithSup(element: Element): Double {
+        try {
+            val wholePart = element.ownText().trim()
+            val supElement = element.select("sup").first()
+            val decimalPart = supElement?.text()?.trim() ?: "00"
+            val priceStr = "$wholePart.$decimalPart".replace(",", ".")
+            return priceStr.toDoubleOrNull() ?: 0.0
+        } catch (e: Exception) {
+            return 0.0
+        }
+    }
+
     private fun parseHtml(html: String): PriceData? {
         try {
             val doc = Jsoup.parse(html)
-            val divRows = doc.select("div.divrow2, div.divrow1")
-
+            
+            // První tabulka s cenami PHM
+            val table = doc.select("table").first() ?: return null
+            val rows = table.select("tr")
+            
             var n95 = 0.0
             var n95p = 0.0
-            var nafta = 0.0
+            var n98 = 0.0
+            var diesel = 0.0
+            var dieselPlus = 0.0
             var lpg = 0.0
+            var adBlue = 0.0
+            var om = 0.0      // Osobní myčka
+            var nm = 0.0      // Nákladní myčka
 
-            for (row in divRows) {
-                val label = row.select("div.divlabel").firstOrNull()?.text() ?: continue
-                val priceText = row.select("div.divprice").firstOrNull()?.text()?.replace(",", ".") ?: continue
-                val price = priceText.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: continue
-
+            for (row in rows) {
+                val cells = row.select("td")
+                if (cells.size < 3) continue
+                
+                val name = cells[0].text().trim()
+                val czkPrice = parsePriceWithSup(cells[1])
+                
                 when {
-                    label.contains("NATURAL 95", ignoreCase = true) -> n95 = price
-                    label.contains("NATURAL 95+", ignoreCase = true) -> n95p = price
-                    label.contains("Nafta", ignoreCase = true) -> nafta = price
-                    label.contains("LPG", ignoreCase = true) -> lpg = price
+                    name.contains("NATURAL 95", ignoreCase = true) && !name.contains("+", ignoreCase = true) && !name.contains("98", ignoreCase = true) -> n95 = czkPrice
+                    name.contains("NATURAL 95+", ignoreCase = true) -> n95p = czkPrice
+                    name.contains("NATURAL 98", ignoreCase = true) -> n98 = czkPrice
+                    name.equals("DIESEL", ignoreCase = true) -> diesel = czkPrice
+                    name.contains("DIESEL+", ignoreCase = true) -> dieselPlus = czkPrice
+                    name.contains("LPG", ignoreCase = true) -> lpg = czkPrice
+                    name.contains("AD BLUE", ignoreCase = true) -> adBlue = czkPrice
+                    name.equals("OM", ignoreCase = true) -> om = czkPrice      // Osobní myčka
+                    name.equals("NM", ignoreCase = true) -> nm = czkPrice      // Nákladní myčka
+                }
+            }
+            
+            // Druhá tabulka – kurz EUR
+            var euro = 0.0
+            val euroTable = doc.select("table").getOrNull(1)
+            if (euroTable != null) {
+                val euroRows = euroTable.select("tr")
+                for (row in euroRows) {
+                    val cells = row.select("td")
+                    if (cells.size >= 3) {
+                        val label = cells[0].text().trim()
+                        if (label.contains("EURO", ignoreCase = true)) {
+                            euro = parsePriceWithSup(cells[1])  // Nákup
+                            break
+                        }
+                    }
                 }
             }
 
-            return PriceData(n95, n95p, nafta, lpg)
-
+            return PriceData(
+                n95 = n95,
+                n95p = n95p,
+                n98 = n98,
+                diesel = diesel,
+                dieselPlus = dieselPlus,
+                lpg = lpg,
+                adBlue = adBlue,
+                om = om,
+                nm = nm,
+                euro = euro,
+                lastUpdate = System.currentTimeMillis()
+            )
         } catch (e: Exception) {
+            e.printStackTrace()
             return null
         }
     }
@@ -104,8 +162,14 @@ class UpdateWorker(
 
         checkChange(previous.n95, current.n95, "N95", diff)?.let { changes.add(it) }
         checkChange(previous.n95p, current.n95p, "N95+", diff)?.let { changes.add(it) }
-        checkChange(previous.nafta, current.nafta, "Nafta", diff)?.let { changes.add(it) }
+        checkChange(previous.n98, current.n98, "NATURAL 98", diff)?.let { changes.add(it) }
+        checkChange(previous.diesel, current.diesel, "DIESEL", diff)?.let { changes.add(it) }
+        checkChange(previous.dieselPlus, current.dieselPlus, "DIESEL+", diff)?.let { changes.add(it) }
         checkChange(previous.lpg, current.lpg, "LPG", diff)?.let { changes.add(it) }
+        checkChange(previous.adBlue, current.adBlue, "AD BLUE", diff)?.let { changes.add(it) }
+        checkChange(previous.om, current.om, "OM (osobní)", diff)?.let { changes.add(it) }
+        checkChange(previous.nm, current.nm, "NM (nákladní)", diff)?.let { changes.add(it) }
+        checkChange(previous.euro, current.euro, "EUR", diff)?.let { changes.add(it) }
 
         if (changes.isNotEmpty()) {
             DataManager.saveChangeNotified(context, true)
@@ -116,7 +180,7 @@ class UpdateWorker(
     private fun checkChange(old: Double, new: Double, name: String, diff: Double): String? {
         return if (kotlin.math.abs(old - new) >= diff) {
             val direction = if (new > old) "↑" else "↓"
-            "$name $direction ${String.format("%.2f", new)} Kč"
+            "$name $direction ${String.format("%.2f", new)}"
         } else null
     }
 

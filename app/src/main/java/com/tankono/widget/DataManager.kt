@@ -2,7 +2,7 @@ package com.tankono.widget
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.google.gson.Gson   // ← PŘIDAT IMPORT
+import com.google.gson.Gson
 
 object DataManager {
     private const val PREFS_NAME = "tankono_prefs"
@@ -10,7 +10,7 @@ object DataManager {
     private const val KEY_LAST_UPDATE = "last_update"
     private const val KEY_CHANGE_NOTIFIED = "change_notified"
 
-    private val gson = Gson()   // ← TOTO TEĎ FUNGUJE
+    private val gson = Gson()
 
     fun getPrefs(context: Context?): SharedPreferences? {
         return context?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

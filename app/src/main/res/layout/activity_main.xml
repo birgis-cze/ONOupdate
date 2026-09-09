@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/yellow">
@@ -96,16 +97,52 @@
                 android:text="N95+" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switch_nafta"
+                android:id="@+id/switch_n98"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Nafta" />
+                android:text="NATURAL 98" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_diesel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIESEL" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_diesel_plus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIESEL+" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_lpg"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="LPG" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_adblue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="AD BLUE" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_om"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="OM (osobní myčka)" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_nm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="NM (nákladní myčka)" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_euro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="EUR kurz" />
 
         </LinearLayout>
 
