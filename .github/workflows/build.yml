@@ -12,12 +12,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Fix line endings and permissions
+    - name: Prepare gradlew
       run: |
         sed -i 's/\r$//' gradlew
         chmod +x gradlew
         ls -la gradle/wrapper/
-        file gradle/wrapper/gradle-wrapper.jar || echo "JAR file missing!"
+        file gradle/wrapper/gradle-wrapper.jar
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
