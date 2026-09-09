@@ -12,6 +12,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Decode gradle-wrapper.jar from Base64
+      run: |
+        mkdir -p gradle/wrapper
+        base64 -d gradle/wrapper/gradle-wrapper-base64.txt > gradle/wrapper/gradle-wrapper.jar
+
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
