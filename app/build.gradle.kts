@@ -31,11 +31,6 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-
-    // PŘIDAT TUTO ČÁST
-    buildFeatures {
-        viewBinding = true
-    }
 }
 
 dependencies {
