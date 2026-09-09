@@ -4,16 +4,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/widget_background"
-    android:padding="3dp">
+    android:background="#FFD600"
+    android:padding="4dp">
 
     <!-- HLAVIČKA -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="24dp"
+        android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@color/yellow">
+        android:gravity="center_vertical">
 
         <ImageView
             android:layout_width="0dp"
@@ -22,62 +21,32 @@
             android:src="@drawable/logo_text"
             android:scaleType="fitStart"
             android:adjustViewBounds="true"
-            android:paddingStart="4dp"
             android:contentDescription="ONO text" />
 
         <TextView
             android:id="@+id/tv_time"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:text="--:--"
             android:textSize="10sp"
-            android:textColor="@color/red"
-            android:textStyle="bold"
-            android:gravity="center_vertical"
-            android:paddingEnd="4dp" />
+            android:textColor="#C92200"
+            android:textStyle="bold" />
 
     </LinearLayout>
 
-    <!-- ČERVENÁ ČÁRA – POUŽIJEME LinearLayout S WEIGHT -->
+    <!-- ČÁRA -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#C92200"
+        android:layout_marginVertical="2dp" />
+
+    <!-- CENY -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="1dp"
-        android:layout_marginBottom="1dp">
+        android:orientation="vertical">
 
-        <View
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="2dp"
-            android:background="@color/red" />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_weight="3"
-            android:layout_height="2dp"
-            android:background="@color/red" />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="2dp"
-            android:background="@color/red" />
-
-    </LinearLayout>
-
-    <!-- TĚLO WIDGETU -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="@color/yellow"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:paddingTop="1dp"
-        android:paddingBottom="1dp">
-
-        <!-- N95 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -90,27 +59,26 @@
                 android:layout_height="wrap_content"
                 android:text="N95"
                 android:textSize="11sp"
-                android:textColor="@color/red"
+                android:textColor="#C92200"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_n95_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_n95"
-                android:layout_width="55dp"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:text="--"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="@color/red"/>
+                android:textColor="#C92200"/>
         </LinearLayout>
 
-        <!-- N95+ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -123,60 +91,26 @@
                 android:layout_height="wrap_content"
                 android:text="N95+"
                 android:textSize="11sp"
-                android:textColor="@color/red"
+                android:textColor="#C92200"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_n95p_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_n95p"
-                android:layout_width="55dp"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:text="--"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="@color/red"/>
+                android:textColor="#C92200"/>
         </LinearLayout>
 
-        <!-- N98 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="N98"
-                android:textSize="11sp"
-                android:textColor="@color/red"
-                android:textStyle="bold"/>
-
-            <ImageView
-                android:id="@+id/tv_n98_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_arrow_equal"/>
-
-            <TextView
-                android:id="@+id/tv_n98"
-                android:layout_width="55dp"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:gravity="end"
-                android:textColor="@color/red"/>
-        </LinearLayout>
-
-        <!-- DIESEL -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -189,60 +123,26 @@
                 android:layout_height="wrap_content"
                 android:text="Diesel"
                 android:textSize="11sp"
-                android:textColor="@color/red"
+                android:textColor="#C92200"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_diesel_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_diesel"
-                android:layout_width="55dp"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:text="--"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="@color/red"/>
+                android:textColor="#C92200"/>
         </LinearLayout>
 
-        <!-- DIESEL+ -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="Diesel+"
-                android:textSize="11sp"
-                android:textColor="@color/red"
-                android:textStyle="bold"/>
-
-            <ImageView
-                android:id="@+id/tv_diesel_plus_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_arrow_equal"/>
-
-            <TextView
-                android:id="@+id/tv_diesel_plus"
-                android:layout_width="55dp"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:gravity="end"
-                android:textColor="@color/red"/>
-        </LinearLayout>
-
-        <!-- LPG -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -255,156 +155,24 @@
                 android:layout_height="wrap_content"
                 android:text="LPG"
                 android:textSize="11sp"
-                android:textColor="@color/red"
+                android:textColor="#C92200"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_lpg_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_lpg"
-                android:layout_width="55dp"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
                 android:text="--"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="@color/red"/>
-        </LinearLayout>
-
-        <!-- AD BLUE -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="AdBlue"
-                android:textSize="11sp"
-                android:textColor="@color/red"
-                android:textStyle="bold"/>
-
-            <ImageView
-                android:id="@+id/tv_adblue_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_arrow_equal"/>
-
-            <TextView
-                android:id="@+id/tv_adblue"
-                android:layout_width="55dp"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:gravity="end"
-                android:textColor="@color/red"/>
-        </LinearLayout>
-
-        <!-- OM -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="OM"
-                android:textSize="11sp"
-                android:textColor="@color/red"
-                android:textStyle="bold"/>
-
-            <ImageView
-                android:id="@+id/tv_om_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_arrow_equal"/>
-
-            <TextView
-                android:id="@+id/tv_om"
-                android:layout_width="55dp"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:gravity="end"
-                android:textColor="@color/red"/>
-        </LinearLayout>
-
-        <!-- NM -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="NM"
-                android:textSize="11sp"
-                android:textColor="@color/red"
-                android:textStyle="bold"/>
-
-            <ImageView
-                android:id="@+id/tv_nm_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_arrow_equal"/>
-
-            <TextView
-                android:id="@+id/tv_nm"
-                android:layout_width="55dp"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:gravity="end"
-                android:textColor="@color/red"/>
-        </LinearLayout>
-
-        <!-- EUR -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:text="EUR"
-                android:textSize="11sp"
-                android:textColor="@color/red"
-                android:textStyle="bold"/>
-
-            <ImageView
-                android:id="@+id/tv_euro_trend"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:src="@drawable/ic_arrow_equal"/>
-
-            <TextView
-                android:id="@+id/tv_euro"
-                android:layout_width="55dp"
-                android:layout_height="wrap_content"
-                android:text="--"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:gravity="end"
-                android:textColor="@color/red"/>
+                android:textColor="#C92200"/>
         </LinearLayout>
 
     </LinearLayout>

@@ -207,6 +207,9 @@ class MainActivity : AppCompatActivity() {
         val lastUpdate = DataManager.getLastUpdate(this)
         val lastChange = DataManager.getLastChangeDate(this)
         
+        android.util.Log.d("MainActivity", "Poslední změna: $lastChange")
+        android.util.Log.d("MainActivity", "Poslední aktualizace: $lastUpdate")
+        
         val text = StringBuilder()
         text.append("Poslední změna cen: ")
         if (lastChange > 0) {

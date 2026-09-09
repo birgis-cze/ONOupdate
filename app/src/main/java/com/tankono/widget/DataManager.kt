@@ -25,13 +25,16 @@ object DataManager {
         oldPrices = data
         val json = gson.toJson(data)
         getPrefs(context).edit().putString(KEY_PRICES, json).apply()
+        android.util.Log.d("DataManager", "Ceny uloženy: N95=${data.n95}, Diesel=${data.diesel}")
     }
 
     fun getPrices(context: Context): PriceData? {
-        val json = getPrefs(context).getString(KEY_PRICES, null) ?: return null
+        val json = getPrefs(context).getString(KEY_PRICES, null)
+        android.util.Log.d("DataManager", "Načítání cen, JSON: $json")
         return try {
             gson.fromJson(json, PriceData::class.java)
         } catch (e: Exception) {
+            android.util.Log.e("DataManager", "Chyba načítání cen: ${e.message}")
             null
         }
     }
@@ -46,6 +49,7 @@ object DataManager {
 
     fun saveLastChangeDate(context: Context, timestamp: Long) {
         getPrefs(context).edit().putLong(KEY_LAST_CHANGE_DATE, timestamp).apply()
+        android.util.Log.d("DataManager", "Datum změny uloženo: $timestamp")
     }
 
     fun getLastChangeDate(context: Context): Long {

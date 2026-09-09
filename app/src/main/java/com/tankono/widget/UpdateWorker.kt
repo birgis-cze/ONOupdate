@@ -97,9 +97,14 @@ class UpdateWorker(
             DataManager.savePrices(ctx, priceData)
             DataManager.saveLastUpdate(ctx, System.currentTimeMillis())
             
+            // OVĚŘENÍ ULOŽENÍ
+            val savedPrices = DataManager.getPrices(ctx)
+            DebugHelper.log(ctx, TAG, "Ověření uložení: N95=${savedPrices?.n95}, Diesel=${savedPrices?.diesel}")
+            
             if (lastChangeDate != null) {
                 DataManager.saveLastChangeDate(ctx, lastChangeDate)
-                DebugHelper.log(ctx, TAG, "✅ Datum poslední změny uloženo")
+                DebugHelper.log(ctx, TAG, "✅ Datum poslední změny uloženo: ${java.util.Date(lastChangeDate)}")
+                DebugHelper.log(ctx, TAG, "Ověření data změny: ${java.util.Date(DataManager.getLastChangeDate(ctx))}")
             }
 
             if (previous != null) {

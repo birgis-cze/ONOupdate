@@ -22,7 +22,6 @@ class TankONOWidget : AppWidgetProvider() {
     ) {
         DebugHelper.log(context, "TankONOWidget", "onUpdate volán, počet widgetů: ${appWidgetIds.size}")
         
-        // OKAMŽITÁ AKTUALIZACE PŘI PŘIDÁNÍ WIDGETU
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(context).enqueue(workRequest)
         
@@ -36,14 +35,12 @@ class TankONOWidget : AppWidgetProvider() {
         DebugHelper.log(context, "TankONOWidget", "onReceive: ${intent.action}")
         
         if (intent.action == "UPDATE_WIDGET") {
-            // OKAMŽITÁ AKTUALIZACE PŘI KLIKNUTÍ
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(context).enqueue(workRequest)
             
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, TankONOWidget::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            DebugHelper.log(context, "TankONOWidget", "UPDATE_WIDGET: ${appWidgetIds.size} widgetů")
             
             for (appWidgetId in appWidgetIds) {
                 updateWidget(context, appWidgetManager, appWidgetId)
@@ -84,8 +81,8 @@ class TankONOWidget : AppWidgetProvider() {
             val lastChangeDate = DataManager.getLastChangeDate(context)
 
             DebugHelper.log(context, "TankONOWidget", "Data: ${if (data != null) "existují" else "null"}")
+            DebugHelper.log(context, "TankONOWidget", "lastChangeDate: $lastChangeDate")
 
-            // KLIKNUTÍ NA WIDGET
             val intent = Intent(context, TankONOWidget::class.java)
             intent.action = "UPDATE_WIDGET"
             val pendingIntent = PendingIntent.getBroadcast(
@@ -94,7 +91,6 @@ class TankONOWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            // ČAS
             if (lastChangeDate > 0) {
                 val formatter = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
                 views.setTextViewText(R.id.tv_time, formatter.format(Date(lastChangeDate)))
@@ -108,21 +104,17 @@ class TankONOWidget : AppWidgetProvider() {
             val visibleItems = MainActivity.getVisibleItems(context)
             val visibleKeys = visibleItems.map { it.first }.toSet()
 
-            val keys = listOf(
-                "n95", "n95p", "n98", "diesel", "dieselPlus", 
-                "lpg", "adBlue", "om", "nm", "euro"
-            )
+            val keys = listOf("n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro")
             val textIds = listOf(
-                R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, 
-                R.id.tv_diesel, R.id.tv_diesel_plus,
-                R.id.tv_lpg, R.id.tv_adblue, 
+                R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel,
+                R.id.tv_diesel_plus, R.id.tv_lpg, R.id.tv_adblue,
                 R.id.tv_om, R.id.tv_nm, R.id.tv_euro
             )
             val trendIds = listOf(
                 R.id.tv_n95_trend, R.id.tv_n95p_trend, R.id.tv_n98_trend,
-                R.id.tv_diesel_trend, R.id.tv_diesel_plus_trend, 
-                R.id.tv_lpg_trend, R.id.tv_adblue_trend,
-                R.id.tv_om_trend, R.id.tv_nm_trend, R.id.tv_euro_trend
+                R.id.tv_diesel_trend, R.id.tv_diesel_plus_trend, R.id.tv_lpg_trend,
+                R.id.tv_adblue_trend, R.id.tv_om_trend, R.id.tv_nm_trend,
+                R.id.tv_euro_trend
             )
 
             if (data != null && data.n95 > 0) {
