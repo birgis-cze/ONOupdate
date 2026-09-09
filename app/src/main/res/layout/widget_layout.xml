@@ -4,23 +4,27 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="4dp">
+    android:padding="3dp"
+    android:id="@+id/widget_root">
 
-    <!-- HLAVIČKA S OBRÁZKEM A ČASEM -->
+    <!-- HLAVIČKA – ŽLUTÁ, VLEVO LOGO, VPRAVO ČAS -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="#BA1E22"
-        android:padding="2dp">
+        android:background="@color/yellow"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
 
         <ImageView
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="24dp"
+            android:layout_height="20dp"
             android:src="@drawable/logo"
-            android:scaleType="fitCenter"
+            android:scaleType="fitStart"
             android:contentDescription="ONO" />
 
         <TextView
@@ -29,17 +33,30 @@
             android:layout_height="wrap_content"
             android:text="--:--"
             android:textSize="10sp"
-            android:textColor="#FFFFFF"
-            android:paddingEnd="4dp" />
+            android:textColor="@color/red"
+            android:textStyle="bold" />
 
     </LinearLayout>
 
-    <!-- CENY (4 ŘÁDKY) -->
+    <!-- ČERVENÁ ČÁRA – 80% šířky -->
+    <View
+        android:layout_width="80%"
+        android:layout_height="2dp"
+        android:background="@color/red"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="1dp"
+        android:layout_marginBottom="1dp" />
+
+    <!-- TĚLO WIDGETU – ŽLUTÉ POZADÍ, ČERVENÝ TEXT -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="4dp">
+        android:background="@color/yellow"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="1dp"
+        android:paddingBottom="1dp">
 
         <!-- N95 -->
         <LinearLayout
@@ -53,25 +70,25 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="N95"
-                android:textSize="12sp"
-                android:textColor="#BA1E22"
+                android:textSize="11sp"
+                android:textColor="@color/red"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_n95_trend"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_n95"
-                android:layout_width="60dp"
+                android:layout_width="55dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="#BA1E22"/>
+                android:textColor="@color/red"/>
         </LinearLayout>
 
         <!-- N95+ -->
@@ -86,25 +103,25 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="N95+"
-                android:textSize="12sp"
-                android:textColor="#BA1E22"
+                android:textSize="11sp"
+                android:textColor="@color/red"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_n95p_trend"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_n95p"
-                android:layout_width="60dp"
+                android:layout_width="55dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="#BA1E22"/>
+                android:textColor="@color/red"/>
         </LinearLayout>
 
         <!-- Nafta -->
@@ -119,25 +136,25 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Nafta"
-                android:textSize="12sp"
-                android:textColor="#BA1E22"
+                android:textSize="11sp"
+                android:textColor="@color/red"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_nafta_trend"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_nafta"
-                android:layout_width="60dp"
+                android:layout_width="55dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="#BA1E22"/>
+                android:textColor="@color/red"/>
         </LinearLayout>
 
         <!-- LPG -->
@@ -152,25 +169,25 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="LPG"
-                android:textSize="12sp"
-                android:textColor="#BA1E22"
+                android:textSize="11sp"
+                android:textColor="@color/red"
                 android:textStyle="bold"/>
 
             <ImageView
                 android:id="@+id/tv_lpg_trend"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
                 android:id="@+id/tv_lpg"
-                android:layout_width="60dp"
+                android:layout_width="55dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
                 android:gravity="end"
-                android:textColor="#BA1E22"/>
+                android:textColor="@color/red"/>
         </LinearLayout>
 
     </LinearLayout>

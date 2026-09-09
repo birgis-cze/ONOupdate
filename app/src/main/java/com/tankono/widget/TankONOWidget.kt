@@ -1,13 +1,17 @@
 package com.tankono.widget
 
+import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.widget.RemoteViews
+import androidx.work.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class TankONOWidget : AppWidgetProvider() {
 
@@ -21,9 +25,28 @@ class TankONOWidget : AppWidgetProvider() {
         }
     }
 
-    override fun onEnabled(context: Context) {
-        super.onEnabled(context)
-        TankONOWidgetScheduler.scheduleUpdates(context)
+    // KLIKNUTÍ NA WIDGET – AKTUALIZACE POKUD JE DATA STARŠÍ NEŽ 10 MIN
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        
+        if (intent.action == "UPDATE_WIDGET") {
+            val lastUpdate = DataManager.getLastUpdate(context)
+            val now = System.currentTimeMillis()
+            val diffMinutes = TimeUnit.MILLISECONDS.toMinutes(now - lastUpdate)
+            
+            if (diffMinutes > 10) {
+                // Spustí aktualizaci na pozadí
+                val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
+                    .build()
+                WorkManager.getInstance(context).enqueue(workRequest)
+            }
+            
+            // Aktualizuje widget
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val componentName = ComponentName(context, TankONOWidget::class.java)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+            onUpdate(context, appWidgetManager, appWidgetIds)
+        }
     }
 
     companion object {
@@ -44,6 +67,15 @@ class TankONOWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
             val data = DataManager.getPrices(context)
             val timestamp = DataManager.getLastUpdate(context)
+
+            // NASTAVÍ KLIKÁNÍ NA WIDGET
+            val intent = Intent(context, TankONOWidget::class.java)
+            intent.action = "UPDATE_WIDGET"
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
             if (data != null && data.n95 > 0) {
                 val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
