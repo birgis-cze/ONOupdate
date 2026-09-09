@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- JEDNOTNÉ BARVY -->
+    <!-- JEDNOTNÉ BARVY POUŽÍVANÉ V APLIKACI -->
     <color name="yellow">#FFD600</color>
     <color name="red">#C92200</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
     
-    <!-- ZÁKLADNÍ BARVY PRO APLIKACI -->
+    <!-- ALTERNATIVNÍ NÁZVY PRO KOMPATIBILITU -->
+    <color name="tankono_red">#C92200</color>
+    <color name="tankono_yellow">#FFD600</color>
+    
+    <!-- ZÁKLADNÍ MATERIAL BARVY PRO SYSTÉM -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
+    
+    <!-- BARVA POZADÍ IKONY -->
+    <color name="ic_launcher_background">#C92200</color>
 </resources>
