@@ -51,10 +51,13 @@ do
     esac
 done
 
-# This is normally unused
-# shellcheck disable=SC2034
-APP_BASE_NAME=${0##*/}
 APP_HOME=$( cd "${APP_HOME:-./}" && pwd -P ) || exit
+
+APP_NAME="Gradle"
+APP_BASE_NAME=${0##*/}
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
 
 # Use the maximum available, or set MAX_FD != -1 to use that value.
 MAX_FD=maximum
@@ -83,7 +86,6 @@ case "$( uname )" in                #(
 esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
-
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
@@ -114,16 +116,12 @@ fi
 if ! "$cygwin" && ! "$darwin" && ! "$nonstop" ; then
     case $MAX_FD in #(
       max*)
-        # In POSIX sh, ulimit -H is undefined. That's why the result is checked to see if it worked.
-        # shellcheck disable=SC3045
         MAX_FD=$( ulimit -H -n ) ||
             warn "Could not query maximum file descriptor limit"
     esac
     case $MAX_FD in  #(
       '' | soft) :;; #(
       *)
-        # In POSIX sh, ulimit -n is undefined. That's why the result is checked to see if it worked.
-        # shellcheck disable=SC3045
         ulimit -n "$MAX_FD" ||
             warn "Could not set maximum file descriptor limit to $MAX_FD"
     esac
@@ -132,77 +130,25 @@ fi
 # Collect all arguments for the java command, stacking in reverse order:
 #   * args from the command line
 #   * the main class name
-#   * the classpath 'starter.jar' and its arguments
-#   * the default 'JAVA_OPTS' value
+#   * the classpath 'starter.jar'
+#   * the default 'JAVA_OPTS'
+#   * the default 'GRADLE_OPTS'
 
-if [ -n "$JAVA_OPTS" ] ; then
-    JAVA_OPTS="$JAVA_OPTS -Xmx${GRADLE_OPTS_MAX_MEMORY:-1024m} -XX:MaxMetaspaceSize=256m $GRADLE_OPTS"
-fi
-
-if [ -n "$GRADLE_OPTS" ] ; then
-    JAVA_OPTS="$JAVA_OPTS $GRADLE_OPTS"
-fi
-
-JAVA_OPTS="$JAVA_OPTS $DEFAULT_JVM_OPTS"
-
-# Collect the arguments
-arguments=""
-
-# Collect the application parameters, in reverse order
-while [ $# -gt 0 ]; do
-    arguments="$1 $arguments"
-    shift
-done
-
-# For Cygwin, switch paths to Windows format before running java
-if "$cygwin" ; then
-    APP_HOME=$(cygpath --path --mixed "$APP_HOME")
-    CLASSPATH=$(cygpath --path --mixed "$CLASSPATH")
-
-    JAVACMD=$(cygpath --unix "$JAVACMD")
-
-    # We build the pattern for arguments to be converted via cygpath
-    ROOTDIRSRAW=$(find -L / -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true)
-    SEP=""
-    for dir in $ROOTDIRSRAW ; do
-        ROOTDIRS="$ROOTDIRS$SEP$dir"
-        SEP="|"
+collect_args() {
+    set -- \
+        org.gradle.wrapper.GradleWrapperMain \
+        "$@"
+    set -- \
+        "$DEFAULT_JVM_OPTS" \
+        "$JAVA_OPTS" \
+        "$GRADLE_OPTS" \
+        "$@"
+    for arg do
+        arguments="$arguments $arg"
     done
-    OURCYGPATTERN="(^($ROOTDIRS))"
-    # Add a user-defined pattern to the cygpath arguments
-    if [ -n "$CYGPATTERN" ] ; then
-        export CYGPATTERN="$CYGPATTERN"
-    fi
-    for arg in $arguments ; do
-        case $(cygpath -u "$arg") in
-            -*) ;;                   # arguments starting with -
-            *cygdrive*)
-                arg=$(cygpath -w "$arg" | sed 's,\\\\,/,g') ;;
-            *) ;;
-        esac
-        arguments="$arg $arguments"
-    done
-fi
 
-# Support for MSYS and MINGW
-if "$msys" ; then
-    CLASSPATH=$(cygpath -w "$CLASSPATH" | sed 's,\\,/,g')
-    JAVACMD=$(cygpath -u "$JAVACMD")
-fi
-
-# Stop when the xmx/Xms values contain the 'm' or 'g' as unit.
-grep -E -e '-Xmx[0-9]+[mMgG]' -e '-Xms[0-9]+[mMgG]' <<< "$JAVA_OPTS" || die "JAVA_OPTS contain invalid Xms/Xmx values"
-
-# Escape application args
-save () {
-    for i do printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/" ; done
-    echo " "
+    # Pass the arguments to java
+    exec "$JAVACMD" $arguments
 }
-APP_ARGS=$(save "$arguments")
 
-# Collect all arguments for the java command;
-#   * $JAVA_OPTS, $JAVA_OPTS, and arguments from the command line (in reverse order)
-arguments="$APP_ARGS $JAVA_OPTS $CLASSPATH org.gradle.wrapper.GradleWrapperMain"
-
-# Use 'exec' to pass through to gradle, and also to properly handle arguments
-exec "$JAVACMD" ${arguments//; /}
+collect_args "$@"
