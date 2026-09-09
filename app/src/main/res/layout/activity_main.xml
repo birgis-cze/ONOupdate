@@ -37,10 +37,12 @@
 
         </LinearLayout>
 
-        <!-- ČERVENÁ ČÁRA -->
+        <!-- ČERVENÁ ČÁRA – 80% šířky pomocí marginů -->
         <View
-            android:layout_width="80%"
+            android:layout_width="match_parent"
             android:layout_height="2dp"
+            android:layout_marginStart="10%"
+            android:layout_marginEnd="10%"
             android:background="@color/red"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="8dp"

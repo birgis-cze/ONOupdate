@@ -20,7 +20,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build Debug APK
-        run: gradle assembleDebug   # ← ZMĚNA Z assembleRelease
+        run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

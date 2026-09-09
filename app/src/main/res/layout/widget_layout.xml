@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="3dp"
-    android:id="@+id/widget_root">
+    android:padding="3dp">
 
     <!-- HLAVIČKA – ŽLUTÁ, VLEVO LOGO, VPRAVO ČAS -->
     <LinearLayout
@@ -38,16 +38,18 @@
 
     </LinearLayout>
 
-    <!-- ČERVENÁ ČÁRA – 80% šířky    -->
+    <!-- ČERVENÁ ČÁRA – 80% šířky pomocí marginů -->
     <View
-        android:layout_width="80%"
+        android:layout_width="match_parent"
         android:layout_height="2dp"
+        android:layout_marginStart="10%"
+        android:layout_marginEnd="10%"
         android:background="@color/red"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="1dp"
         android:layout_marginBottom="1dp" />
 
-    <!-- TĚLO WIDGETU – ŽLUTÉ POZADÍ, ČERVENÝ TEXT -->
+    <!-- TĚLO WIDGETU -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
