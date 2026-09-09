@@ -84,26 +84,25 @@ class TankONOWidget : AppWidgetProvider() {
                 views.setTextViewText(R.id.tv_time, "--:--")
             }
 
-            // Mapování ID pro text a trend
-            val itemIds = listOf(
-                "n95" to R.id.tv_n95 to R.id.tv_n95_trend,
-                "n95p" to R.id.tv_n95p to R.id.tv_n95p_trend,
-                "n98" to R.id.tv_n98 to R.id.tv_n98_trend,
-                "diesel" to R.id.tv_diesel to R.id.tv_diesel_trend,
-                "dieselPlus" to R.id.tv_diesel_plus to R.id.tv_diesel_plus_trend,
-                "lpg" to R.id.tv_lpg to R.id.tv_lpg_trend,
-                "adBlue" to R.id.tv_adblue to R.id.tv_adblue_trend,
-                "om" to R.id.tv_om to R.id.tv_om_trend,
-                "nm" to R.id.tv_nm to R.id.tv_nm_trend,
-                "euro" to R.id.tv_euro to R.id.tv_euro_trend
+            // Definice položek: klíč, ID textu, ID trendu
+            val keys = listOf("n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro")
+            val textIds = listOf(
+                R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel, R.id.tv_diesel_plus,
+                R.id.tv_lpg, R.id.tv_adblue, R.id.tv_om, R.id.tv_nm, R.id.tv_euro
+            )
+            val trendIds = listOf(
+                R.id.tv_n95_trend, R.id.tv_n95p_trend, R.id.tv_n98_trend, R.id.tv_diesel_trend,
+                R.id.tv_diesel_plus_trend, R.id.tv_lpg_trend, R.id.tv_adblue_trend,
+                R.id.tv_om_trend, R.id.tv_nm_trend, R.id.tv_euro_trend
             )
 
-            // Mapování hodnot a trendů
             val visibleKeys = visibleItems.map { it.first }.toSet()
 
             if (data != null && data.n95 > 0) {
-                // Pro každou položku zkontrolujeme, zda má být viditelná
-                for ((key, textId, trendId) in itemIds) {
+                for (i in keys.indices) {
+                    val key = keys[i]
+                    val textId = textIds[i]
+                    val trendId = trendIds[i]
                     val isVisible = key in visibleKeys
                     
                     if (isVisible) {
@@ -146,8 +145,10 @@ class TankONOWidget : AppWidgetProvider() {
                 }
             } else {
                 // Žádná data – skryjeme všechny položky
-                for ((_, textId, trendId) in itemIds) {
+                for (textId in textIds) {
                     views.setViewVisibility(textId, android.view.View.GONE)
+                }
+                for (trendId in trendIds) {
                     views.setViewVisibility(trendId, android.view.View.GONE)
                 }
             }
