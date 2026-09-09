@@ -10,9 +10,12 @@ object DataManager {
     private const val KEY_PRICES = "prices"
     private const val KEY_LAST_UPDATE = "last_update"
     private const val KEY_CHANGE_NOTIFIED = "change_notified"
-    private const val KEY_VISIBLE_ITEMS = "visible_items"
 
     private val gson = Gson()
+    
+    // ULOŽENÍ POSLEDNÍCH CEN PRO TRENDY (BEZ CONTEXT)
+    var oldPrices: PriceData? = null
+        private set
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -20,6 +23,7 @@ object DataManager {
 
     // ULOŽENÍ CEN
     fun savePrices(context: Context, data: PriceData) {
+        oldPrices = data  // Uložíme pro trendy
         val json = gson.toJson(data)
         getPrefs(context).edit().putString(KEY_PRICES, json).apply()
     }
@@ -49,23 +53,5 @@ object DataManager {
 
     fun getChangeNotified(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_CHANGE_NOTIFIED, false)
-    }
-
-    // VIDITELNÉ POLOŽKY - NOVÉ
-    fun saveVisibleItems(context: Context, items: List<String>) {
-        val json = gson.toJson(items)
-        getPrefs(context).edit().putString(KEY_VISIBLE_ITEMS, json).apply()
-    }
-
-    fun getVisibleItems(context: Context): List<String> {
-        val json = getPrefs(context).getString(KEY_VISIBLE_ITEMS, null) ?: return listOf(
-            "n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro"
-        )
-        return try {
-            val type = object : TypeToken<List<String>>() {}.type
-            gson.fromJson(json, type)
-        } catch (e: Exception) {
-            listOf("n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro")
-        }
     }
 }
