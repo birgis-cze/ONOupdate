@@ -13,9 +13,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download gradle-wrapper.jar directly
+      - name: Create gradle wrapper directory
+        run: mkdir -p gradle/wrapper
+
+      - name: Download gradle-wrapper.jar
         run: |
-          mkdir -p gradle/wrapper
           curl -L -o gradle/wrapper/gradle-wrapper.jar https://repo1.maven.org/maven2/org/gradle/gradle-wrapper/8.2/gradle-wrapper-8.2.jar
 
       - name: Verify JAR exists
@@ -23,16 +25,13 @@ jobs:
           ls -la gradle/wrapper/
           file gradle/wrapper/gradle-wrapper.jar
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build APK
+        run: ./gradlew assembleRelease --stacktrace
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TankONO-Widget
