@@ -24,7 +24,6 @@
             </intent-filter>
         </activity>
 
-        <!-- WIDGET -->
         <receiver
             android:name=".TankONOWidget"
             android:exported="true">
