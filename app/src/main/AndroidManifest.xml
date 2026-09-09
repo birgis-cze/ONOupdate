@@ -24,17 +24,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".SettingsActivity"
-            android:exported="true"
-            android:label="Nastavení"
-            android:theme="@style/Theme.TankONOWidget">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
         <receiver
             android:name=".TankONOWidget"
             android:exported="true">
