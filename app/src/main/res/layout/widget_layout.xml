@@ -4,38 +4,32 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/widget_background"
-    android:padding="8dp">
+    android:padding="4dp">
 
-    <!-- Hlavička -->
+    <!-- HLAVIČKA S OBRÁZKEM ONO UPROSTŘED -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="4dp">
+        android:gravity="center"
+        android:background="#BA1E22"
+        android:padding="2dp">
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="⛽ Tank ONO"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#BA1E22"/>
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="24dp"
+            android:src="@drawable/logo"
+            android:scaleType="fitCenter"
+            android:contentDescription="ONO" />
 
-        <TextView
-            android:id="@+id/tv_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="--:--"
-            android:textSize="10sp"
-            android:textColor="#666666"/>
     </LinearLayout>
 
-    <!-- Ceny -->
+    <!-- CENY (4 ŘÁDKY) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:padding="4dp">
 
         <!-- N95 -->
         <LinearLayout
@@ -49,13 +43,14 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="N95"
-                android:textSize="13sp"
-                android:textColor="#333333"/>
+                android:textSize="12sp"
+                android:textColor="#BA1E22"
+                android:textStyle="bold"/>
 
-            <TextView
+            <ImageView
                 android:id="@+id/tv_n95_trend"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -63,7 +58,7 @@
                 android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
                 android:gravity="end"
                 android:textColor="#BA1E22"/>
@@ -81,13 +76,14 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="N95+"
-                android:textSize="13sp"
-                android:textColor="#333333"/>
+                android:textSize="12sp"
+                android:textColor="#BA1E22"
+                android:textStyle="bold"/>
 
-            <TextView
+            <ImageView
                 android:id="@+id/tv_n95p_trend"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -95,7 +91,7 @@
                 android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
                 android:gravity="end"
                 android:textColor="#BA1E22"/>
@@ -113,13 +109,14 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Nafta"
-                android:textSize="13sp"
-                android:textColor="#333333"/>
+                android:textSize="12sp"
+                android:textColor="#BA1E22"
+                android:textStyle="bold"/>
 
-            <TextView
+            <ImageView
                 android:id="@+id/tv_nafta_trend"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -127,7 +124,7 @@
                 android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
                 android:gravity="end"
                 android:textColor="#BA1E22"/>
@@ -145,13 +142,14 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="LPG"
-                android:textSize="13sp"
-                android:textColor="#333333"/>
+                android:textSize="12sp"
+                android:textColor="#BA1E22"
+                android:textStyle="bold"/>
 
-            <TextView
+            <ImageView
                 android:id="@+id/tv_lpg_trend"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -159,7 +157,7 @@
                 android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:text="--"
-                android:textSize="14sp"
+                android:textSize="12sp"
                 android:textStyle="bold"
                 android:gravity="end"
                 android:textColor="#BA1E22"/>
