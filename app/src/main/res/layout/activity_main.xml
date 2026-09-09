@@ -69,8 +69,276 @@
 
         </LinearLayout>
 
-        <!-- Zbytek layoutu zůstává stejný -->
-        <!-- ... -->
+        <!-- SEKCE: ZOBRAZENÉ POLOŽKY -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Zobrazované položky"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/red"
+            android:layout_marginTop="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="8dp"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_n95"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="N95" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_n95p"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="N95+" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_n98"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="NATURAL 98" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_diesel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIESEL" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_diesel_plus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIESEL+" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_lpg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="LPG" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_adblue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="AD BLUE" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_om"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="OM (osobní myčka)" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_nm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="NM (nákladní myčka)" />
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_euro"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="EUR kurz" />
+
+        </LinearLayout>
+
+        <!-- SEKCE: ČASY OBNOVY -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Časy obnovy"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/red"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="8dp"
+            android:layout_marginTop="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="Začátek špičky:" />
+                <EditText
+                    android:id="@+id/et_peak_start"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:text="14:30" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="Konec špičky:" />
+                <EditText
+                    android:id="@+id/et_peak_end"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:text="16:00" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="Interval špička (min):" />
+                <EditText
+                    android:id="@+id/et_peak_interval"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:text="10" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="wrap_content"
+                    android:text="Interval mimo (min):" />
+                <EditText
+                    android:id="@+id/et_off_peak_interval"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:text="60" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- SEKCE: VZHLED -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vzhled"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/red"
+            android:layout_marginTop="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#FFFFFF"
+            android:padding="8dp"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_hide_icon"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Skrýt ikonu ze seznamu aplikací" />
+
+        </LinearLayout>
+
+        <!-- TLAČÍTKA AKCE -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <Button
+                android:id="@+id/btn_save"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Uložit"
+                android:backgroundTint="@color/red"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_update_now"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Aktualizovat nyní"
+                android:backgroundTint="@color/red" />
+
+        </LinearLayout>
+
+        <!-- TLAČÍTKA DEBUG -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btn_show_log"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Zobrazit log"
+                android:backgroundTint="@color/red"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_export_log"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Export log"
+                android:backgroundTint="@color/red"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_clear_log"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Smazat log"
+                android:backgroundTint="@color/red"
+                android:layout_marginStart="4dp" />
+
+        </LinearLayout>
+
+        <!-- STAV AKTUALIZACE -->
+        <TextView
+            android:id="@+id/tv_last_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Poslední změna cen: --\nPoslední aktualizace: --"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:gravity="center"
+            android:layout_marginTop="16dp" />
 
     </LinearLayout>
 

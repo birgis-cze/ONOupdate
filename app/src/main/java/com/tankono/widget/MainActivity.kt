@@ -57,13 +57,10 @@ class MainActivity : AppCompatActivity() {
         initViews()
         loadSettings()
         setupListeners()
-        
-        // NAČTENÍ DAT A AKTUALIZACE ZOBRAZENÍ
         loadAndDisplayData()
-        
-        // SPUŠTĚNÍ AKTUALIZACE
+
         TankONOWidgetScheduler.scheduleUpdates(this)
-        
+
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(this).enqueue(workRequest)
 
@@ -135,7 +132,6 @@ class MainActivity : AppCompatActivity() {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(this).enqueue(workRequest)
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
-            // Po aktualizaci znovu načteme data
             loadAndDisplayData()
         }
 
@@ -205,10 +201,10 @@ class MainActivity : AppCompatActivity() {
     private fun loadAndDisplayData() {
         val lastUpdate = DataManager.getLastUpdate(this)
         val lastChange = DataManager.getLastChangeDate(this)
-        
+
         android.util.Log.d("MainActivity", "loadAndDisplayData - lastChange: $lastChange")
         android.util.Log.d("MainActivity", "loadAndDisplayData - lastUpdate: $lastUpdate")
-        
+
         val text = StringBuilder()
         text.append("Poslední změna cen: ")
         if (lastChange > 0) {
@@ -217,7 +213,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             text.append("--")
         }
-        
+
         text.append("\nPoslední aktualizace: ")
         if (lastUpdate > 0) {
             val date = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -225,7 +221,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             text.append("--")
         }
-        
+
         tvLastUpdate.text = text.toString()
     }
 
@@ -233,7 +229,7 @@ class MainActivity : AppCompatActivity() {
         fun getVisibleItems(context: Context): List<Pair<String, String>> {
             val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
             val items = mutableListOf<Pair<String, String>>()
-            
+
             if (prefs.getBoolean("show_n95", true)) items.add("n95" to "N95")
             if (prefs.getBoolean("show_n95p", true)) items.add("n95p" to "N95+")
             if (prefs.getBoolean("show_n98", true)) items.add("n98" to "NATURAL 98")
@@ -244,7 +240,7 @@ class MainActivity : AppCompatActivity() {
             if (prefs.getBoolean("show_om", true)) items.add("om" to "OM (osobní)")
             if (prefs.getBoolean("show_nm", true)) items.add("nm" to "NM (nákladní)")
             if (prefs.getBoolean("show_euro", true)) items.add("euro" to "EUR")
-            
+
             return items
         }
 
