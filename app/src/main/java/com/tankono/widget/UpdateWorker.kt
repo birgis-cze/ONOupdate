@@ -31,7 +31,6 @@ class UpdateWorker(
         DebugHelper.log(ctx, TAG, "=== AKTUALIZACE SPUŠTĚNA ===")
         
         return try {
-            // 1. KONTROLA INTERNETU
             DebugHelper.log(ctx, TAG, "Krok 1: Kontrola internetu...")
             if (!isNetworkAvailable(ctx)) {
                 DebugHelper.log(ctx, TAG, "❌ Není dostupné internetové připojení")
@@ -44,7 +43,6 @@ class UpdateWorker(
                 .readTimeout(15, TimeUnit.SECONDS)
                 .build()
 
-            // 2. STAŽENÍ CENÍKU
             DebugHelper.log(ctx, TAG, "Krok 2: Stahování cen...")
             val cenikRequest = Request.Builder()
                 .url("https://m.tank-ono.cz/cz/index.php?page=cenik")
@@ -64,9 +62,7 @@ class UpdateWorker(
                 return Result.failure()
             }
             DebugHelper.log(ctx, TAG, "✅ Cenik načten, délka: ${cenikHtml.length} znaků")
-            DebugHelper.log(ctx, TAG, "Prvních 200 znaků: ${cenikHtml.take(200)}")
 
-            // 3. STAŽENÍ AKTUALIT
             DebugHelper.log(ctx, TAG, "Krok 3: Stahování aktualit...")
             val aktualityRequest = Request.Builder()
                 .url("https://m.tank-ono.cz/cz/index.php?page=aktuality")
@@ -82,25 +78,20 @@ class UpdateWorker(
                 DebugHelper.log(ctx, TAG, "⚠️ HTTP chyba aktuality: ${aktualityResponse.code}")
                 ""
             }
-            DebugHelper.log(ctx, TAG, "Aktuality načteny, délka: ${aktualityHtml.length} znaků")
 
-            // 4. PARSOVÁNÍ CEN
             DebugHelper.log(ctx, TAG, "Krok 4: Parsování cen...")
             val priceData = parseCenik(ctx, cenikHtml)
             
             if (priceData == null) {
                 DebugHelper.log(ctx, TAG, "❌ Parsování cen selhalo")
-                DebugHelper.log(ctx, TAG, "Hledané řádky 'divrow2': ${Jsoup.parse(cenikHtml).select("div.divrow2").size}")
                 return Result.failure()
             }
             DebugHelper.log(ctx, TAG, "✅ Ceny parsovány: N95=${priceData.n95}, Diesel=${priceData.diesel}")
 
-            // 5. PARSOVÁNÍ DATUMU POSLEDNÍ ZMĚNY
             DebugHelper.log(ctx, TAG, "Krok 5: Parsování data poslední změny...")
             val lastChangeDate = parseLastChangeDate(ctx, aktualityHtml)
             DebugHelper.log(ctx, TAG, "Datum poslední změny: ${if (lastChangeDate != null) java.util.Date(lastChangeDate) else "Nenalezeno"}")
 
-            // 6. ULOŽENÍ DAT
             DebugHelper.log(ctx, TAG, "Krok 6: Ukládání dat...")
             val previous = DataManager.getPrices(ctx)
             DataManager.savePrices(ctx, priceData)
@@ -115,7 +106,6 @@ class UpdateWorker(
                 checkAndNotify(ctx, previous, priceData)
             }
 
-            // 7. AKTUALIZACE WIDGETU
             DebugHelper.log(ctx, TAG, "Krok 7: Aktualizace widgetu...")
             TankONOWidget.updateAllWidgets(ctx)
             
@@ -144,8 +134,6 @@ class UpdateWorker(
             val doc = Jsoup.parse(html)
             val priceRows = doc.select("div.divrow2")
             
-            DebugHelper.log(context, TAG, "Nalezeno ${priceRows.size} řádků s cenami")
-            
             var n95 = 0.0
             var n95p = 0.0
             var n98 = 0.0
@@ -164,8 +152,6 @@ class UpdateWorker(
                 val priceElement = row.select("div.divprice").first()
                 val priceCzk = parsePriceFromElement(priceElement)
                 
-                DebugHelper.log(context, TAG, "Nalezena položka: '$label' = $priceCzk")
-                
                 when {
                     label.contains("NATURAL 95", ignoreCase = true) && !label.contains("+", ignoreCase = true) && !label.contains("98", ignoreCase = true) -> n95 = priceCzk
                     label.contains("NATURAL 95+", ignoreCase = true) -> n95p = priceCzk
@@ -179,7 +165,6 @@ class UpdateWorker(
                 }
             }
             
-            // Kurz EUR
             val euroRows = doc.select("div.divrow2")
             for (row in euroRows) {
                 val labelElement = row.select("div.divexbw").first()
@@ -188,7 +173,6 @@ class UpdateWorker(
                 if (label.equals("EURO", ignoreCase = true)) {
                     val nakupElement = row.select("div.divexnak").first()
                     euroNakup = parsePriceFromElement(nakupElement)
-                    DebugHelper.log(context, TAG, "Kurz EUR: $euroNakup")
                     break
                 }
             }
@@ -214,15 +198,12 @@ class UpdateWorker(
 
     private fun parsePriceFromElement(element: org.jsoup.nodes.Element?): Double {
         if (element == null) return 0.0
-        
         return try {
             val wholePart = element.ownText().trim()
             val supElement = element.select("sup").first()
             val decimalPart = supElement?.text()?.trim() ?: "00"
-            
             val cleanWhole = wholePart.replace(" ", "")
             val cleanDecimal = decimalPart.replace(" ", "").padEnd(2, '0')
-            
             val priceStr = "$cleanWhole.$cleanDecimal".replace(",", ".")
             priceStr.toDoubleOrNull() ?: 0.0
         } catch (e: Exception) {
@@ -234,15 +215,10 @@ class UpdateWorker(
         return try {
             val doc = Jsoup.parse(html)
             val newsElements = doc.select("div.divnews")
-            
-            DebugHelper.log(context, TAG, "Nalezeno ${newsElements.size} aktualit")
-            
             if (newsElements.isEmpty()) return null
             
             val firstNews = newsElements.first()
             val text = firstNews?.text() ?: return null
-            
-            DebugHelper.log(context, TAG, "První aktualita: $text")
             
             val pattern = Pattern.compile("(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})\\s*\\((\\d{2}):(\\d{2}):(\\d{2})\\)")
             val matcher = pattern.matcher(text)
@@ -259,10 +235,8 @@ class UpdateWorker(
                 calendar.set(year, month - 1, day, hour, minute, second)
                 calendar.set(java.util.Calendar.MILLISECOND, 0)
                 
-                DebugHelper.log(context, TAG, "Parsované datum: $day.$month.$year $hour:$minute:$second")
                 calendar.timeInMillis
             } else {
-                DebugHelper.log(context, TAG, "❌ Nepodařilo se parsovat datum z textu: $text")
                 null
             }
         } catch (e: Exception) {

@@ -42,6 +42,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSave: Button
     private lateinit var btnUpdateNow: Button
     private lateinit var btnShowLog: Button
+    private lateinit var btnExportLog: Button
     private lateinit var btnClearLog: Button
     private lateinit var tvLastUpdate: TextView
 
@@ -56,16 +57,13 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         updateLastUpdateTime()
         
-        // SPUSTÍ SCHEDULER
         TankONOWidgetScheduler.scheduleUpdates(this)
         
-        // OKAMŽITÁ AKTUALIZACE PŘI SPUŠTĚNÍ
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(this).enqueue(workRequest)
     }
 
     private fun initViews() {
-        // Přepínače položek
         switchN95 = findViewById(R.id.switch_n95)
         switchN95p = findViewById(R.id.switch_n95p)
         switchN98 = findViewById(R.id.switch_n98)
@@ -78,16 +76,15 @@ class MainActivity : AppCompatActivity() {
         switchEuro = findViewById(R.id.switch_euro)
         switchHideIcon = findViewById(R.id.switch_hide_icon)
 
-        // EditText pro časy
         etPeakStart = findViewById(R.id.et_peak_start)
         etPeakEnd = findViewById(R.id.et_peak_end)
         etPeakInterval = findViewById(R.id.et_peak_interval)
         etOffPeakInterval = findViewById(R.id.et_off_peak_interval)
 
-        // Tlačítka
         btnSave = findViewById(R.id.btn_save)
         btnUpdateNow = findViewById(R.id.btn_update_now)
         btnShowLog = findViewById(R.id.btn_show_log)
+        btnExportLog = findViewById(R.id.btn_export_log)
         btnClearLog = findViewById(R.id.btn_clear_log)
         tvLastUpdate = findViewById(R.id.tv_last_update)
     }
@@ -123,7 +120,6 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
         }
 
-        // ZOBRAZENÍ DEBUG LOGU
         btnShowLog.setOnClickListener {
             val logContent = DebugHelper.getLogContent(this)
             AlertDialog.Builder(this)
@@ -137,13 +133,16 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        // SMAZÁNÍ LOGU
+        btnExportLog.setOnClickListener {
+            val result = DebugHelper.exportLog(this)
+            Toast.makeText(this, result, Toast.LENGTH_LONG).show()
+        }
+
         btnClearLog.setOnClickListener {
             DebugHelper.clearLog(this)
             Toast.makeText(this, "Log smazán", Toast.LENGTH_SHORT).show()
         }
 
-        // Skrytí ikony
         switchHideIcon.setOnCheckedChangeListener { _, isChecked ->
             val state = if (isChecked) {
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED

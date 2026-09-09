@@ -21,7 +21,6 @@ object DataManager {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
-    // CENY
     fun savePrices(context: Context, data: PriceData) {
         oldPrices = data
         val json = gson.toJson(data)
@@ -37,7 +36,6 @@ object DataManager {
         }
     }
 
-    // ČAS POSLEDNÍHO POKUSU O AKTUALIZACI
     fun saveLastUpdate(context: Context, timestamp: Long) {
         getPrefs(context).edit().putLong(KEY_LAST_UPDATE, timestamp).apply()
     }
@@ -46,7 +44,6 @@ object DataManager {
         return getPrefs(context).getLong(KEY_LAST_UPDATE, 0)
     }
 
-    // DATUM POSLEDNÍ ZMĚNY CEN (ZE STRÁNKY AKTUALITY)
     fun saveLastChangeDate(context: Context, timestamp: Long) {
         getPrefs(context).edit().putLong(KEY_LAST_CHANGE_DATE, timestamp).apply()
     }
@@ -55,7 +52,6 @@ object DataManager {
         return getPrefs(context).getLong(KEY_LAST_CHANGE_DATE, 0)
     }
 
-    // NOTIFIKACE
     fun saveChangeNotified(context: Context, notified: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_CHANGE_NOTIFIED, notified).apply()
     }

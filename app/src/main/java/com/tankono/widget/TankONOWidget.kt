@@ -20,7 +20,6 @@ class TankONOWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // OKAMŽITÁ AKTUALIZACE PŘI PŘIDÁNÍ WIDGETU
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(context).enqueue(workRequest)
         
@@ -33,7 +32,6 @@ class TankONOWidget : AppWidgetProvider() {
         super.onReceive(context, intent)
         
         if (intent.action == "UPDATE_WIDGET") {
-            // OKAMŽITÁ AKTUALIZACE PŘI KLIKNUTÍ
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(context).enqueue(workRequest)
             
@@ -66,7 +64,6 @@ class TankONOWidget : AppWidgetProvider() {
             val timestamp = DataManager.getLastUpdate(context)
             val lastChangeDate = DataManager.getLastChangeDate(context)
 
-            // KLIKNUTÍ NA WIDGET
             val intent = Intent(context, TankONOWidget::class.java)
             intent.action = "UPDATE_WIDGET"
             val pendingIntent = PendingIntent.getBroadcast(
@@ -75,30 +72,20 @@ class TankONOWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            // ============================================================
-            // 1. NASTAVENÍ ČASU – POUŽIJEME DATUM POSLEDNÍ ZMĚNY CEN
-            // ============================================================
+            // ČAS – datum poslední změny cen
             if (lastChangeDate > 0) {
-                // Formát: "8.9. 15:24" – datum poslední změny cen
                 val formatter = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
                 views.setTextViewText(R.id.tv_time, formatter.format(Date(lastChangeDate)))
             } else if (timestamp > 0) {
-                // FALLBACK – čas poslední aktualizace aplikace
                 val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
                 views.setTextViewText(R.id.tv_time, formatter.format(Date(timestamp)))
             } else {
                 views.setTextViewText(R.id.tv_time, "--:--")
             }
 
-            // ============================================================
-            // 2. ZJISTÍME VIDITELNÉ POLOŽKY Z NASTAVENÍ
-            // ============================================================
             val visibleItems = MainActivity.getVisibleItems(context)
             val visibleKeys = visibleItems.map { it.first }.toSet()
 
-            // ============================================================
-            // 3. DEFINICE POLOŽEK – KLÍČ, ID TEXTU, ID TRENDU
-            // ============================================================
             val keys = listOf(
                 "n95", "n95p", "n98", "diesel", "dieselPlus", 
                 "lpg", "adBlue", "om", "nm", "euro"
@@ -116,9 +103,6 @@ class TankONOWidget : AppWidgetProvider() {
                 R.id.tv_om_trend, R.id.tv_nm_trend, R.id.tv_euro_trend
             )
 
-            // ============================================================
-            // 4. ZOBRAZENÍ DAT
-            // ============================================================
             if (data != null && data.n95 > 0) {
                 for (i in keys.indices) {
                     val key = keys[i]
@@ -127,7 +111,6 @@ class TankONOWidget : AppWidgetProvider() {
                     val isVisible = key in visibleKeys
                     
                     if (isVisible) {
-                        // Získání hodnoty podle klíče
                         val value = when (key) {
                             "n95" -> data.n95
                             "n95p" -> data.n95p
@@ -142,7 +125,6 @@ class TankONOWidget : AppWidgetProvider() {
                             else -> 0.0
                         }
                         
-                        // Získání trendu podle klíče
                         val trend = when (key) {
                             "n95" -> data.n95Trend
                             "n95p" -> data.n95pTrend
@@ -167,7 +149,6 @@ class TankONOWidget : AppWidgetProvider() {
                     }
                 }
             } else {
-                // ŽÁDNÁ DATA – ZOBRAZÍME ČÁRKY
                 for (textId in textIds) {
                     views.setTextViewText(textId, "--")
                     views.setViewVisibility(textId, android.view.View.VISIBLE)
