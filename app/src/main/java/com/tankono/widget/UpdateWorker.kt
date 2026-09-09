@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -21,12 +22,15 @@ class UpdateWorker(
 ) : CoroutineWorker(context, params) {
 
     companion object {
+        private const val TAG = "UpdateWorker"
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "tankono_channel"
     }
 
     override suspend fun doWork(): Result {
         return try {
+            Log.d(TAG, "Aktualizace spuštěna")
+            
             val client = OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
@@ -39,11 +43,19 @@ class UpdateWorker(
 
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
+                Log.e(TAG, "HTTP chyba: ${response.code}")
                 return Result.failure()
             }
 
-            val html = response.body?.string() ?: return Result.failure()
+            val html = response.body?.string() ?: run {
+                Log.e(TAG, "Prázdná odpověď")
+                return Result.failure()
+            }
+            
+            Log.d(TAG, "HTML načteno, délka: ${html.length}")
+            
             val data = parseHtml(html)
+            Log.d(TAG, "Data parsována: ${data != null}")
 
             if (data != null) {
                 val previous = DataManager.getPrices(applicationContext)
@@ -54,14 +66,16 @@ class UpdateWorker(
                     checkAndNotify(applicationContext, previous, data)
                 }
 
-                // AKTUALIZACE WIDGETU PO STAŽENÍ DAT
+                // AKTUALIZACE WIDGETU
                 TankONOWidget.updateAllWidgets(applicationContext)
+                Log.d(TAG, "Aktualizace úspěšná")
                 Result.success()
             } else {
+                Log.e(TAG, "Parsování selhalo")
                 Result.failure()
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Chyba: ${e.message}", e)
             Result.failure()
         }
     }
@@ -144,6 +158,7 @@ class UpdateWorker(
                 lastUpdate = System.currentTimeMillis()
             )
         } catch (e: Exception) {
+            Log.e(TAG, "Chyba parsování: ${e.message}", e)
             null
         }
     }

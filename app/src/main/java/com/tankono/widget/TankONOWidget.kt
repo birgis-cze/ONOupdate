@@ -9,10 +9,6 @@ import android.content.Intent
 import android.widget.RemoteViews
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 class TankONOWidget : AppWidgetProvider() {
 
@@ -21,7 +17,7 @@ class TankONOWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // PŘI AKTUALIZACI WIDGETU SPUSTÍME OKAMŽITOU AKTUALIZACI DAT
+        // PŘI PŘIDÁNÍ WIDGETU OKAMŽITĚ STÁHNOUT DATA
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
             .build()
         WorkManager.getInstance(context).enqueue(workRequest)
@@ -35,15 +31,10 @@ class TankONOWidget : AppWidgetProvider() {
         super.onReceive(context, intent)
         
         if (intent.action == "UPDATE_WIDGET") {
-            val lastUpdate = DataManager.getLastUpdate(context)
-            val now = System.currentTimeMillis()
-            val diffMinutes = TimeUnit.MILLISECONDS.toMinutes(now - lastUpdate)
-            
-            if (diffMinutes > 10) {
-                val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
-                    .build()
-                WorkManager.getInstance(context).enqueue(workRequest)
-            }
+            // PŘI KLIKNUTÍ OKAMŽITÁ AKTUALIZACE
+            val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
+                .build()
+            WorkManager.getInstance(context).enqueue(workRequest)
             
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, TankONOWidget::class.java)
@@ -72,9 +63,8 @@ class TankONOWidget : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_layout)
             val data = DataManager.getPrices(context)
             val timestamp = DataManager.getLastUpdate(context)
-            val visibleItems = MainActivity.getVisibleItems(context)
 
-            // Nastavení kliknutí na widget
+            // NASTAVENÍ KLIKNUTÍ
             val intent = Intent(context, TankONOWidget::class.java)
             intent.action = "UPDATE_WIDGET"
             val pendingIntent = PendingIntent.getBroadcast(
@@ -83,25 +73,39 @@ class TankONOWidget : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            // Kontrola – pokud nejsou data, zobrazíme načítání
-            if (data == null || data.n95 == 0.0) {
+            // ZJISTÍME, JAKÉ POLOŽKY MAJÍ BÝT VIDITELNÉ
+            val visibleItems = MainActivity.getVisibleItems(context)
+            val visibleKeys = visibleItems.map { it.first }.toSet()
+
+            // NASTAVENÍ ČASU
+            if (timestamp > 0) {
+                val formatter = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+                views.setTextViewText(R.id.tv_time, formatter.format(java.util.Date(timestamp)))
+            } else {
                 views.setTextViewText(R.id.tv_time, "--:--")
+            }
+
+            // KONTROLA DAT – POKUD NEJSOU, ZOBRAZÍME FALLBACK
+            if (data == null || data.n95 == 0.0) {
+                // ZOBRAZÍME FALLBACK DATA
+                views.setTextViewText(R.id.tv_n95, "0.00")
+                views.setTextViewText(R.id.tv_n95p, "0.00")
+                views.setTextViewText(R.id.tv_n98, "0.00")
+                views.setTextViewText(R.id.tv_diesel, "0.00")
+                views.setTextViewText(R.id.tv_diesel_plus, "0.00")
+                views.setTextViewText(R.id.tv_lpg, "0.00")
+                views.setTextViewText(R.id.tv_adblue, "0.00")
+                views.setTextViewText(R.id.tv_om, "0.00")
+                views.setTextViewText(R.id.tv_nm, "0.00")
+                views.setTextViewText(R.id.tv_euro, "0.00")
                 
-                // Skryjeme všechny položky
-                val allTextIds = listOf(
-                    R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel,
-                    R.id.tv_diesel_plus, R.id.tv_lpg, R.id.tv_adblue,
-                    R.id.tv_om, R.id.tv_nm, R.id.tv_euro
-                )
+                // SKRYJEME TRENDY
                 val allTrendIds = listOf(
                     R.id.tv_n95_trend, R.id.tv_n95p_trend, R.id.tv_n98_trend,
                     R.id.tv_diesel_trend, R.id.tv_diesel_plus_trend, R.id.tv_lpg_trend,
                     R.id.tv_adblue_trend, R.id.tv_om_trend, R.id.tv_nm_trend,
                     R.id.tv_euro_trend
                 )
-                for (id in allTextIds) {
-                    views.setViewVisibility(id, android.view.View.GONE)
-                }
                 for (id in allTrendIds) {
                     views.setViewVisibility(id, android.view.View.GONE)
                 }
@@ -110,15 +114,7 @@ class TankONOWidget : AppWidgetProvider() {
                 return
             }
 
-            // Nastavení času
-            if (timestamp > 0) {
-                val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-                views.setTextViewText(R.id.tv_time, formatter.format(Date(timestamp)))
-            } else {
-                views.setTextViewText(R.id.tv_time, "--:--")
-            }
-
-            // Definice položek
+            // ZOBRAZENÍ DAT PODLE NASTAVENÍ
             val keys = listOf("n95", "n95p", "n98", "diesel", "dieselPlus", "lpg", "adBlue", "om", "nm", "euro")
             val textIds = listOf(
                 R.id.tv_n95, R.id.tv_n95p, R.id.tv_n98, R.id.tv_diesel, R.id.tv_diesel_plus,
@@ -129,8 +125,6 @@ class TankONOWidget : AppWidgetProvider() {
                 R.id.tv_diesel_plus_trend, R.id.tv_lpg_trend, R.id.tv_adblue_trend,
                 R.id.tv_om_trend, R.id.tv_nm_trend, R.id.tv_euro_trend
             )
-
-            val visibleKeys = visibleItems.map { it.first }.toSet()
 
             for (i in keys.indices) {
                 val key = keys[i]
