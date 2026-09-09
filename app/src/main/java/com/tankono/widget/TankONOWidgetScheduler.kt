@@ -42,6 +42,11 @@ object TankONOWidgetScheduler {
             ExistingPeriodicWorkPolicy.KEEP,
             peakRequest
         )
+
+        // IHNED SPUSTIT PRVNÍ AKTUALIZACI
+        val immediateRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
+            .build()
+        workManager.enqueue(immediateRequest)
     }
 
     private fun getInitialDelayToPeak(): Long {
@@ -53,7 +58,6 @@ object TankONOWidgetScheduler {
         }
 
         return if (now.after(peakStart)) {
-            // Už je po 14:30 – spustí se zítra
             peakStart.add(Calendar.DAY_OF_YEAR, 1)
             peakStart.timeInMillis - now.timeInMillis
         } else {

@@ -26,7 +26,7 @@ class UpdateWorker(
     }
 
     override suspend fun doWork(): Result {
-        try {
+        return try {
             val client = OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
@@ -54,39 +54,33 @@ class UpdateWorker(
                     checkAndNotify(applicationContext, previous, data)
                 }
 
+                // AKTUALIZACE WIDGETU PO STAŽENÍ DAT
                 TankONOWidget.updateAllWidgets(applicationContext)
-                return Result.success()
+                Result.success()
+            } else {
+                Result.failure()
             }
-
-            return Result.failure()
-
         } catch (e: Exception) {
             e.printStackTrace()
-            return Result.failure()
+            Result.failure()
         }
     }
 
-    /**
-     * Parsuje cenu z HTML elementu, který může obsahovat <sup> tag pro desetinnou část.
-     * Např: "42<sup>50</sup>" → 42.50
-     */
     private fun parsePriceWithSup(element: Element): Double {
-        try {
+        return try {
             val wholePart = element.ownText().trim()
             val supElement = element.select("sup").first()
             val decimalPart = supElement?.text()?.trim() ?: "00"
             val priceStr = "$wholePart.$decimalPart".replace(",", ".")
-            return priceStr.toDoubleOrNull() ?: 0.0
+            priceStr.toDoubleOrNull() ?: 0.0
         } catch (e: Exception) {
-            return 0.0
+            0.0
         }
     }
 
     private fun parseHtml(html: String): PriceData? {
-        try {
+        return try {
             val doc = Jsoup.parse(html)
-            
-            // První tabulka s cenami PHM
             val table = doc.select("table").first() ?: return null
             val rows = table.select("tr")
             
@@ -97,8 +91,8 @@ class UpdateWorker(
             var dieselPlus = 0.0
             var lpg = 0.0
             var adBlue = 0.0
-            var om = 0.0      // Osobní myčka
-            var nm = 0.0      // Nákladní myčka
+            var om = 0.0
+            var nm = 0.0
 
             for (row in rows) {
                 val cells = row.select("td")
@@ -115,12 +109,11 @@ class UpdateWorker(
                     name.contains("DIESEL+", ignoreCase = true) -> dieselPlus = czkPrice
                     name.contains("LPG", ignoreCase = true) -> lpg = czkPrice
                     name.contains("AD BLUE", ignoreCase = true) -> adBlue = czkPrice
-                    name.equals("OM", ignoreCase = true) -> om = czkPrice      // Osobní myčka
-                    name.equals("NM", ignoreCase = true) -> nm = czkPrice      // Nákladní myčka
+                    name.equals("OM", ignoreCase = true) -> om = czkPrice
+                    name.equals("NM", ignoreCase = true) -> nm = czkPrice
                 }
             }
             
-            // Druhá tabulka – kurz EUR
             var euro = 0.0
             val euroTable = doc.select("table").getOrNull(1)
             if (euroTable != null) {
@@ -130,14 +123,14 @@ class UpdateWorker(
                     if (cells.size >= 3) {
                         val label = cells[0].text().trim()
                         if (label.contains("EURO", ignoreCase = true)) {
-                            euro = parsePriceWithSup(cells[1])  // Nákup
+                            euro = parsePriceWithSup(cells[1])
                             break
                         }
                     }
                 }
             }
 
-            return PriceData(
+            PriceData(
                 n95 = n95,
                 n95p = n95p,
                 n98 = n98,
@@ -151,8 +144,7 @@ class UpdateWorker(
                 lastUpdate = System.currentTimeMillis()
             )
         } catch (e: Exception) {
-            e.printStackTrace()
-            return null
+            null
         }
     }
 
