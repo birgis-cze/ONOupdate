@@ -38,7 +38,7 @@
 
     </LinearLayout>
 
-    <!-- ČERVENÁ ČÁRA – 80% šířky -->
+    <!-- ČERVENÁ ČÁRA – 80% šířky    -->
     <View
         android:layout_width="80%"
         android:layout_height="2dp"
