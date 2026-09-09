@@ -57,11 +57,11 @@ class MainActivity : AppCompatActivity() {
         initViews()
         loadSettings()
         setupListeners()
-        updateLastUpdateTime()
         
-        // LOGOVÁNÍ SYSTÉMOVÝCH INFORMACÍ
-        DebugHelper.logSystemInfo(this)
+        // NAČTENÍ DAT A AKTUALIZACE ZOBRAZENÍ
+        loadAndDisplayData()
         
+        // SPUŠTĚNÍ AKTUALIZACE
         TankONOWidgetScheduler.scheduleUpdates(this)
         
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
@@ -74,12 +74,9 @@ class MainActivity : AppCompatActivity() {
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
             if (appWidgetIds.isNotEmpty()) {
                 TankONOWidget.updateAllWidgets(this)
-                DebugHelper.log(this, "MainActivity", "Widget force update: ${appWidgetIds.size} widgetů")
-            } else {
-                DebugHelper.log(this, "MainActivity", "Widget není na ploše")
             }
         } catch (e: Exception) {
-            DebugHelper.log(this, "MainActivity", "Chyba force update: ${e.message}")
+            // Ignorovat
         }
     }
 
@@ -138,6 +135,8 @@ class MainActivity : AppCompatActivity() {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(this).enqueue(workRequest)
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
+            // Po aktualizaci znovu načteme data
+            loadAndDisplayData()
         }
 
         btnShowLog.setOnClickListener {
@@ -203,12 +202,12 @@ class MainActivity : AppCompatActivity() {
         TankONOWidgetScheduler.scheduleUpdates(this)
     }
 
-    private fun updateLastUpdateTime() {
+    private fun loadAndDisplayData() {
         val lastUpdate = DataManager.getLastUpdate(this)
         val lastChange = DataManager.getLastChangeDate(this)
         
-        android.util.Log.d("MainActivity", "Poslední změna: $lastChange")
-        android.util.Log.d("MainActivity", "Poslední aktualizace: $lastUpdate")
+        android.util.Log.d("MainActivity", "loadAndDisplayData - lastChange: $lastChange")
+        android.util.Log.d("MainActivity", "loadAndDisplayData - lastUpdate: $lastUpdate")
         
         val text = StringBuilder()
         text.append("Poslední změna cen: ")
