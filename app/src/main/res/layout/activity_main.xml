@@ -11,32 +11,43 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- HLAVIČKA -->
-        <LinearLayout
+        <!-- HLAVIČKA – VRSTEVNÁ (STEJNÁ JAKO VE WIDGETU) -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@color/yellow"
-            android:padding="8dp">
+            android:background="@color/yellow">
 
+            <!-- VRSTVA 1: Opakující se linka (pozadí) -->
             <ImageView
-                android:layout_width="80dp"
+                android:layout_width="match_parent"
                 android:layout_height="24dp"
-                android:src="@drawable/logo"
-                android:scaleType="fitCenter" />
+                android:src="@drawable/logo_linka"
+                android:scaleType="fitXY"
+                android:tileMode="repeat"
+                android:contentDescription="Linka pozadí" />
 
+            <!-- VRSTVA 2: Textové logo (popředí) vlevo s odstupem -->
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:src="@drawable/logo_text"
+                android:scaleType="fitStart"
+                android:layout_gravity="center_vertical|start"
+                android:layout_marginStart="8dp"
+                android:contentDescription="ONO text" />
+
+            <!-- VRSTVA 3: Název obrazovky vpravo -->
             <TextView
-                android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nastavení"
-                android:textSize="18sp"
+                android:textSize="14sp"
                 android:textColor="@color/red"
                 android:textStyle="bold"
-                android:gravity="end" />
+                android:layout_gravity="center_vertical|end"
+                android:layout_marginEnd="8dp" />
 
-        </LinearLayout>
+        </FrameLayout>
 
         <!-- ČERVENÁ ČÁRA -->
         <LinearLayout

@@ -7,26 +7,32 @@
     android:background="@drawable/widget_background"
     android:padding="3dp">
 
-    <!-- HLAVIČKA -->
-    <LinearLayout
+    <!-- HLAVIČKA – VRSTEVNÁ -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="@color/yellow"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp">
+        android:background="@color/yellow">
 
+        <!-- VRSTVA 1: OPakující se linka (pozadí) -->
         <ImageView
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="20dp"
-            android:src="@drawable/logo"
-            android:scaleType="fitStart"
-            android:contentDescription="ONO" />
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:src="@drawable/logo_linka"
+            android:scaleType="fitXY"
+            android:tileMode="repeat"
+            android:contentDescription="Linka pozadí" />
 
+        <!-- VRSTVA 2: Textové logo (popředí) vlevo s odstupem -->
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="20dp"
+            android:src="@drawable/logo_text"
+            android:scaleType="fitStart"
+            android:layout_gravity="center_vertical|start"
+            android:layout_marginStart="8dp"
+            android:contentDescription="ONO text" />
+
+        <!-- VRSTVA 3: Čas vpravo -->
         <TextView
             android:id="@+id/tv_time"
             android:layout_width="wrap_content"
@@ -34,9 +40,11 @@
             android:text="--:--"
             android:textSize="10sp"
             android:textColor="@color/red"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="8dp" />
 
-    </LinearLayout>
+    </FrameLayout>
 
     <!-- ČERVENÁ ČÁRA -->
     <LinearLayout
@@ -66,7 +74,7 @@
 
     </LinearLayout>
 
-    <!-- TĚLO WIDGETU -->
+    <!-- TĚLO WIDGETU (zůstává stejné) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -77,6 +85,7 @@
         android:paddingTop="1dp"
         android:paddingBottom="1dp">
 
+        <!-- N95 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -109,6 +118,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- N95+ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -141,6 +151,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- N98 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -173,6 +184,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- DIESEL -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -205,6 +217,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- DIESEL+ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -237,6 +250,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- LPG -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -269,6 +283,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- AD BLUE -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -301,6 +316,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- OM -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -333,6 +349,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- NM -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -365,6 +382,7 @@
                 android:textColor="@color/red"/>
         </LinearLayout>
 
+        <!-- EUR -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
