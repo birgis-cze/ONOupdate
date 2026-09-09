@@ -12,10 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Fix line endings
+    - name: Fix line endings and permissions
       run: |
-        find . -name "*.sh" -exec dos2unix {} \; 2>/dev/null || true
-        find . -name "gradlew" -exec dos2unix {} \; 2>/dev/null || true
+        sed -i 's/\r$//' gradlew
         chmod +x gradlew
 
     - name: Set up JDK 17
