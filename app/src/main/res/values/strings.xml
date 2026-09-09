@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Tank ONO</string>
+    <string name="widget_name">Tank ONO</string>
+    <string name="widget_description">Aktuální ceny paliv Tank ONO</string>
+</resources>
