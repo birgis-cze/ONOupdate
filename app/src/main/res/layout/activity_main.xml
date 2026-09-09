@@ -32,7 +32,7 @@
                 android:layout_height="wrap_content"
                 android:text="Nastavení"
                 android:textSize="18sp"
-                android:textColor="@color/yellow"
+                android:textColor="@color/red"
                 android:textStyle="bold"
                 android:gravity="end" />
 

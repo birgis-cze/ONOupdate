@@ -9,7 +9,6 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.preference.PreferenceManager
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -46,15 +45,19 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        prefs = getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
 
         initViews()
         loadSettings()
         setupListeners()
         updateLastUpdateTime()
         
-        // SPUSTÍ SCHEDULER PŘI SPUŠTĚNÍ APLIKACE
+        // SPUSTÍ SCHEDULER
         TankONOWidgetScheduler.scheduleUpdates(this)
+        
+        // OKAMŽITÁ AKTUALIZACE PŘI SPUŠTĚNÍ
+        val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
+        WorkManager.getInstance(this).enqueue(workRequest)
     }
 
     private fun initViews() {
@@ -91,7 +94,6 @@ class MainActivity : AppCompatActivity() {
         switchOm.isChecked = prefs.getBoolean("show_om", true)
         switchNm.isChecked = prefs.getBoolean("show_nm", true)
         switchEuro.isChecked = prefs.getBoolean("show_euro", true)
-
         switchHideIcon.isChecked = prefs.getBoolean("hide_app_icon", false)
 
         etPeakStart.setText(prefs.getString("peak_start", "14:30"))
@@ -107,8 +109,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnUpdateNow.setOnClickListener {
-            val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>()
-                .build()
+            val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(this).enqueue(workRequest)
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
         }
@@ -165,7 +166,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         fun getVisibleItems(context: Context): List<Pair<String, String>> {
-            val prefs = PreferenceManager.getDefaultSharedPreferences(context)
+            val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
             val items = mutableListOf<Pair<String, String>>()
             
             if (prefs.getBoolean("show_n95", true)) items.add("n95" to "N95")
@@ -183,24 +184,24 @@ class MainActivity : AppCompatActivity() {
         }
 
         fun getPeakStart(context: Context): String {
-            return PreferenceManager.getDefaultSharedPreferences(context)
-                .getString("peak_start", "14:30") ?: "14:30"
+            val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
+            return prefs.getString("peak_start", "14:30") ?: "14:30"
         }
 
         fun getPeakEnd(context: Context): String {
-            return PreferenceManager.getDefaultSharedPreferences(context)
-                .getString("peak_end", "16:00") ?: "16:00"
+            val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
+            return prefs.getString("peak_end", "16:00") ?: "16:00"
         }
 
         fun getPeakInterval(context: Context): Int {
-            val value = PreferenceManager.getDefaultSharedPreferences(context)
-                .getString("peak_interval", "10") ?: "10"
+            val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
+            val value = prefs.getString("peak_interval", "10") ?: "10"
             return value.toIntOrNull() ?: 10
         }
 
         fun getOffPeakInterval(context: Context): Int {
-            val value = PreferenceManager.getDefaultSharedPreferences(context)
-                .getString("off_peak_interval", "60") ?: "60"
+            val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
+            val value = prefs.getString("off_peak_interval", "60") ?: "60"
             return value.toIntOrNull() ?: 60
         }
     }
