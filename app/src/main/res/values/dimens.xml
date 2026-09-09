@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Velikosti widgetu -->
+    <dimen name="widget_padding">4dp</dimen>
+    <dimen name="widget_corner_radius">4dp</dimen>
+    
+    <!-- Hlavička -->
+    <dimen name="header_height">24dp</dimen>
+    <dimen name="header_logo_height">18dp</dimen>
+    <dimen name="header_text_size">10sp</dimen>
+    
+    <!-- Ceny -->
+    <dimen name="price_text_size">11sp</dimen>
+    <dimen name="price_trend_size">12dp</dimen>
+    <dimen name="price_value_width">50dp</dimen>
+    
+    <!-- Čára -->
+    <dimen name="divider_height">1dp</dimen>
+    <dimen name="divider_margin">4dp</dimen>
+</resources>
