@@ -35,7 +35,7 @@ android {
                 "proguard-rules.pro"
             )
             // RELEASE BUILD POUŽÍVÁ DEBUG PODPIS PRO SNADNOST INSTALACE
-            signingConfig = signingConfigs.getByName("debug")
+            // signingConfig = signingConfigs.getByName("debug")
         }
     }
 

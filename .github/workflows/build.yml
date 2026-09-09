@@ -19,12 +19,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Build APK
-        run: gradle assembleRelease
+      - name: Build Debug APK
+        run: gradle assembleDebug   # ← ZMĚNA Z assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: TankONO-Widget
-          path: app/build/outputs/apk/release/*.apk
+          name: TankONO-Widget-Debug
+          path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
