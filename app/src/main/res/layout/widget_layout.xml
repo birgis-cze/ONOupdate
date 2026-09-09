@@ -6,21 +6,31 @@
     android:background="@drawable/widget_background"
     android:padding="4dp">
 
-    <!-- HLAVIČKA S OBRÁZKEM ONO UPROSTŘED -->
+    <!-- HLAVIČKA S OBRÁZKEM A ČASEM -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center"
+        android:gravity="center_vertical"
         android:background="#BA1E22"
         android:padding="2dp">
 
         <ImageView
-            android:layout_width="80dp"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="24dp"
             android:src="@drawable/logo"
             android:scaleType="fitCenter"
             android:contentDescription="ONO" />
+
+        <TextView
+            android:id="@+id/tv_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="--:--"
+            android:textSize="10sp"
+            android:textColor="#FFFFFF"
+            android:paddingEnd="4dp" />
 
     </LinearLayout>
 
