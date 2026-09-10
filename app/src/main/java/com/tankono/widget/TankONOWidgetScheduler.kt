@@ -11,7 +11,7 @@ object TankONOWidgetScheduler {
         val workManager = WorkManager.getInstance(context)
 
         // Zrušíme staré plány
-        workManager.cancelUniqueWork("hourly_update")
+        workManager.cancelUniqueWork("base_update")
         workManager.cancelUniqueWork("peak_update")
 
         // Načteme nastavení
@@ -46,7 +46,7 @@ object TankONOWidgetScheduler {
         ).build()
 
         workManager.enqueueUniquePeriodicWork(
-            "hourly_update",
+            "base_update",
             ExistingPeriodicWorkPolicy.REPLACE,
             baseRequest
         )

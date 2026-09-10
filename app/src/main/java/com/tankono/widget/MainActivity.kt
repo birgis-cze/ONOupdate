@@ -42,12 +42,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvOffPeakInterval: TextView
     private lateinit var tvWidgetTextSize: TextView
 
-    // Aktuální hodnoty
-    private var peakStartMinutes = 14 * 60 + 30  // 14:30
-    private var peakEndMinutes = 16 * 60 + 0     // 16:00
-    private var peakInterval = 10                // 10 min
-    private var offPeakInterval = 60             // 60 min
-    private var widgetTextSize = 12              // 12 sp
+    private var peakStartMinutes = 14 * 60 + 30
+    private var peakEndMinutes = 16 * 60 + 0
+    private var peakInterval = 10
+    private var offPeakInterval = 60
+    private var widgetTextSize = 12
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -144,7 +143,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        // Tlačítka pro časy špičky (krok 15 min)
         findViewById<Button>(R.id.btn_peak_start_minus).setOnClickListener {
             peakStartMinutes = (peakStartMinutes - 15 + 24 * 60) % (24 * 60)
             updateAllTexts()
@@ -162,7 +160,6 @@ class MainActivity : AppCompatActivity() {
             updateAllTexts()
         }
 
-        // Tlačítka pro intervaly (krok 5 min, min 5, max 120)
         findViewById<Button>(R.id.btn_peak_interval_minus).setOnClickListener {
             if (peakInterval > 5) peakInterval -= 5
             updateAllTexts()
@@ -180,7 +177,6 @@ class MainActivity : AppCompatActivity() {
             updateAllTexts()
         }
 
-        // Tlačítka pro velikost textu widgetu (krok 2sp, min 10, max 20)
         findViewById<Button>(R.id.btn_widget_text_minus).setOnClickListener {
             if (widgetTextSize > 10) widgetTextSize -= 2
             updateAllTexts()
@@ -208,9 +204,7 @@ class MainActivity : AppCompatActivity() {
     private fun parseTimeToMinutes(time: String): Int {
         return try {
             val parts = time.split(":")
-            val h = parts[0].toInt()
-            val m = parts[1].toInt()
-            h * 60 + m
+            parts[0].toInt() * 60 + parts[1].toInt()
         } catch (e: Exception) {
             0
         }
@@ -262,6 +256,7 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 TankONOWidget().updateAll(this@MainActivity)
+                DebugHelper.log(this@MainActivity, "MainActivity", "✅ Widget přegenerován po uložení")
             } catch (e: Exception) {
                 DebugHelper.log(this@MainActivity, "MainActivity", "Chyba updateAll: ${e.message}")
             }

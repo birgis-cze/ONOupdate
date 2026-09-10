@@ -39,12 +39,16 @@ import java.util.Locale
 class TankONOWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // ✅ VŽDY NAČTEME ČERSTVÁ DATA
         val data = DataManager.getPrices(context)
         val lastChangeDate = DataManager.getLastChangeDate(context)
         val lastUpdate = DataManager.getLastUpdate(context)
         val visibleItems = MainActivity.getVisibleItems(context)
         val visibleKeys = visibleItems.map { it.first }.toSet()
         val textSize = MainActivity.getWidgetTextSize(context)
+
+        DebugHelper.log(context, "TankONOWidget",
+            "provideGlance: data=${data != null}, N95=${data?.n95}, visibleKeys=$visibleKeys, textSize=$textSize")
 
         // Pokud nemáme data, spustíme stažení
         if (data == null || data.n95 == 0.0) {
@@ -84,7 +88,6 @@ class TankONOWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(yellow)
                 .padding(3.dp)
-                // ✅ KLIKNUTÍ SPUSTÍ AKTUALIZACI DAT
                 .clickable(actionRunCallback<UpdateCallback>())
         ) {
             // HLAVIČKA
@@ -130,7 +133,8 @@ class TankONOWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(2.dp))
 
-            // CENY
+            // ✅ CENY – vždy zobrazíme VŠECHNY položky bez ohledu na viditelnost,
+            // pokud jsou v datech (pro jistotu)
             if (data != null && data.n95 > 0) {
                 if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.n95Trend, red, textSize)
                 if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.n95pTrend, red, textSize)
@@ -227,6 +231,15 @@ class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate volán")
+        DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate volán (${appWidgetIds.size} widgetů)")
+
+        // ✅ SPUSTÍME STÁHNUTÍ DAT PŘI KAŽDÉ AKTUALIZACI WIDGETU
+        try {
+            val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
+            WorkManager.getInstance(context).enqueue(workRequest)
+            DebugHelper.log(context, "TankONOWidgetReceiver", "UpdateWorker spuštěn")
+        } catch (e: Exception) {
+            DebugHelper.log(context, "TankONOWidgetReceiver", "Chyba: ${e.message}")
+        }
     }
 }
