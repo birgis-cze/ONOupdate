@@ -7,10 +7,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -113,12 +112,11 @@ class UpdateWorker(
             }
 
             DebugHelper.log(ctx, TAG, "Krok 7: Aktualizace widgetu...")
-            withContext(Dispatchers.Main) {
-                try {
-                    TankONOWidget().updateAll(ctx)
-                } catch (e: Exception) {
-                    DebugHelper.log(ctx, TAG, "Chyba updateAll: ${e.message}")
-                }
+            try {
+                TankONOWidget().updateAll(ctx)
+                DebugHelper.log(ctx, TAG, "✅ Widget updateAll úspěšně")
+            } catch (e: Exception) {
+                DebugHelper.log(ctx, TAG, "❌ Chyba updateAll: ${e.message}")
             }
 
             DebugHelper.log(ctx, TAG, "=== ✅ AKTUALIZACE ÚSPĚŠNÁ ===")

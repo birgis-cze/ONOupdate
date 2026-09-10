@@ -10,6 +10,7 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
@@ -34,14 +35,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Glance Widget - moderní náhrada za RemoteViews
- * Název třídy MUSÍ zůstat stejný, aby se widget neodstranil z plochy!
- */
 class TankONOWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // Načteme data
         val data = DataManager.getPrices(context)
         val lastChangeDate = DataManager.getLastChangeDate(context)
         val visibleItems = MainActivity.getVisibleItems(context)
@@ -64,6 +60,7 @@ class TankONOWidget : GlanceAppWidget() {
     ) {
         val yellow = Color(0xFFFFD600)
         val red = Color(0xFFC92200)
+        val context = LocalContext.current
 
         Column(
             modifier = GlanceModifier
@@ -72,7 +69,6 @@ class TankONOWidget : GlanceAppWidget() {
                 .padding(4.dp)
                 .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
         ) {
-            // HLAVIČKA
             Row(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -104,7 +100,6 @@ class TankONOWidget : GlanceAppWidget() {
                 )
             }
 
-            // ČÁRA
             Spacer(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -114,7 +109,6 @@ class TankONOWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(2.dp))
 
-            // CENY
             if (data != null && data.n95 > 0) {
                 if ("n95" in visibleKeys) PriceRow("N95", data.n95, data.n95Trend, red)
                 if ("n95p" in visibleKeys) PriceRow("N95+", data.n95p, data.n95pTrend, red)
@@ -186,9 +180,6 @@ class TankONOWidget : GlanceAppWidget() {
     }
 }
 
-/**
- * Receiver pro Glance widget
- */
 class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TankONOWidget()
 

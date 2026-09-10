@@ -12,7 +12,7 @@ android {
         minSdk = 21
         targetSdk = 34
         versionCode = 3
-        versionName = "1.2"
+        versionName = "1.2-birgis"
 
         ndk {
             abiFilters.add("armeabi-v7a")
@@ -26,6 +26,7 @@ android {
         debug {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("debug")
+            versionNameSuffix = "-debug-birgis"
         }
         release {
             isMinifyEnabled = true
@@ -33,6 +34,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            versionNameSuffix = "-birgis"
         }
     }
 
@@ -55,25 +57,16 @@ android {
 }
 
 dependencies {
-    // Základní AndroidX
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
-    
-    // Sítě a parsování
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
-    
-    // Preference
     implementation("androidx.preference:preference-ktx:1.2.1")
-    
-    // JETPACK GLANCE - NOVÝ WIDGET ENGINE
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
-    
-    // Compose runtime (potřebné pro Glance)
     implementation("androidx.compose.runtime:runtime:1.6.0")
 }

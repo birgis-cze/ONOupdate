@@ -17,7 +17,7 @@
             android:layout_height="30dp"
             android:background="@color/yellow">
 
-            <!-- VRSTVA 1: Logo linka (opakovaná, zarovnaná dolů) -->
+            <!-- VRSTVA 1: Logo linka (zarovnaná dolů, opakovaná) -->
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="6dp"

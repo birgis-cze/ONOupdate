@@ -1,7 +1,5 @@
 package com.tankono.widget
 
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -12,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.glance.appwidget.updateAll
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -67,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         WorkManager.getInstance(this).enqueue(workRequest)
 
         // FORCE WIDGET UPDATE
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 TankONOWidget().updateAll(this@MainActivity)
                 DebugHelper.log(this@MainActivity, "MainActivity", "Widget updateAll volán")
@@ -194,7 +193,7 @@ class MainActivity : AppCompatActivity() {
             apply()
         }
 
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 TankONOWidget().updateAll(this@MainActivity)
             } catch (e: Exception) {
