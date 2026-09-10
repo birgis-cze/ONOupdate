@@ -53,9 +53,9 @@ class TankONOWidget : GlanceAppWidget() {
         val textSize = if (isCompact) 13.sp else 11.sp
         val rowPadding = if (isCompact) 3.dp else 1.dp
 
-        // Bezpečné načtení barev z R.color
         val redColor = ColorProvider(R.color.red)
         val whiteColor = ColorProvider(R.color.white)
+        // OPRAVA: Načtení z R.color namísto přímého přetypování barev
         val grayColor = ColorProvider(R.color.widget_text_gray)
         val darkGrayColor = ColorProvider(R.color.widget_text_dark_gray)
 
