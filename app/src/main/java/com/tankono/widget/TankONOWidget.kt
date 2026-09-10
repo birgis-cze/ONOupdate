@@ -48,7 +48,7 @@ class TankONOWidget : GlanceAppWidget() {
         val textSize = MainActivity.getWidgetTextSize(context)
 
         DebugHelper.log(context, "TankONOWidget",
-            "provideGlance: data=${data != null}, N95=${data?.n95}, visibleKeys=$visibleKeys, textSize=$textSize")
+            "provideGlance: N95=${data?.n95}, visibleKeys=$visibleKeys, textSize=$textSize")
 
         // Pokud nemáme data, spustíme stažení
         if (data == null || data.n95 == 0.0) {
@@ -232,7 +232,6 @@ class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate volán (${appWidgetIds.size} widgetů)")
 
-        // Spustíme stažení dat
         try {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(context).enqueue(workRequest)

@@ -5,11 +5,18 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- ✅ Oprávnění pro Android 9 a nižší (pro MediaStore není potřeba) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="Tank ONO"
+        android:requestLegacyExternalStorage="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.TankONOWidget"
         tools:targetApi="31">
@@ -24,7 +31,6 @@
             </intent-filter>
         </activity>
 
-        <!-- GLANCE WIDGET RECEIVER -->
         <receiver
             android:name=".TankONOWidgetReceiver"
             android:exported="true">

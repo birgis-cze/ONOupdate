@@ -2,10 +2,12 @@ package com.tankono.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.ContentValues
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
@@ -13,31 +15,135 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 object DebugHelper {
     private const val LOG_FILE = "tankono_debug.log"
-    private var isEnabled = true
+    private const val MIME_TYPE = "text/plain"
 
-    private fun getLogFile(context: Context): File {
-        val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-        if (downloadDir != null && (downloadDir.exists() || downloadDir.mkdirs())) {
-            return File(downloadDir, LOG_FILE)
+    /**
+     * ✅ ULOŽÍ LOG DO DOWNLOAD PŘES MEDIASTORE
+     * - Funguje na Androidu 10+ BEZ oprávnění
+     * - Soubor se objeví v /Download/tankono_debug.log
+     */
+    private fun writeToDownload(context: Context, content: String): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10+ → MediaStore
+                val resolver = context.contentResolver
+
+                // Zkontrolujeme, zda soubor už existuje
+                val existingUri = resolver.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Downloads._ID),
+                    "${MediaStore.Downloads.DISPLAY_NAME} = ?",
+                    arrayOf(LOG_FILE),
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                        android.content.ContentUris.withAppendedId(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI, id
+                        )
+                    } else null
+                }
+
+                val uri = if (existingUri != null) {
+                    // Přepíšeme existující soubor
+                    resolver.openOutputStream(existingUri, "wt")?.use { os ->
+                        os.write(content.toByteArray())
+                    }
+                    existingUri
+                } else {
+                    // Vytvoříme nový soubor
+                    val values = ContentValues().apply {
+                        put(MediaStore.Downloads.DISPLAY_NAME, LOG_FILE)
+                        put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE)
+                        put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                    }
+                    val newUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    newUri?.let {
+                        resolver.openOutputStream(it)?.use { os ->
+                            os.write(content.toByteArray())
+                        }
+                    }
+                    newUri
+                }
+
+                uri != null
+            } else {
+                // Android 9 a nižší → přímý zápis do Download
+                @Suppress("DEPRECATION")
+                val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (downloadDir != null && (downloadDir.exists() || downloadDir.mkdirs())) {
+                    val file = File(downloadDir, LOG_FILE)
+                    file.writeText(content)
+                    true
+                } else false
+            }
+        } catch (e: Exception) {
+            Log.e("DebugHelper", "writeToDownload chyba: ${e.message}")
+            false
         }
-        return File(context.getExternalFilesDir(null), LOG_FILE)
     }
 
+    /**
+     * ✅ PŘEČTE LOG Z DOWNLOAD PŘES MEDIASTORE
+     */
+    private fun readFromDownload(context: Context): String? {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val uri = resolver.query(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Downloads._ID),
+                    "${MediaStore.Downloads.DISPLAY_NAME} = ?",
+                    arrayOf(LOG_FILE),
+                    null
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                        android.content.ContentUris.withAppendedId(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI, id
+                        )
+                    } else null
+                }
+
+                uri?.let {
+                    resolver.openInputStream(it)?.use { is_ ->
+                        is_.bufferedReader().readText()
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadDir, LOG_FILE)
+                if (file.exists()) file.readText() else null
+            }
+        } catch (e: Exception) {
+            Log.e("DebugHelper", "readFromDownload chyba: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * ✅ ZAPÍŠE ZÁZNAM DO LOGU (append)
+     */
     fun log(context: Context, tag: String, message: String) {
-        if (!isEnabled) return
         try {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             val logLine = "$timestamp [$tag] $message\n"
-            val file = getLogFile(context)
-            FileOutputStream(file, true).use { fos ->
-                fos.write(logLine.toByteArray())
-            }
+
+            // Načteme existující obsah
+            val existing = readFromDownload(context) ?: ""
+            val newContent = existing + logLine
+
+            // Zapíšeme
+            writeToDownload(context, newContent)
+
             Log.d(tag, message)
         } catch (e: Exception) {
             Log.e("DebugHelper", "Chyba zápisu logu: ${e.message}")
@@ -53,9 +159,7 @@ object DebugHelper {
             val packageManager = context.packageManager
             val packageName = context.packageName
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
-            log(context, "SystemInfo", "Aplikace: $packageName")
 
-            // ✅ POUŽIJEME longVersionCode místo versionCode (odstraní deprecated warning)
             val longVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 packageInfo.longVersionCode
             } else {
@@ -68,39 +172,13 @@ object DebugHelper {
             val componentName = ComponentName(context, TankONOWidgetReceiver::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
 
-            log(context, "SystemInfo", "Widget IDs nalezeno: ${appWidgetIds.size}")
+            log(context, "SystemInfo", "Widget IDs: ${appWidgetIds.size}")
 
-            if (appWidgetIds.isEmpty()) {
-                log(context, "SystemInfo", "❌ ŽÁDNÝ WIDGET NENALEZEN NA PLOŠE!")
-            }
-
-            log(context, "SystemInfo", "=== OPRÁVNĚNÍ ===")
-            val permissions = listOf(
-                android.Manifest.permission.INTERNET,
-                android.Manifest.permission.POST_NOTIFICATIONS
-            )
-            for (perm in permissions) {
-                val status = if (packageManager.checkPermission(perm, packageName) == PackageManager.PERMISSION_GRANTED) {
-                    "POVOLENO"
-                } else {
-                    "ZAMÍTNUTO"
-                }
-                log(context, "SystemInfo", "$perm: $status")
-            }
-
-            log(context, "SystemInfo", "=== ULOŽENÁ DATA ===")
             val prices = DataManager.getPrices(context)
             if (prices != null) {
                 log(context, "SystemInfo", "Ceny: N95=${prices.n95}, Diesel=${prices.diesel}")
-                log(context, "SystemInfo", "Poslední aktualizace: ${DataManager.getLastUpdate(context)}")
-                log(context, "SystemInfo", "Poslední změna cen: ${DataManager.getLastChangeDate(context)}")
-            } else {
-                log(context, "SystemInfo", "❌ Žádná data nejsou uložena!")
             }
 
-            log(context, "SystemInfo", "=== POKUS O AKTUALIZACI WIDGETU ===")
-
-            // ✅ POUŽIJEME VLASTNÍ CoroutineScope místo GlobalScope (odstraní delicate API warning)
             val scope = CoroutineScope(Dispatchers.IO)
             scope.launch {
                 try {
@@ -111,49 +189,79 @@ object DebugHelper {
                 }
             }
 
-            log(context, "SystemInfo", "=== KONEC SYSTÉMOVÝCH INFORMACÍ ===")
+            log(context, "SystemInfo", "=== KONEC ===")
 
         } catch (e: Exception) {
             log(context, "SystemInfo", "❌ CHYBA: ${e.message}")
         }
     }
 
+    /**
+     * ✅ SMAŽE LOG Z DOWNLOAD
+     */
     fun clearLog(context: Context) {
         try {
-            val file = getLogFile(context)
-            if (file.exists()) file.delete()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val deleted = resolver.delete(
+                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                    "${MediaStore.Downloads.DISPLAY_NAME} = ?",
+                    arrayOf(LOG_FILE)
+                )
+                Log.d("DebugHelper", "Smazáno záznamů: $deleted")
+            } else {
+                @Suppress("DEPRECATION")
+                val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadDir, LOG_FILE)
+                if (file.exists()) file.delete()
+            }
             log(context, "DebugHelper", "=== LOG SMAZÁN ===")
         } catch (e: Exception) {
             Log.e("DebugHelper", "Chyba mazání logu: ${e.message}")
         }
     }
 
+    /**
+     * ✅ PŘEČTE OBSAH LOGU PRO ZOBRAZENÍ V DIALOGU
+     */
     fun getLogContent(context: Context): String {
-        return try {
-            val file = getLogFile(context)
-            if (file.exists()) {
-                file.readText()
-            } else {
-                "Log soubor neexistuje\n\nCesta: ${file.absolutePath}"
-            }
-        } catch (e: Exception) {
-            "Chyba čtení logu: ${e.message}\n\nCesta: ${getLogFile(context).absolutePath}"
-        }
+        return readFromDownload(context) ?: "Log neexistuje.\nOčekávaná cesta: /Download/$LOG_FILE"
     }
 
+    /**
+     * ✅ EXPORT LOGU S ČASOVÝM RAZÍTKEM
+     */
     fun exportLog(context: Context): String {
         return try {
-            val sourceFile = getLogFile(context)
-            if (!sourceFile.exists()) {
+            val content = readFromDownload(context)
+            if (content.isNullOrEmpty()) {
                 return "Log neexistuje"
             }
+
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-            val exportFile = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                "tankono_log_$timestamp.txt"
-            )
-            sourceFile.copyTo(exportFile, overwrite = true)
-            "Log exportován do:\n${exportFile.absolutePath}"
+            val exportFileName = "tankono_log_$timestamp.txt"
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = context.contentResolver
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, exportFileName)
+                    put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE)
+                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                uri?.let {
+                    resolver.openOutputStream(it)?.use { os ->
+                        os.write(content.toByteArray())
+                    }
+                }
+                "Log exportován do:\n/Download/$exportFileName"
+            } else {
+                @Suppress("DEPRECATION")
+                val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val file = File(downloadDir, exportFileName)
+                file.writeText(content)
+                "Log exportován do:\n${file.absolutePath}"
+            }
         } catch (e: Exception) {
             "Chyba exportu: ${e.message}"
         }
