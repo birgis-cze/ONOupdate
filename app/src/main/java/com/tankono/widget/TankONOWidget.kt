@@ -11,11 +11,10 @@ import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.state.updateAll
+import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -35,25 +34,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class RefreshCallback : ActionCallback {
-    override suspend fun onAction(
-        context: Context,
-        glanceId: GlanceId,
-        parameters: androidx.glance.action.ActionParameters
-    ) {
-        DataFetcher.fetchAndSave(context)
-        TankONOWidget().updateAll(context)
-    }
-}
-
-// Pomocná metoda pro obnovení stavu všech widgetů
-suspend fun updateAllWidgetsState(context: Context) {
-    TankONOWidget().updateAll(context)
-}
-
 class TankONOWidget : GlanceAppWidget() {
 
-    // OPRAVA: 'suspend' místo nefunkčního 'async'
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
         val selectedKeys = prefs.getStringSet("selected_fuels", null)
@@ -243,4 +225,19 @@ class TankONOWidget : GlanceAppWidget() {
             "lpg", "adBlue", "om", "nm", "euro"
         )
     }
+}
+
+class RefreshCallback : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: androidx.glance.action.ActionParameters
+    ) {
+        DataFetcher.fetchAndSave(context)
+        TankONOWidget().updateAll(context)
+    }
+}
+
+suspend fun updateAllWidgetsState(context: Context) {
+    TankONOWidget().updateAll(context)
 }
