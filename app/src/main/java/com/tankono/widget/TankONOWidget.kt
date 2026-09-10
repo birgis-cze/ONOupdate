@@ -11,6 +11,8 @@ import androidx.glance.ImageProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -27,22 +29,38 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import androidx.glance.appwidget.action.actionRunCallback
-import androidx.glance.action.Action
+import androidx.glance.GlanceAppWidgetManager
+import androidx.glance.appwidget.updateAll
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+class RefreshCallback : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: androidx.glance.action.ActionParameters
+    ) {
+        DataFetcher.fetchAndSave(context)
+        TankONOWidget().updateAll(context)
+    }
+}
+
+// Pomocná metoda pro obnovení stavu všech widgetů
+suspend fun updateAllWidgetsState(context: Context) {
+    TankONOWidget().updateAll(context)
+}
+
 class TankONOWidget : GlanceAppWidget() {
 
-    override async fun provideGlance(context: Context, id: GlanceId) {
+    // OPRAVA: 'suspend' místo nefunkčního 'async'
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
         val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
         val selectedKeys = prefs.getStringSet("selected_fuels", null)
             ?: setOf("n95", "diesel", "lpg")
 
         val visibleKeys = fuelOrder.filter { it in selectedKeys }
         
-        // Načtení aktuálních i předchozích cen z úložiště
         val data = DataManager.getPrices(context)
         val oldData = DataManager.getOldPrices(context)
         
@@ -51,11 +69,9 @@ class TankONOWidget : GlanceAppWidget() {
 
         val isCompact = visibleKeys.size <= 4
         val textSize = if (isCompact) 13.sp else 11.sp
-        val titleSize = if (isCompact) 13.sp else 11.sp
         val rowPadding = if (isCompact) 3.dp else 1.dp
 
         val red = ColorProvider(0xFFD32F2F.toInt())
-        val yellow = ColorProvider(0xFFFBC02D.toInt())
 
         provideContent {
             Box(
@@ -67,34 +83,64 @@ class TankONOWidget : GlanceAppWidget() {
                 Column(
                     modifier = GlanceModifier.fillMaxSize()
                 ) {
-                    // Hlavička
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    // HLAVIČKA
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .height(30.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Tank ONO",
-                            style = TextStyle(
-                                color = yellow,
-                                fontSize = titleSize,
-                                fontWeight = FontWeight.Bold
-                            )
+                        Image(
+                            provider = ImageProvider(R.drawable.logo_linka),
+                            contentDescription = null,
+                            modifier = GlanceModifier.fillMaxWidth()
                         )
-                        Spacer(modifier = GlanceModifier.defaultWeight())
-                        if (lastChangeDate.isNotEmpty()) {
-                            Text(
-                                text = "Změna: $lastChangeDate",
-                                style = TextStyle(
-                                    color = ColorProvider(0xFFB0BEC5.toInt()),
-                                    fontSize = titleSize
-                                )
+
+                        Row(
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                provider = ImageProvider(R.drawable.logo_text),
+                                contentDescription = "Tank ONO",
+                                modifier = GlanceModifier.height(20.dp)
                             )
+
+                            Spacer(modifier = GlanceModifier.defaultWeight())
+
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                if (lastChangeDate.isNotEmpty()) {
+                                    Text(
+                                        text = "Změna: $lastChangeDate",
+                                        style = TextStyle(
+                                            color = ColorProvider(0xFFB0BEC5.toInt()),
+                                            fontSize = 9.sp
+                                        )
+                                    )
+                                }
+                                
+                                val timeStr = if (lastUpdate > 0) {
+                                    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(lastUpdate))
+                                } else "--:--"
+
+                                Text(
+                                    text = "Akt: $timeStr",
+                                    style = TextStyle(
+                                        color = ColorProvider(0xFF78909C.toInt()),
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = GlanceModifier.height(4.dp))
+                    Spacer(modifier = GlanceModifier.height(6.dp))
 
-                    // Řádky cen s výpočtem trendu vůči starým datům
+                    // Seznam cen
                     if (data != null) {
                         if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.getN95Trend(oldData), red, textSize, rowPadding)
                         if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.getN95pTrend(oldData), red, textSize, rowPadding)
@@ -120,21 +166,8 @@ class TankONOWidget : GlanceAppWidget() {
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val timeStr = if (lastUpdate > 0) {
-                            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(lastUpdate))
-                        } else "--:--"
-
-                        Text(
-                            text = "Akt: $timeStr",
-                            style = TextStyle(
-                                color = ColorProvider(0xFF78909C.toInt()),
-                                fontSize = 10.sp
-                            )
-                        )
-
                         Spacer(modifier = GlanceModifier.defaultWeight())
 
-                        // Tlačítko pro manuální obnovení
                         Image(
                             provider = ImageProvider(R.drawable.ic_refresh),
                             contentDescription = "Obnovit",
@@ -145,7 +178,6 @@ class TankONOWidget : GlanceAppWidget() {
 
                         Spacer(modifier = GlanceModifier.width(8.dp))
 
-                        // Tlačítko pro nastavení
                         Image(
                             provider = ImageProvider(R.drawable.ic_settings),
                             contentDescription = "Nastavení",

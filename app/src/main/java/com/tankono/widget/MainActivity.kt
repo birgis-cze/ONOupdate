@@ -287,7 +287,7 @@ class MainActivity : AppCompatActivity() {
 
         val text = StringBuilder()
         text.append("Poslední změna cen: ")
-        if (lastChange > 0) {
+        if (lastChange > "0") {
             val date = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
             text.append(date.format(Date(lastChange)))
         } else {

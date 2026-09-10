@@ -92,7 +92,7 @@ class UpdateWorker(
         checkChange(previous.euro, current.euro, "EUR", diff)?.let { changes.add(it) }
 
         if (changes.isNotEmpty()) {
-            DataManager.saveChangeNotified(context, true)
+            DataManager.setChangeNotified(context, true)
             showNotification(context, changes)
         }
     }

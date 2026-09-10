@@ -33,7 +33,8 @@
 
         <receiver
             android:name=".TankONOWidgetReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:label="Tank ONO Widget">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

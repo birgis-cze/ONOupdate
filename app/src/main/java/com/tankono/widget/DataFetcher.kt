@@ -70,7 +70,7 @@ object DataFetcher {
             DataManager.saveLastUpdate(context, System.currentTimeMillis())
 
             if (lastChangeDate != null) {
-                DataManager.saveLastChangeDate(context, lastChangeDate)
+                DataManager.saveLastChangeDate(context, dateString)
                 DebugHelper.log(context, TAG, "✅ Datum změny uloženo")
             }
 
