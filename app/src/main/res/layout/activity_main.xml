@@ -11,12 +11,11 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- HLAVIČKA – VRSTVENÁ (linka + logo + Nastavení) -->
+        <!-- HLAVIČKA – VRSTVENÁ -->
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="30dp">
 
-            <!-- VRSTVA 1: Linka pozadí (zarovnaná dolů) -->
             <ImageView
                 android:layout_width="match_parent"
                 android:layout_height="30dp"
@@ -25,7 +24,6 @@
                 android:scaleType="fitXY"
                 android:contentDescription="Linka" />
 
-            <!-- VRSTVA 2: Logo vlevo + text vpravo -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -46,7 +44,7 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:text="Nastavení"
-                    android:textSize="16sp"
+                    android:textSize="18sp"
                     android:textColor="@color/red"
                     android:textStyle="bold"
                     android:gravity="bottom|end"
@@ -56,12 +54,12 @@
 
         </FrameLayout>
 
-        <!-- SEKCE: ZOBRAZENÉ POLOŽKY -->
+        <!-- SEKCE: ZOBRAZENÍ -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Zobrazované položky"
-            android:textSize="16sp"
+            android:text="Zobrazení"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/red"
             android:layout_marginTop="16dp" />
@@ -71,77 +69,87 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@color/white"
-            android:padding="8dp"
+            android:padding="12dp"
             android:layout_marginTop="4dp">
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_n95"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="N95" />
+                android:text="Natural 95"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_n95p"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="N95+" />
+                android:text="Natural 95+"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_n98"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="NATURAL 98" />
+                android:text="Natural 98"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_diesel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="DIESEL" />
+                android:text="Diesel"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_diesel_plus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="DIESEL+" />
+                android:text="Diesel+"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_lpg"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="LPG" />
+                android:text="LPG"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_adblue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="AD BLUE" />
+                android:text="AdBlue"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_om"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="OM (osobní myčka)" />
+                android:text="Osobní myčka"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_nm"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="NM (nákladní myčka)" />
+                android:text="Nákladní myčka"
+                android:textSize="16sp" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_euro"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EUR kurz" />
+                android:text="EUR kurz"
+                android:textSize="16sp" />
 
         </LinearLayout>
 
-        <!-- SEKCE: ČASY OBNOVY -->
+        <!-- SEKCE: AKTUALIZACE -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Časy obnovy"
-            android:textSize="16sp"
+            android:text="Aktualizace"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/red"
             android:layout_marginTop="16dp" />
@@ -151,78 +159,268 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@color/white"
-            android:padding="8dp"
+            android:padding="12dp"
             android:layout_marginTop="4dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <!-- Špička -->
+            <TextView
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
-                <TextView
-                    android:layout_width="120dp"
-                    android:layout_height="wrap_content"
-                    android:text="Začátek špičky:" />
-                <EditText
-                    android:id="@+id/et_peak_start"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:text="14:30" />
-            </LinearLayout>
+                android:text="Špička"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp">
+
                 <TextView
-                    android:layout_width="120dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Konec špičky:" />
-                <EditText
-                    android:id="@+id/et_peak_end"
+                    android:text="od"
+                    android:textSize="15sp" />
+
+                <Button
+                    android:id="@+id/btn_peak_start_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="−"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:layout_marginStart="8dp"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+                <TextView
+                    android:id="@+id/tv_peak_start"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="14:30"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:minWidth="60dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btn_peak_start_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+                <TextView
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:text="16:00" />
+                    android:text="do"
+                    android:textSize="15sp"
+                    android:gravity="end" />
+
+                <Button
+                    android:id="@+id/btn_peak_end_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="−"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:layout_marginStart="8dp"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+                <TextView
+                    android:id="@+id/tv_peak_end"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="16:00"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:minWidth="60dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btn_peak_end_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
             </LinearLayout>
+
+            <!-- Intervaly -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Interval špička / mimo"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:layout_marginTop="12dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp">
+
+                <Button
+                    android:id="@+id/btn_peak_interval_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="−"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
                 <TextView
-                    android:layout_width="120dp"
+                    android:id="@+id/tv_peak_interval"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Interval špička (min):" />
-                <EditText
-                    android:id="@+id/et_peak_interval"
+                    android:text="10"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:minWidth="60dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btn_peak_interval_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+                <TextView
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:text="10" />
+                    android:text="min"
+                    android:textSize="15sp"
+                    android:gravity="end"
+                    android:layout_marginEnd="16dp" />
+
+                <Button
+                    android:id="@+id/btn_off_peak_interval_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="−"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+                <TextView
+                    android:id="@+id/tv_off_peak_interval"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="60"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:minWidth="60dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btn_off_peak_interval_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
             </LinearLayout>
+
+            <!-- Velikost textu widgetu -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Velikost textu widgetu"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:layout_marginTop="12dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="6dp">
+
+                <Button
+                    android:id="@+id/btn_widget_text_minus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="−"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
                 <TextView
-                    android:layout_width="120dp"
+                    android:id="@+id/tv_widget_text_size"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Interval mimo (min):" />
-                <EditText
-                    android:id="@+id/et_off_peak_interval"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:text="60" />
+                    android:text="12 sp"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:minWidth="60dp"
+                    android:gravity="center" />
+
+                <Button
+                    android:id="@+id/btn_widget_text_plus"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="+"
+                    android:textSize="20sp"
+                    android:backgroundTint="@color/red"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
             </LinearLayout>
 
         </LinearLayout>
@@ -232,7 +430,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Vzhled"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/red"
             android:layout_marginTop="16dp" />
@@ -242,14 +440,15 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@color/white"
-            android:padding="8dp"
+            android:padding="12dp"
             android:layout_marginTop="4dp">
 
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switch_hide_icon"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Skrýt ikonu ze seznamu aplikací" />
+                android:text="Skrýt ikonu ze seznamu aplikací"
+                android:textSize="16sp" />
 
         </LinearLayout>
 
@@ -266,6 +465,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Uložit"
+                android:textSize="16sp"
                 android:backgroundTint="@color/red"
                 android:layout_marginEnd="8dp" />
 
@@ -275,6 +475,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Aktualizovat nyní"
+                android:textSize="16sp"
                 android:backgroundTint="@color/red" />
 
         </LinearLayout>
@@ -292,6 +493,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Zobrazit log"
+                android:textSize="14sp"
                 android:backgroundTint="@color/red"
                 android:layout_marginEnd="4dp" />
 
@@ -301,6 +503,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Export log"
+                android:textSize="14sp"
                 android:backgroundTint="@color/red"
                 android:layout_marginStart="4dp"
                 android:layout_marginEnd="4dp" />
@@ -311,6 +514,7 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Smazat log"
+                android:textSize="14sp"
                 android:backgroundTint="@color/red"
                 android:layout_marginStart="4dp" />
 
@@ -322,7 +526,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Poslední změna cen: --\nPoslední aktualizace: --"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:textColor="@color/grey_text"
             android:gravity="center"
             android:layout_marginTop="16dp" />

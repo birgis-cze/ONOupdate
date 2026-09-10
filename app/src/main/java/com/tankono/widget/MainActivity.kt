@@ -5,7 +5,6 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
-import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -37,17 +36,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var switchEuro: SwitchMaterial
     private lateinit var switchHideIcon: SwitchMaterial
 
-    private lateinit var etPeakStart: EditText
-    private lateinit var etPeakEnd: EditText
-    private lateinit var etPeakInterval: EditText
-    private lateinit var etOffPeakInterval: EditText
+    private lateinit var tvPeakStart: TextView
+    private lateinit var tvPeakEnd: TextView
+    private lateinit var tvPeakInterval: TextView
+    private lateinit var tvOffPeakInterval: TextView
+    private lateinit var tvWidgetTextSize: TextView
 
-    private lateinit var btnSave: Button
-    private lateinit var btnUpdateNow: Button
-    private lateinit var btnShowLog: Button
-    private lateinit var btnExportLog: Button
-    private lateinit var btnClearLog: Button
-    private lateinit var tvLastUpdate: TextView
+    // Aktuální hodnoty
+    private var peakStartMinutes = 14 * 60 + 30  // 14:30
+    private var peakEndMinutes = 16 * 60 + 0     // 16:00
+    private var peakInterval = 10                // 10 min
+    private var offPeakInterval = 60             // 60 min
+    private var widgetTextSize = 12              // 12 sp
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         initViews()
         loadSettings()
         setupListeners()
+        updateAllTexts()
         loadAndDisplayData()
 
         TankONOWidgetScheduler.scheduleUpdates(this)
@@ -65,11 +66,9 @@ class MainActivity : AppCompatActivity() {
         val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         WorkManager.getInstance(this).enqueue(workRequest)
 
-        // FORCE WIDGET UPDATE
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 TankONOWidget().updateAll(this@MainActivity)
-                DebugHelper.log(this@MainActivity, "MainActivity", "Widget updateAll volán")
             } catch (e: Exception) {
                 DebugHelper.log(this@MainActivity, "MainActivity", "Chyba updateAll: ${e.message}")
             }
@@ -89,52 +88,25 @@ class MainActivity : AppCompatActivity() {
         switchEuro = findViewById(R.id.switch_euro)
         switchHideIcon = findViewById(R.id.switch_hide_icon)
 
-        etPeakStart = findViewById(R.id.et_peak_start)
-        etPeakEnd = findViewById(R.id.et_peak_end)
-        etPeakInterval = findViewById(R.id.et_peak_interval)
-        etOffPeakInterval = findViewById(R.id.et_off_peak_interval)
+        tvPeakStart = findViewById(R.id.tv_peak_start)
+        tvPeakEnd = findViewById(R.id.tv_peak_end)
+        tvPeakInterval = findViewById(R.id.tv_peak_interval)
+        tvOffPeakInterval = findViewById(R.id.tv_off_peak_interval)
+        tvWidgetTextSize = findViewById(R.id.tv_widget_text_size)
 
-        btnSave = findViewById(R.id.btn_save)
-        btnUpdateNow = findViewById(R.id.btn_update_now)
-        btnShowLog = findViewById(R.id.btn_show_log)
-        btnExportLog = findViewById(R.id.btn_export_log)
-        btnClearLog = findViewById(R.id.btn_clear_log)
-        tvLastUpdate = findViewById(R.id.tv_last_update)
-    }
-
-    private fun loadSettings() {
-        switchN95.isChecked = prefs.getBoolean("show_n95", true)
-        switchN95p.isChecked = prefs.getBoolean("show_n95p", true)
-        switchN98.isChecked = prefs.getBoolean("show_n98", true)
-        switchDiesel.isChecked = prefs.getBoolean("show_diesel", true)
-        switchDieselPlus.isChecked = prefs.getBoolean("show_diesel_plus", true)
-        switchLpg.isChecked = prefs.getBoolean("show_lpg", true)
-        switchAdBlue.isChecked = prefs.getBoolean("show_adblue", true)
-        switchOm.isChecked = prefs.getBoolean("show_om", true)
-        switchNm.isChecked = prefs.getBoolean("show_nm", true)
-        switchEuro.isChecked = prefs.getBoolean("show_euro", true)
-        switchHideIcon.isChecked = prefs.getBoolean("hide_app_icon", false)
-
-        etPeakStart.setText(prefs.getString("peak_start", "14:30"))
-        etPeakEnd.setText(prefs.getString("peak_end", "16:00"))
-        etPeakInterval.setText(prefs.getString("peak_interval", "10"))
-        etOffPeakInterval.setText(prefs.getString("off_peak_interval", "60"))
-    }
-
-    private fun setupListeners() {
-        btnSave.setOnClickListener {
+        findViewById<Button>(R.id.btn_save).setOnClickListener {
             saveSettings()
             Toast.makeText(this, "Nastavení uloženo", Toast.LENGTH_SHORT).show()
         }
 
-        btnUpdateNow.setOnClickListener {
+        findViewById<Button>(R.id.btn_update_now).setOnClickListener {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(this).enqueue(workRequest)
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
             loadAndDisplayData()
         }
 
-        btnShowLog.setOnClickListener {
+        findViewById<Button>(R.id.btn_show_log).setOnClickListener {
             val logContent = DebugHelper.getLogContent(this)
             AlertDialog.Builder(this)
                 .setTitle("📋 Debug log")
@@ -147,12 +119,12 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        btnExportLog.setOnClickListener {
+        findViewById<Button>(R.id.btn_export_log).setOnClickListener {
             val result = DebugHelper.exportLog(this)
             Toast.makeText(this, result, Toast.LENGTH_LONG).show()
         }
 
-        btnClearLog.setOnClickListener {
+        findViewById<Button>(R.id.btn_clear_log).setOnClickListener {
             DebugHelper.clearLog(this)
             Toast.makeText(this, "Log smazán", Toast.LENGTH_SHORT).show()
         }
@@ -171,6 +143,99 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupListeners() {
+        // Tlačítka pro časy špičky (krok 15 min)
+        findViewById<Button>(R.id.btn_peak_start_minus).setOnClickListener {
+            peakStartMinutes = (peakStartMinutes - 15 + 24 * 60) % (24 * 60)
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_peak_start_plus).setOnClickListener {
+            peakStartMinutes = (peakStartMinutes + 15) % (24 * 60)
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_peak_end_minus).setOnClickListener {
+            peakEndMinutes = (peakEndMinutes - 15 + 24 * 60) % (24 * 60)
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_peak_end_plus).setOnClickListener {
+            peakEndMinutes = (peakEndMinutes + 15) % (24 * 60)
+            updateAllTexts()
+        }
+
+        // Tlačítka pro intervaly (krok 5 min, min 5, max 120)
+        findViewById<Button>(R.id.btn_peak_interval_minus).setOnClickListener {
+            if (peakInterval > 5) peakInterval -= 5
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_peak_interval_plus).setOnClickListener {
+            if (peakInterval < 120) peakInterval += 5
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_off_peak_interval_minus).setOnClickListener {
+            if (offPeakInterval > 5) offPeakInterval -= 5
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_off_peak_interval_plus).setOnClickListener {
+            if (offPeakInterval < 240) offPeakInterval += 5
+            updateAllTexts()
+        }
+
+        // Tlačítka pro velikost textu widgetu (krok 2sp, min 10, max 20)
+        findViewById<Button>(R.id.btn_widget_text_minus).setOnClickListener {
+            if (widgetTextSize > 10) widgetTextSize -= 2
+            updateAllTexts()
+        }
+        findViewById<Button>(R.id.btn_widget_text_plus).setOnClickListener {
+            if (widgetTextSize < 20) widgetTextSize += 2
+            updateAllTexts()
+        }
+    }
+
+    private fun updateAllTexts() {
+        tvPeakStart.text = formatMinutes(peakStartMinutes)
+        tvPeakEnd.text = formatMinutes(peakEndMinutes)
+        tvPeakInterval.text = peakInterval.toString()
+        tvOffPeakInterval.text = offPeakInterval.toString()
+        tvWidgetTextSize.text = "${widgetTextSize} sp"
+    }
+
+    private fun formatMinutes(totalMinutes: Int): String {
+        val h = (totalMinutes / 60) % 24
+        val m = totalMinutes % 60
+        return String.format(Locale.getDefault(), "%02d:%02d", h, m)
+    }
+
+    private fun parseTimeToMinutes(time: String): Int {
+        return try {
+            val parts = time.split(":")
+            val h = parts[0].toInt()
+            val m = parts[1].toInt()
+            h * 60 + m
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    private fun loadSettings() {
+        switchN95.isChecked = prefs.getBoolean("show_n95", true)
+        switchN95p.isChecked = prefs.getBoolean("show_n95p", true)
+        switchN98.isChecked = prefs.getBoolean("show_n98", true)
+        switchDiesel.isChecked = prefs.getBoolean("show_diesel", true)
+        switchDieselPlus.isChecked = prefs.getBoolean("show_diesel_plus", true)
+        switchLpg.isChecked = prefs.getBoolean("show_lpg", true)
+        switchAdBlue.isChecked = prefs.getBoolean("show_adblue", true)
+        switchOm.isChecked = prefs.getBoolean("show_om", true)
+        switchNm.isChecked = prefs.getBoolean("show_nm", true)
+        switchEuro.isChecked = prefs.getBoolean("show_euro", true)
+        switchHideIcon.isChecked = prefs.getBoolean("hide_app_icon", false)
+
+        peakStartMinutes = parseTimeToMinutes(prefs.getString("peak_start", "14:30") ?: "14:30")
+        peakEndMinutes = parseTimeToMinutes(prefs.getString("peak_end", "16:00") ?: "16:00")
+        peakInterval = prefs.getInt("peak_interval_int", 10)
+        offPeakInterval = prefs.getInt("off_peak_interval_int", 60)
+        widgetTextSize = prefs.getInt("widget_text_size", 12)
+    }
+
     private fun saveSettings() {
         prefs.edit().apply {
             putBoolean("show_n95", switchN95.isChecked)
@@ -185,10 +250,11 @@ class MainActivity : AppCompatActivity() {
             putBoolean("show_euro", switchEuro.isChecked)
             putBoolean("hide_app_icon", switchHideIcon.isChecked)
 
-            putString("peak_start", etPeakStart.text.toString())
-            putString("peak_end", etPeakEnd.text.toString())
-            putString("peak_interval", etPeakInterval.text.toString())
-            putString("off_peak_interval", etOffPeakInterval.text.toString())
+            putString("peak_start", formatMinutes(peakStartMinutes))
+            putString("peak_end", formatMinutes(peakEndMinutes))
+            putInt("peak_interval_int", peakInterval)
+            putInt("off_peak_interval_int", offPeakInterval)
+            putInt("widget_text_size", widgetTextSize)
 
             apply()
         }
@@ -224,7 +290,7 @@ class MainActivity : AppCompatActivity() {
             text.append("--")
         }
 
-        tvLastUpdate.text = text.toString()
+        findViewById<TextView>(R.id.tv_last_update).text = text.toString()
     }
 
     companion object {
@@ -232,18 +298,23 @@ class MainActivity : AppCompatActivity() {
             val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
             val items = mutableListOf<Pair<String, String>>()
 
-            if (prefs.getBoolean("show_n95", true)) items.add("n95" to "N95")
-            if (prefs.getBoolean("show_n95p", true)) items.add("n95p" to "N95+")
-            if (prefs.getBoolean("show_n98", true)) items.add("n98" to "NATURAL 98")
-            if (prefs.getBoolean("show_diesel", true)) items.add("diesel" to "DIESEL")
-            if (prefs.getBoolean("show_diesel_plus", true)) items.add("dieselPlus" to "DIESEL+")
+            if (prefs.getBoolean("show_n95", true)) items.add("n95" to "Natural 95")
+            if (prefs.getBoolean("show_n95p", true)) items.add("n95p" to "Natural 95+")
+            if (prefs.getBoolean("show_n98", true)) items.add("n98" to "Natural 98")
+            if (prefs.getBoolean("show_diesel", true)) items.add("diesel" to "Diesel")
+            if (prefs.getBoolean("show_diesel_plus", true)) items.add("dieselPlus" to "Diesel+")
             if (prefs.getBoolean("show_lpg", true)) items.add("lpg" to "LPG")
-            if (prefs.getBoolean("show_adblue", true)) items.add("adBlue" to "AD BLUE")
-            if (prefs.getBoolean("show_om", true)) items.add("om" to "OM (osobní)")
-            if (prefs.getBoolean("show_nm", true)) items.add("nm" to "NM (nákladní)")
+            if (prefs.getBoolean("show_adblue", true)) items.add("adBlue" to "AdBlue")
+            if (prefs.getBoolean("show_om", true)) items.add("om" to "Osobní myčka")
+            if (prefs.getBoolean("show_nm", true)) items.add("nm" to "Nákladní myčka")
             if (prefs.getBoolean("show_euro", true)) items.add("euro" to "EUR")
 
             return items
+        }
+
+        fun getWidgetTextSize(context: Context): Int {
+            val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
+            return prefs.getInt("widget_text_size", 12)
         }
 
         fun getPeakStart(context: Context): String {
@@ -258,14 +329,12 @@ class MainActivity : AppCompatActivity() {
 
         fun getPeakInterval(context: Context): Int {
             val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
-            val value = prefs.getString("peak_interval", "10") ?: "10"
-            return value.toIntOrNull() ?: 10
+            return prefs.getInt("peak_interval_int", 10)
         }
 
         fun getOffPeakInterval(context: Context): Int {
             val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
-            val value = prefs.getString("off_peak_interval", "60") ?: "60"
-            return value.toIntOrNull() ?: 60
+            return prefs.getInt("off_peak_interval_int", 60)
         }
     }
 }
