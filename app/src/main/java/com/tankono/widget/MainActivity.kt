@@ -9,7 +9,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.glance.appwidget.updateAll
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -17,7 +16,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext          // ✅ PŘIDÁNO
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -71,9 +70,10 @@ class MainActivity : AppCompatActivity() {
                 val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
                 WorkManager.getInstance(this@MainActivity).enqueue(workRequest)
                 delay(3000)
-                // ✅ updateAll na Main
+
+                // ✅ POUŽIJEME updateAllWidgetsState (Glance state)
                 withContext(Dispatchers.Main) {
-                    TankONOWidget().updateAll(this@MainActivity)
+                    updateAllWidgetsState(this@MainActivity)
                 }
                 DebugHelper.log(this@MainActivity, "MainActivity", "✅ Widgety aktualizovány po startu")
             } catch (e: Exception) {
@@ -265,12 +265,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         DebugHelper.log(this, "MainActivity", "=== NASTAVENÍ ULOŽENO, textSize=$widgetTextSize ===")
+        DebugHelper.log(this, "MainActivity", "show: n95=${switchN95.isChecked}, nm=${switchNm.isChecked}, euro=${switchEuro.isChecked}")
 
-        // ✅ updateAll na Main (opraví nepřekreslování)
+        // ✅ POUŽIJEME updateAllWidgetsState (Glance state)
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 delay(500)
-                TankONOWidget().updateAll(this@MainActivity)
+                updateAllWidgetsState(this@MainActivity)
                 DebugHelper.log(this@MainActivity, "MainActivity", "✅ Widgety aktualizovány")
             } catch (e: Exception) {
                 DebugHelper.log(this@MainActivity, "MainActivity", "Chyba: ${e.message}")

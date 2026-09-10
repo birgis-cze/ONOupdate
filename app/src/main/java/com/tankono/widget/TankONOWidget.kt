@@ -5,16 +5,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
+import androidx.glance.currentState
+import androidx.glance.state.GlanceStateDefinition
+import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -38,12 +44,16 @@ import java.util.Locale
 
 class TankONOWidget : GlanceAppWidget() {
 
-    // ✅ POLOVIČNÍ VÝŠKA (57/2 ≈ 28)
+    // ✅ ŘEKNE GLANCE, ABY POUŽIL PREFERENCES STATE
+    override val stateDefinition: GlanceStateDefinition<*>
+        get() = PreferencesGlanceStateDefinition
+
     private val HEADER_HEIGHT = 28.dp
     private val LOGO_WIDTH = 78.dp
     private val LOGO_HEIGHT = 28.dp
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+        // ✅ PŘI KAŽDÉM PŘEKRESLENÍ NAČTEME ČERSTVÁ DATA
         val data = DataManager.getPrices(context)
         val lastChangeDate = DataManager.getLastChangeDate(context)
         val lastUpdate = DataManager.getLastUpdate(context)
@@ -64,12 +74,17 @@ class TankONOWidget : GlanceAppWidget() {
         }
 
         provideContent {
+            // ✅ ČTEME STAV – při změně "update_time" se widget překreslí
+            val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
+            val updateKey = prefs[stringPreferencesKey("update_time")] ?: "0"
+
             WidgetContent(
                 data = data,
                 lastChangeDate = lastChangeDate,
                 lastUpdate = lastUpdate,
                 visibleKeys = visibleKeys,
-                textSize = textSize
+                textSize = textSize,
+                updateKey = updateKey
             )
         }
     }
@@ -80,10 +95,12 @@ class TankONOWidget : GlanceAppWidget() {
         lastChangeDate: Long,
         lastUpdate: Long,
         visibleKeys: Set<String>,
-        textSize: Int
+        textSize: Int,
+        updateKey: String
     ) {
         val yellow = Color(0xFFFFD600)
         val red = Color(0xFFC92200)
+        val context = LocalContext.current
 
         Column(
             modifier = GlanceModifier
@@ -135,7 +152,7 @@ class TankONOWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(2.dp))
 
-            // CENY – bez kontroly n95
+            // CENY
             if (data != null) {
                 if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.n95Trend, red, textSize)
                 if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.n95pTrend, red, textSize)
@@ -220,6 +237,28 @@ class TankONOWidget : GlanceAppWidget() {
                 )
             )
         }
+    }
+}
+
+/**
+ * ✅ POMOCNÁ FUNKCE PRO AKTUALIZACI STAVU WIDGETU
+ * Tím se widget přinutí překreslit, i když běží aktivní session
+ */
+suspend fun updateAllWidgetsState(context: Context) {
+    try {
+        val glanceIds = androidx.glance.appwidget.GlanceAppWidgetManager(context)
+            .getGlanceIds(TankONOWidget::class.java)
+        
+        DebugHelper.log(context, "TankONOWidget", "updateAllWidgetsState: ${glanceIds.size} widgetů")
+        
+        glanceIds.forEach { glanceId ->
+            updateAppWidgetState(context, glanceId) { prefs ->
+                prefs[stringPreferencesKey("update_time")] = System.currentTimeMillis().toString()
+            }
+            TankONOWidget().update(context, glanceId)
+        }
+    } catch (e: Exception) {
+        DebugHelper.log(context, "TankONOWidget", "updateAllWidgetsState chyba: ${e.message}")
     }
 }
 

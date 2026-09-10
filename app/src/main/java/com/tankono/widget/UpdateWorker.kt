@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +21,7 @@ class UpdateWorker(
         private const val TAG = "UpdateWorker"
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "tankono_channel"
-        
-        // ✅ ZABRÁNÍ DUPLICITNÍM BĚHŮM
+
         @Volatile
         private var isRunning = false
     }
@@ -57,11 +55,11 @@ class UpdateWorker(
                 checkAndNotify(ctx, previous, current)
             }
 
-            // ✅ updateAll na Main
+            // ✅ POUŽIJEME updateAllWidgetsState, které VYNUTÍ překreslení
             withContext(Dispatchers.Main) {
                 try {
-                    TankONOWidget().updateAll(ctx)
-                    DebugHelper.log(ctx, TAG, "✅ Widgety aktualizovány")
+                    updateAllWidgetsState(ctx)
+                    DebugHelper.log(ctx, TAG, "✅ Widgety aktualizovány (přes state)")
                 } catch (e: Exception) {
                     DebugHelper.log(ctx, TAG, "❌ Chyba: ${e.message}")
                 }

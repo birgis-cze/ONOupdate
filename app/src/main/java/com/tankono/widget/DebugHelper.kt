@@ -9,13 +9,10 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
-import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
-import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,10 +29,8 @@ object DebugHelper {
     private fun writeToDownload(context: Context, content: String): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10+ → MediaStore
                 val resolver = context.contentResolver
 
-                // Zkontrolujeme, zda soubor už existuje
                 val existingUri = resolver.query(
                     MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                     arrayOf(MediaStore.Downloads._ID),
@@ -52,13 +47,11 @@ object DebugHelper {
                 }
 
                 val uri = if (existingUri != null) {
-                    // Přepíšeme existující soubor
                     resolver.openOutputStream(existingUri, "wt")?.use { os ->
                         os.write(content.toByteArray())
                     }
                     existingUri
                 } else {
-                    // Vytvoříme nový soubor
                     val values = ContentValues().apply {
                         put(MediaStore.Downloads.DISPLAY_NAME, LOG_FILE)
                         put(MediaStore.Downloads.MIME_TYPE, MIME_TYPE)
@@ -75,7 +68,6 @@ object DebugHelper {
 
                 uri != null
             } else {
-                // Android 9 a nižší → přímý zápis do Download
                 @Suppress("DEPRECATION")
                 val downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 if (downloadDir != null && (downloadDir.exists() || downloadDir.mkdirs())) {
@@ -131,17 +123,17 @@ object DebugHelper {
 
     /**
      * ✅ ZAPÍŠE ZÁZNAM DO LOGU (append)
+     * - @Synchronized zabrání souběžnému zápisu (race condition)
      */
+    @Synchronized
     fun log(context: Context, tag: String, message: String) {
         try {
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault()).format(Date())
             val logLine = "$timestamp [$tag] $message\n"
 
-            // Načteme existující obsah
             val existing = readFromDownload(context) ?: ""
             val newContent = existing + logLine
 
-            // Zapíšeme
             writeToDownload(context, newContent)
 
             Log.d(tag, message)
@@ -182,7 +174,7 @@ object DebugHelper {
             val scope = CoroutineScope(Dispatchers.IO)
             scope.launch {
                 try {
-                    TankONOWidget().updateAll(context)
+                    updateAllWidgetsState(context)
                     log(context, "SystemInfo", "✅ Widget aktualizován")
                 } catch (e: Exception) {
                     log(context, "SystemInfo", "❌ Chyba: ${e.message}")
