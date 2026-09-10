@@ -31,6 +31,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import androidx.glance.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -169,7 +170,7 @@ class TankONOWidget : GlanceAppWidget() {
                         Spacer(modifier = GlanceModifier.defaultWeight())
 
                         Image(
-                            provider = ImageProvider(R.drawable.ic_refresh),
+                            provider = ImageProvider(android.R.drawable.ic_popup_sync),
                             contentDescription = "Obnovit",
                             modifier = GlanceModifier
                                 .padding(2.dp)
@@ -179,7 +180,7 @@ class TankONOWidget : GlanceAppWidget() {
                         Spacer(modifier = GlanceModifier.width(8.dp))
 
                         Image(
-                            provider = ImageProvider(R.drawable.ic_settings),
+                            provider = ImageProvider(android.R.drawable.ic_menu_preferences),
                             contentDescription = "Nastavení",
                             modifier = GlanceModifier
                                 .padding(2.dp)

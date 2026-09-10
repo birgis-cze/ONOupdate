@@ -4,6 +4,8 @@ import android.content.Context
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
@@ -69,9 +71,13 @@ object DataFetcher {
             DataManager.savePrices(context, priceData)
             DataManager.saveLastUpdate(context, System.currentTimeMillis())
 
+            // OPRAVA: Převedeme Long z lastChangeDate na formátovaný řetězec String
             if (lastChangeDate != null) {
+                val dateFormat = SimpleDateFormat("dd.MM.", Locale.getDefault())
+                val dateString = dateFormat.format(java.util.Date(lastChangeDate))
+                
                 DataManager.saveLastChangeDate(context, dateString)
-                DebugHelper.log(context, TAG, "✅ Datum změny uloženo")
+                DebugHelper.log(context, TAG, "✅ Datum změny uloženo: $dateString")
             }
 
             DebugHelper.log(context, TAG, "=== ✅ STAHOVÁNÍ ÚSPĚŠNÉ ===")
@@ -180,7 +186,6 @@ object DataFetcher {
             val matcher = pattern.matcher(text)
 
             if (matcher.find()) {
-                // ✅ BEZPEČNÉ PARSOVÁNÍ (odstraní warning "Unsafe use of nullable receiver")
                 val day = matcher.group(1)?.toIntOrNull() ?: 0
                 val month = matcher.group(2)?.toIntOrNull() ?: 1
                 val year = matcher.group(3)?.toIntOrNull() ?: 2026
