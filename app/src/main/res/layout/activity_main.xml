@@ -25,7 +25,6 @@
                 android:layout_weight="1"
                 android:src="@drawable/logo_text"
                 android:scaleType="fitStart"
-                android:adjustViewBounds="true"
                 android:paddingStart="4dp"
                 android:contentDescription="ONO text" />
 
@@ -41,7 +40,7 @@
 
         </LinearLayout>
 
-        <!-- ČERVENÁ ČÁRA -->
+        <!-- LOGO LINKA – OPAKOVANÁ PŘES 90% ŠÍŘKY -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -52,20 +51,20 @@
             <View
                 android:layout_width="0dp"
                 android:layout_weight="1"
-                android:layout_height="2dp"
-                android:background="@color/red" />
+                android:layout_height="1dp" />
 
-            <View
+            <ImageView
                 android:layout_width="0dp"
-                android:layout_weight="3"
-                android:layout_height="2dp"
-                android:background="@color/red" />
+                android:layout_weight="8"
+                android:layout_height="6dp"
+                android:src="@drawable/logo_linka"
+                android:scaleType="fitXY"
+                android:contentDescription="Linka" />
 
             <View
                 android:layout_width="0dp"
                 android:layout_weight="1"
-                android:layout_height="2dp"
-                android:background="@color/red" />
+                android:layout_height="1dp" />
 
         </LinearLayout>
 
