@@ -11,44 +11,44 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- HLAVIČKA – VRSTVENÁ -->
+        <!-- HLAVIČKA – VRSTVENÁ (FrameLayout s linkou na pozadí) -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="30dp">
+            android:layout_height="57dp">
 
+            <!-- VRSTVA 1: Linka natažená přes celou šířku, výška 57dp, dole -->
             <ImageView
                 android:layout_width="match_parent"
-                android:layout_height="30dp"
-                android:layout_gravity="bottom"
+                android:layout_height="57dp"
                 android:src="@drawable/logo_linka"
                 android:scaleType="fitXY"
                 android:contentDescription="Linka" />
 
+            <!-- VRSTVA 2: Logo vlevo (155×57) + text vpravo -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="57dp"
                 android:orientation="horizontal"
-                android:gravity="bottom"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp">
+                android:gravity="bottom">
 
                 <ImageView
-                    android:layout_width="50dp"
-                    android:layout_height="26dp"
+                    android:layout_width="155dp"
+                    android:layout_height="57dp"
                     android:src="@drawable/logo_text"
-                    android:scaleType="fitStart"
+                    android:scaleType="fitCenter"
                     android:contentDescription="ONO text" />
 
                 <TextView
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Nastavení"
                     android:textSize="18sp"
                     android:textColor="@color/red"
                     android:textStyle="bold"
                     android:gravity="bottom|end"
-                    android:paddingBottom="2dp" />
+                    android:paddingBottom="4dp"
+                    android:paddingEnd="4dp" />
 
             </LinearLayout>
 

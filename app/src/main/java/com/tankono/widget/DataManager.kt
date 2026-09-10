@@ -3,7 +3,6 @@ package com.tankono.widget
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 
 object DataManager {
     private const val PREFS_NAME = "tankono_prefs"
@@ -13,7 +12,7 @@ object DataManager {
     private const val KEY_CHANGE_NOTIFIED = "change_notified"
 
     private val gson = Gson()
-    
+
     var oldPrices: PriceData? = null
         private set
 
@@ -25,16 +24,17 @@ object DataManager {
         oldPrices = data
         val json = gson.toJson(data)
         getPrefs(context).edit().putString(KEY_PRICES, json).apply()
-        android.util.Log.d("DataManager", "Ceny uloženy: N95=${data.n95}, Diesel=${data.diesel}")
+        android.util.Log.d("DataManager", "Ceny uloženy: N95=${data.n95}, NM=${data.nm}, EUR=${data.euro}")
     }
 
     fun getPrices(context: Context): PriceData? {
-        val json = getPrefs(context).getString(KEY_PRICES, null)
-        android.util.Log.d("DataManager", "Načítání cen, JSON: $json")
+        val json = getPrefs(context).getString(KEY_PRICES, null) ?: return null
         return try {
-            gson.fromJson(json, PriceData::class.java)
+            val data = gson.fromJson(json, PriceData::class.java)
+            android.util.Log.d("DataManager", "Ceny načteny: N95=${data?.n95}, NM=${data?.nm}, EUR=${data?.euro}")
+            data
         } catch (e: Exception) {
-            android.util.Log.e("DataManager", "Chyba načítání cen: ${e.message}")
+            android.util.Log.e("DataManager", "Chyba načítání: ${e.message}")
             null
         }
     }
@@ -49,7 +49,6 @@ object DataManager {
 
     fun saveLastChangeDate(context: Context, timestamp: Long) {
         getPrefs(context).edit().putLong(KEY_LAST_CHANGE_DATE, timestamp).apply()
-        android.util.Log.d("DataManager", "Datum změny uloženo: $timestamp")
     }
 
     fun getLastChangeDate(context: Context): Long {
