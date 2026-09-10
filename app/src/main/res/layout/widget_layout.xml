@@ -58,8 +58,9 @@
 
             <ImageView
                 android:id="@+id/tv_n95_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -91,8 +92,9 @@
 
             <ImageView
                 android:id="@+id/tv_n95p_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -124,8 +126,9 @@
 
             <ImageView
                 android:id="@+id/tv_n98_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -157,8 +160,9 @@
 
             <ImageView
                 android:id="@+id/tv_diesel_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -190,8 +194,9 @@
 
             <ImageView
                 android:id="@+id/tv_diesel_plus_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -223,8 +228,9 @@
 
             <ImageView
                 android:id="@+id/tv_lpg_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -256,8 +262,9 @@
 
             <ImageView
                 android:id="@+id/tv_adblue_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -289,8 +296,9 @@
 
             <ImageView
                 android:id="@+id/tv_om_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -322,8 +330,9 @@
 
             <ImageView
                 android:id="@+id/tv_nm_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
@@ -355,8 +364,9 @@
 
             <ImageView
                 android:id="@+id/tv_euro_trend"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:textStyle="bold"
                 android:src="@drawable/ic_arrow_equal"/>
 
             <TextView
