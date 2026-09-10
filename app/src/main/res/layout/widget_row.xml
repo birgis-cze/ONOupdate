@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingTop="2dp"
+    android:paddingBottom="2dp">
+
+    <TextView
+        android:id="@+id/row_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textColor="@color/ono_red"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:singleLine="true"
+        android:ellipsize="end"/>
+
+    <TextView
+        android:id="@+id/row_old"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingEnd="6dp"
+        android:textColor="@color/ono_red"
+        android:alpha="0.65"
+        android:textSize="13sp"
+        android:singleLine="true"/>
+
+    <TextView
+        android:id="@+id/row_price"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingEnd="6dp"
+        android:textColor="@color/ono_red"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:singleLine="true"/>
+
+    <TextView
+        android:id="@+id/row_trend"
+        android:layout_width="20dp"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:textColor="@color/ono_red"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:singleLine="true"/>
+</LinearLayout>
