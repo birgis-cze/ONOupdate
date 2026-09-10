@@ -1,7 +1,6 @@
 package com.tankono.widget
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -10,11 +9,10 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.actionStartActivity
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
@@ -32,6 +30,8 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -45,6 +45,17 @@ class TankONOWidget : GlanceAppWidget() {
         val visibleItems = MainActivity.getVisibleItems(context)
         val visibleKeys = visibleItems.map { it.first }.toSet()
         val textSize = MainActivity.getWidgetTextSize(context)
+
+        // Pokud nemáme data, spustíme stažení
+        if (data == null || data.n95 == 0.0) {
+            DebugHelper.log(context, "TankONOWidget", "Data chybí – spouštím UpdateWorker")
+            try {
+                val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
+                WorkManager.getInstance(context).enqueue(workRequest)
+            } catch (e: Exception) {
+                DebugHelper.log(context, "TankONOWidget", "Chyba: ${e.message}")
+            }
+        }
 
         provideContent {
             WidgetContent(
@@ -67,16 +78,16 @@ class TankONOWidget : GlanceAppWidget() {
     ) {
         val yellow = Color(0xFFFFD600)
         val red = Color(0xFFC92200)
-        val context = LocalContext.current
 
         Column(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(yellow)
                 .padding(3.dp)
-                .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
+                // ✅ KLIKNUTÍ SPUSTÍ AKTUALIZACI DAT
+                .clickable(actionRunCallback<UpdateCallback>())
         ) {
-            // HLAVIČKA – vrstvená
+            // HLAVIČKA
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -133,7 +144,7 @@ class TankONOWidget : GlanceAppWidget() {
                 if ("euro" in visibleKeys) PriceRow("EUR", data.euro, data.euroTrend, red, textSize)
             } else {
                 Text(
-                    text = "Načítání...",
+                    text = "Klikni pro načtení...",
                     style = TextStyle(
                         color = ColorProvider(red),
                         fontSize = textSize.sp
@@ -149,15 +160,11 @@ class TankONOWidget : GlanceAppWidget() {
 
         val changeStr = if (lastChangeDate > 0) {
             changeFormatter.format(Date(lastChangeDate)).lowercase(Locale("cs", "CZ"))
-        } else {
-            "--"
-        }
+        } else "--"
 
         val updateStr = if (lastUpdate > 0) {
             updateFormatter.format(Date(lastUpdate))
-        } else {
-            "--:--"
-        }
+        } else "--:--"
 
         return "$changeStr ($updateStr)"
     }
