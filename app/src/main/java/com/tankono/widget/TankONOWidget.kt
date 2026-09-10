@@ -2,25 +2,17 @@ package com.tankono.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
+import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
-import androidx.glance.appwidget.GlanceAppWidgetReceiver
-import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
-import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.background
-import androidx.glance.currentState
-import androidx.glance.state.GlanceStateDefinition
-import androidx.glance.state.PreferencesGlanceStateDefinition
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
@@ -30,254 +22,193 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
-import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
+import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.action.Action
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class TankONOWidget : GlanceAppWidget() {
 
-    // ✅ ŘEKNE GLANCE, ABY POUŽIL PREFERENCES STATE
-    override val stateDefinition: GlanceStateDefinition<*>
-        get() = PreferencesGlanceStateDefinition
+    override async fun provideGlance(context: Context, id: GlanceId) {
+        val prefs = context.getSharedPreferences("tankono_prefs", Context.MODE_PRIVATE)
+        val selectedKeys = prefs.getStringSet("selected_fuels", null)
+            ?: setOf("n95", "diesel", "lpg")
 
-    private val HEADER_HEIGHT = 28.dp
-    private val LOGO_WIDTH = 78.dp
-    private val LOGO_HEIGHT = 28.dp
-
-    override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // ✅ PŘI KAŽDÉM PŘEKRESLENÍ NAČTEME ČERSTVÁ DATA
+        val visibleKeys = fuelOrder.filter { it in selectedKeys }
+        
+        // Načtení aktuálních i předchozích cen z úložiště
         val data = DataManager.getPrices(context)
-        val lastChangeDate = DataManager.getLastChangeDate(context)
+        val oldData = DataManager.getOldPrices(context)
+        
         val lastUpdate = DataManager.getLastUpdate(context)
-        val visibleItems = MainActivity.getVisibleItems(context)
-        val visibleKeys = visibleItems.map { it.first }.toSet()
-        val textSize = MainActivity.getWidgetTextSize(context)
+        val lastChangeDate = DataManager.getLastChangeDate(context)
 
-        DebugHelper.log(context, "TankONOWidget",
-            "provideGlance: NM=${data?.nm}, EUR=${data?.euro}, keys=$visibleKeys, textSize=$textSize")
+        val isCompact = visibleKeys.size <= 4
+        val textSize = if (isCompact) 13.sp else 11.sp
+        val titleSize = if (isCompact) 13.sp else 11.sp
+        val rowPadding = if (isCompact) 3.dp else 1.dp
 
-        if (data == null) {
-            try {
-                val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
-                WorkManager.getInstance(context).enqueue(workRequest)
-            } catch (e: Exception) {
-                DebugHelper.log(context, "TankONOWidget", "Chyba: ${e.message}")
-            }
-        }
+        val red = ColorProvider(0xFFD32F2F.toInt())
+        val yellow = ColorProvider(0xFFFBC02D.toInt())
 
         provideContent {
-            // ✅ ČTEME STAV – při změně "update_time" se widget překreslí
-            val prefs = currentState<androidx.datastore.preferences.core.Preferences>()
-            val updateKey = prefs[stringPreferencesKey("update_time")] ?: "0"
-
-            WidgetContent(
-                data = data,
-                lastChangeDate = lastChangeDate,
-                lastUpdate = lastUpdate,
-                visibleKeys = visibleKeys,
-                textSize = textSize,
-                updateKey = updateKey
-            )
-        }
-    }
-
-    @Composable
-    private fun WidgetContent(
-        data: PriceData?,
-        lastChangeDate: Long,
-        lastUpdate: Long,
-        visibleKeys: Set<String>,
-        textSize: Int,
-        updateKey: String
-    ) {
-        val yellow = Color(0xFFFFD600)
-        val red = Color(0xFFC92200)
-        val context = LocalContext.current
-
-        Column(
-            modifier = GlanceModifier
-                .fillMaxSize()
-                .background(yellow)
-                .padding(3.dp)
-                .clickable(actionRunCallback<UpdateCallback>())
-        ) {
-            // HLAVIČKA
             Box(
                 modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .height(HEADER_HEIGHT)
+                    .fillMaxSize()
+                    .background(ImageProvider(R.drawable.widget_background))
+                    .padding(8.dp)
             ) {
-                Image(
-                    provider = ImageProvider(R.drawable.logo_linka),
-                    contentDescription = "Linka",
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .height(HEADER_HEIGHT)
-                )
-
-                Row(
-                    modifier = GlanceModifier
-                        .fillMaxSize()
-                        .padding(start = 0.dp, end = 4.dp),
-                    verticalAlignment = Alignment.Bottom
+                Column(
+                    modifier = GlanceModifier.fillMaxSize()
                 ) {
-                    Image(
-                        provider = ImageProvider(R.drawable.logo_text),
-                        contentDescription = "ONO",
-                        modifier = GlanceModifier
-                            .width(LOGO_WIDTH)
-                            .height(LOGO_HEIGHT)
-                    )
+                    // Hlavička
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Tank ONO",
+                            style = TextStyle(
+                                color = yellow,
+                                fontSize = titleSize,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = GlanceModifier.defaultWeight())
+                        if (lastChangeDate.isNotEmpty()) {
+                            Text(
+                                text = "Změna: $lastChangeDate",
+                                style = TextStyle(
+                                    color = ColorProvider(0xFFB0BEC5.toInt()),
+                                    fontSize = titleSize
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = GlanceModifier.height(4.dp))
+
+                    // Řádky cen s výpočtem trendu vůči starým datům
+                    if (data != null) {
+                        if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.getN95Trend(oldData), red, textSize, rowPadding)
+                        if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.getN95pTrend(oldData), red, textSize, rowPadding)
+                        if ("n98" in visibleKeys) PriceRow("Natural 98", data.n98, data.getN98Trend(oldData), red, textSize, rowPadding)
+                        if ("diesel" in visibleKeys) PriceRow("Diesel", data.diesel, data.getDieselTrend(oldData), red, textSize, rowPadding)
+                        if ("dieselPlus" in visibleKeys) PriceRow("Diesel+", data.dieselPlus, data.getDieselPlusTrend(oldData), red, textSize, rowPadding)
+                        if ("lpg" in visibleKeys) PriceRow("LPG", data.lpg, data.getLpgTrend(oldData), red, textSize, rowPadding)
+                        if ("adBlue" in visibleKeys) PriceRow("AdBlue", data.adBlue, data.getAdBlueTrend(oldData), red, textSize, rowPadding)
+                        if ("om" in visibleKeys) PriceRow("Osobní myčka", data.om, data.getOmTrend(oldData), red, textSize, rowPadding)
+                        if ("nm" in visibleKeys) PriceRow("Nákladní myčka", data.nm, data.getNmTrend(oldData), red, textSize, rowPadding)
+                        if ("euro" in visibleKeys) PriceRow("EUR", data.euro, data.getEuroTrend(oldData), red, textSize, rowPadding)
+                    } else {
+                        Text(
+                            text = "Načítám data...",
+                            style = TextStyle(color = ColorProvider(0xFFFFFFFF.toInt()), fontSize = textSize)
+                        )
+                    }
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
-                    Text(
-                        text = buildTimestampText(lastChangeDate, lastUpdate),
-                        style = TextStyle(
-                            color = ColorProvider(red),
-                            fontSize = (textSize - 4).coerceAtLeast(6).sp,
-                            fontWeight = FontWeight.Bold
+                    // Patka
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val timeStr = if (lastUpdate > 0) {
+                            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(lastUpdate))
+                        } else "--:--"
+
+                        Text(
+                            text = "Akt: $timeStr",
+                            style = TextStyle(
+                                color = ColorProvider(0xFF78909C.toInt()),
+                                fontSize = 10.sp
+                            )
                         )
-                    )
+
+                        Spacer(modifier = GlanceModifier.defaultWeight())
+
+                        // Tlačítko pro manuální obnovení
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_refresh),
+                            contentDescription = "Obnovit",
+                            modifier = GlanceModifier
+                                .padding(2.dp)
+                                .clickable(actionRunCallback<RefreshCallback>())
+                        )
+
+                        Spacer(modifier = GlanceModifier.width(8.dp))
+
+                        // Tlačítko pro nastavení
+                        Image(
+                            provider = ImageProvider(R.drawable.ic_settings),
+                            contentDescription = "Nastavení",
+                            modifier = GlanceModifier
+                                .padding(2.dp)
+                                .clickable(actionStartActivity<MainActivity>())
+                        )
+                    }
                 }
             }
-
-            Spacer(modifier = GlanceModifier.height(2.dp))
-
-            // CENY
-            if (data != null) {
-                if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.n95Trend, red, textSize)
-                if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.n95pTrend, red, textSize)
-                if ("n98" in visibleKeys) PriceRow("Natural 98", data.n98, data.n98Trend, red, textSize)
-                if ("diesel" in visibleKeys) PriceRow("Diesel", data.diesel, data.dieselTrend, red, textSize)
-                if ("dieselPlus" in visibleKeys) PriceRow("Diesel+", data.dieselPlus, data.dieselPlusTrend, red, textSize)
-                if ("lpg" in visibleKeys) PriceRow("LPG", data.lpg, data.lpgTrend, red, textSize)
-                if ("adBlue" in visibleKeys) PriceRow("AdBlue", data.adBlue, data.adBlueTrend, red, textSize)
-                if ("om" in visibleKeys) PriceRow("Osobní myčka", data.om, data.omTrend, red, textSize)
-                if ("nm" in visibleKeys) PriceRow("Nákladní myčka", data.nm, data.nmTrend, red, textSize)
-                if ("euro" in visibleKeys) PriceRow("EUR", data.euro, data.euroTrend, red, textSize)
-            } else {
-                Text(
-                    text = "Klikni pro načtení...",
-                    style = TextStyle(
-                        color = ColorProvider(red),
-                        fontSize = textSize.sp
-                    )
-                )
-            }
         }
-    }
-
-    private fun buildTimestampText(lastChangeDate: Long, lastUpdate: Long): String {
-        val changeFormatter = SimpleDateFormat("EEE dd.MM.yyyy HH:mm", Locale("cs", "CZ"))
-        val updateFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
-
-        val changeStr = if (lastChangeDate > 0) {
-            changeFormatter.format(Date(lastChangeDate)).lowercase(Locale("cs", "CZ"))
-        } else "--"
-
-        val updateStr = if (lastUpdate > 0) {
-            updateFormatter.format(Date(lastUpdate))
-        } else "--:--"
-
-        return "$changeStr ($updateStr)"
     }
 
     @Composable
     private fun PriceRow(
         label: String,
-        value: Double,
+        price: Double,
         trend: Int,
-        color: Color,
-        textSize: Int
+        priceColor: ColorProvider,
+        textSize: androidx.compose.ui.unit.TextUnit,
+        padding: androidx.compose.ui.unit.Dp
     ) {
+        val arrowRes = when (trend) {
+            1 -> R.drawable.ic_arrow_up
+            -1 -> R.drawable.ic_arrow_down
+            else -> R.drawable.ic_arrow_equal
+        }
+
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .padding(vertical = 1.dp),
+                .padding(vertical = padding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = label,
                 style = TextStyle(
-                    color = ColorProvider(color),
-                    fontSize = textSize.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = GlanceModifier.defaultWeight()
-            )
-
-            val trendIcon = when (trend) {
-                1 -> R.drawable.ic_arrow_up
-                -1 -> R.drawable.ic_arrow_down
-                else -> R.drawable.ic_arrow_equal
-            }
-            Image(
-                provider = ImageProvider(trendIcon),
-                contentDescription = "Trend",
-                modifier = GlanceModifier.size(textSize.dp)
-            )
-
-            Spacer(modifier = GlanceModifier.width(3.dp))
-
-            Text(
-                text = String.format("%.2f", value),
-                style = TextStyle(
-                    color = ColorProvider(color),
-                    fontSize = textSize.sp,
+                    color = ColorProvider(0xFFFFFFFF.toInt()),
+                    fontSize = textSize,
                     fontWeight = FontWeight.Bold
                 )
             )
+            Spacer(modifier = GlanceModifier.defaultWeight())
+            Text(
+                text = if (price > 0) String.format(Locale.US, "%.2f", price) else "--.--",
+                style = TextStyle(
+                    color = priceColor,
+                    fontSize = textSize,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            Spacer(modifier = GlanceModifier.width(4.dp))
+            Image(
+                provider = ImageProvider(arrowRes),
+                contentDescription = null
+            )
         }
     }
-}
 
-/**
- * ✅ POMOCNÁ FUNKCE PRO AKTUALIZACI STAVU WIDGETU
- * Tím se widget přinutí překreslit, i když běží aktivní session
- */
-suspend fun updateAllWidgetsState(context: Context) {
-    try {
-        val glanceIds = androidx.glance.appwidget.GlanceAppWidgetManager(context)
-            .getGlanceIds(TankONOWidget::class.java)
-        
-        DebugHelper.log(context, "TankONOWidget", "updateAllWidgetsState: ${glanceIds.size} widgetů")
-        
-        glanceIds.forEach { glanceId ->
-            updateAppWidgetState(context, glanceId) { prefs ->
-                prefs[stringPreferencesKey("update_time")] = System.currentTimeMillis().toString()
-            }
-            TankONOWidget().update(context, glanceId)
-        }
-    } catch (e: Exception) {
-        DebugHelper.log(context, "TankONOWidget", "updateAllWidgetsState chyba: ${e.message}")
-    }
-}
-
-class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
-    override val glanceAppWidget: GlanceAppWidget = TankONOWidget()
-
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: android.appwidget.AppWidgetManager,
-        appWidgetIds: IntArray
-    ) {
-        super.onUpdate(context, appWidgetManager, appWidgetIds)
-        DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate (${appWidgetIds.size})")
-
-        try {
-            val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
-            WorkManager.getInstance(context).enqueue(workRequest)
-        } catch (e: Exception) {
-            DebugHelper.log(context, "TankONOWidgetReceiver", "Chyba: ${e.message}")
-        }
+    companion object {
+        val fuelOrder = listOf(
+            "n95", "n95p", "n98", "diesel", "dieselPlus",
+            "lpg", "adBlue", "om", "nm", "euro"
+        )
     }
 }
