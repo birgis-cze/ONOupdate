@@ -16,16 +16,14 @@ android {
         versionName = "1.0"
     }
 
-    // Fixní debug keystore – zaručí, že každý build má stejný podpis
-    // (díky tomu půjde APK instalovat přes sebe)
-    signingConfigs {
-        create("debugFixed") {
-            storeFile = file("../.github/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-    }
+//    signingConfigs {
+//        create("debugFixed") {
+//            storeFile = file("../.github/debug.keystore")
+//            storePassword = "android"
+//            keyAlias = "androiddebugkey"
+//            keyPassword = "android"
+//        }
+//    }
 
     buildTypes {
         getByName("debug") {
@@ -38,7 +36,6 @@ android {
         }
     }
 
-    // Název výsledného APK souboru
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
