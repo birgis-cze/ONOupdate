@@ -1,6 +1,7 @@
 package com.tankono.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -61,7 +62,6 @@ class TankONOWidget : GlanceAppWidget() {
         lastChangeDate: Long,
         visibleKeys: Set<String>
     ) {
-        // Barvy z colors.xml
         val yellow = Color(0xFFFFD600)
         val red = Color(0xFFC92200)
 
@@ -70,7 +70,7 @@ class TankONOWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .background(yellow)
                 .padding(4.dp)
-                .clickable(actionStartActivity<MainActivity>())
+                .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
         ) {
             // HLAVIČKA
             Row(
@@ -79,7 +79,6 @@ class TankONOWidget : GlanceAppWidget() {
                     .height(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Logo
                 Image(
                     provider = ImageProvider(R.drawable.logo_text),
                     contentDescription = "ONO",
@@ -90,7 +89,6 @@ class TankONOWidget : GlanceAppWidget() {
 
                 Spacer(modifier = GlanceModifier.defaultWeight())
 
-                // Čas poslední změny
                 Text(
                     text = if (lastChangeDate > 0) {
                         val formatter = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
@@ -163,7 +161,6 @@ class TankONOWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.defaultWeight()
             )
 
-            // Trend ikona
             val trendIcon = when (trend) {
                 1 -> R.drawable.ic_arrow_up
                 -1 -> R.drawable.ic_arrow_down
@@ -191,8 +188,6 @@ class TankONOWidget : GlanceAppWidget() {
 
 /**
  * Receiver pro Glance widget
- * DŮLEŽITÉ: Název MUSÍ zůstat stejný jako původní AppWidgetProvider,
- * aby se widget neodstranil z plochy uživatelů!
  */
 class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = TankONOWidget()
@@ -203,7 +198,6 @@ class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        // Spustíme aktualizaci dat
         DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate volán")
     }
 }

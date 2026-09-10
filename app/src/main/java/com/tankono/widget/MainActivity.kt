@@ -15,6 +15,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.android.material.switchmaterial.SwitchMaterial
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,7 +26,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: SharedPreferences
 
-    // Komponenty nastavení
     private lateinit var switchN95: SwitchMaterial
     private lateinit var switchN95p: SwitchMaterial
     private lateinit var switchN98: SwitchMaterial
@@ -65,15 +67,13 @@ class MainActivity : AppCompatActivity() {
         WorkManager.getInstance(this).enqueue(workRequest)
 
         // FORCE WIDGET UPDATE
-        try {
-            val appWidgetManager = AppWidgetManager.getInstance(this)
-            val componentName = ComponentName(this, TankONOWidget::class.java)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            if (appWidgetIds.isNotEmpty()) {
-                TankONOWidget.updateAllWidgets(this)
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                TankONOWidget().updateAll(this@MainActivity)
+                DebugHelper.log(this@MainActivity, "MainActivity", "Widget updateAll volán")
+            } catch (e: Exception) {
+                DebugHelper.log(this@MainActivity, "MainActivity", "Chyba updateAll: ${e.message}")
             }
-        } catch (e: Exception) {
-            // Ignorovat
         }
     }
 
@@ -194,16 +194,19 @@ class MainActivity : AppCompatActivity() {
             apply()
         }
 
-        TankONOWidget.updateAllWidgets(this)
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                TankONOWidget().updateAll(this@MainActivity)
+            } catch (e: Exception) {
+                DebugHelper.log(this@MainActivity, "MainActivity", "Chyba updateAll: ${e.message}")
+            }
+        }
         TankONOWidgetScheduler.scheduleUpdates(this)
     }
 
     private fun loadAndDisplayData() {
         val lastUpdate = DataManager.getLastUpdate(this)
         val lastChange = DataManager.getLastChangeDate(this)
-
-        android.util.Log.d("MainActivity", "loadAndDisplayData - lastChange: $lastChange")
-        android.util.Log.d("MainActivity", "loadAndDisplayData - lastUpdate: $lastUpdate")
 
         val text = StringBuilder()
         text.append("Poslední změna cen: ")

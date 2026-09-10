@@ -9,6 +9,8 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -29,7 +31,7 @@ class UpdateWorker(
     override suspend fun doWork(): Result {
         val ctx = applicationContext
         DebugHelper.log(ctx, TAG, "=== AKTUALIZACE SPUŠTĚNA ===")
-        
+
         return try {
             DebugHelper.log(ctx, TAG, "Krok 1: Kontrola internetu...")
             if (!isNetworkAvailable(ctx)) {
@@ -37,7 +39,7 @@ class UpdateWorker(
                 return Result.failure()
             }
             DebugHelper.log(ctx, TAG, "✅ Internet dostupný")
-            
+
             val client = OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(15, TimeUnit.SECONDS)
@@ -51,7 +53,7 @@ class UpdateWorker(
 
             val cenikResponse = client.newCall(cenikRequest).execute()
             DebugHelper.log(ctx, TAG, "HTTP cenik: ${cenikResponse.code}")
-            
+
             if (!cenikResponse.isSuccessful) {
                 DebugHelper.log(ctx, TAG, "❌ HTTP chyba cenik: ${cenikResponse.code}")
                 return Result.failure()
@@ -71,7 +73,7 @@ class UpdateWorker(
 
             val aktualityResponse = client.newCall(aktualityRequest).execute()
             DebugHelper.log(ctx, TAG, "HTTP aktuality: ${aktualityResponse.code}")
-            
+
             val aktualityHtml = if (aktualityResponse.isSuccessful) {
                 aktualityResponse.body?.string() ?: ""
             } else {
@@ -81,7 +83,7 @@ class UpdateWorker(
 
             DebugHelper.log(ctx, TAG, "Krok 4: Parsování cen...")
             val priceData = parseCenik(ctx, cenikHtml)
-            
+
             if (priceData == null) {
                 DebugHelper.log(ctx, TAG, "❌ Parsování cen selhalo")
                 return Result.failure()
@@ -96,11 +98,10 @@ class UpdateWorker(
             val previous = DataManager.getPrices(ctx)
             DataManager.savePrices(ctx, priceData)
             DataManager.saveLastUpdate(ctx, System.currentTimeMillis())
-            
-            // OVĚŘENÍ ULOŽENÍ
+
             val savedPrices = DataManager.getPrices(ctx)
             DebugHelper.log(ctx, TAG, "Ověření uložení: N95=${savedPrices?.n95}, Diesel=${savedPrices?.diesel}")
-            
+
             if (lastChangeDate != null) {
                 DataManager.saveLastChangeDate(ctx, lastChangeDate)
                 DebugHelper.log(ctx, TAG, "✅ Datum poslední změny uloženo: ${java.util.Date(lastChangeDate)}")
@@ -112,11 +113,17 @@ class UpdateWorker(
             }
 
             DebugHelper.log(ctx, TAG, "Krok 7: Aktualizace widgetu...")
-            TankONOWidget.updateAllWidgets(ctx)
-            
+            withContext(Dispatchers.Main) {
+                try {
+                    TankONOWidget().updateAll(ctx)
+                } catch (e: Exception) {
+                    DebugHelper.log(ctx, TAG, "Chyba updateAll: ${e.message}")
+                }
+            }
+
             DebugHelper.log(ctx, TAG, "=== ✅ AKTUALIZACE ÚSPĚŠNÁ ===")
             Result.success()
-            
+
         } catch (e: Exception) {
             DebugHelper.log(ctx, TAG, "❌ CHYBA: ${e.message}")
             e.printStackTrace()
@@ -138,7 +145,7 @@ class UpdateWorker(
         return try {
             val doc = Jsoup.parse(html)
             val priceRows = doc.select("div.divrow2")
-            
+
             var n95 = 0.0
             var n95p = 0.0
             var n98 = 0.0
@@ -153,10 +160,10 @@ class UpdateWorker(
             for (row in priceRows) {
                 val labelElement = row.select("div.divprgw, div.divprbw, div.divpryb").first()
                 val label = labelElement?.text()?.trim() ?: continue
-                
+
                 val priceElement = row.select("div.divprice").first()
                 val priceCzk = parsePriceFromElement(priceElement)
-                
+
                 when {
                     label.contains("NATURAL 95", ignoreCase = true) && !label.contains("+", ignoreCase = true) && !label.contains("98", ignoreCase = true) -> n95 = priceCzk
                     label.contains("NATURAL 95+", ignoreCase = true) -> n95p = priceCzk
@@ -169,12 +176,12 @@ class UpdateWorker(
                     label.equals("NM", ignoreCase = true) -> nm = priceCzk
                 }
             }
-            
+
             val euroRows = doc.select("div.divrow2")
             for (row in euroRows) {
                 val labelElement = row.select("div.divexbw").first()
                 val label = labelElement?.text()?.trim() ?: continue
-                
+
                 if (label.equals("EURO", ignoreCase = true)) {
                     val nakupElement = row.select("div.divexnak").first()
                     euroNakup = parsePriceFromElement(nakupElement)
@@ -221,13 +228,13 @@ class UpdateWorker(
             val doc = Jsoup.parse(html)
             val newsElements = doc.select("div.divnews")
             if (newsElements.isEmpty()) return null
-            
+
             val firstNews = newsElements.first()
             val text = firstNews?.text() ?: return null
-            
+
             val pattern = Pattern.compile("(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})\\s*\\((\\d{2}):(\\d{2}):(\\d{2})\\)")
             val matcher = pattern.matcher(text)
-            
+
             if (matcher.find()) {
                 val day = matcher.group(1).toInt()
                 val month = matcher.group(2).toInt()
@@ -235,11 +242,11 @@ class UpdateWorker(
                 val hour = matcher.group(4).toInt()
                 val minute = matcher.group(5).toInt()
                 val second = matcher.group(6).toInt()
-                
+
                 val calendar = java.util.Calendar.getInstance()
                 calendar.set(year, month - 1, day, hour, minute, second)
                 calendar.set(java.util.Calendar.MILLISECOND, 0)
-                
+
                 calendar.timeInMillis
             } else {
                 null

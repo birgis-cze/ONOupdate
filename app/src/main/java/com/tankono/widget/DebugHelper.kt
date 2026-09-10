@@ -8,6 +8,8 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -41,52 +43,28 @@ object DebugHelper {
         }
     }
 
-    /**
-     * ZÍSKÁ KOMPLETNÍ SYSTÉMOVÉ INFO O WIDGETU A APLIKACI
-     */
     fun logSystemInfo(context: Context) {
         try {
             log(context, "SystemInfo", "=== SYSTÉMOVÉ INFORMACE ===")
-            
-            // 1. ZÁKLADNÍ INFO O ZAŘÍZENÍ
             log(context, "SystemInfo", "Zařízení: ${Build.MANUFACTURER} ${Build.MODEL}")
             log(context, "SystemInfo", "Android: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-            log(context, "SystemInfo", "Brand: ${Build.BRAND}, Product: ${Build.PRODUCT}")
-            
-            // 2. INFO O APLIKACI
+
             val packageManager = context.packageManager
             val packageName = context.packageName
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
             log(context, "SystemInfo", "Aplikace: $packageName")
             log(context, "SystemInfo", "Verze: ${packageInfo.versionName} (${packageInfo.versionCode})")
-            log(context, "SystemInfo", "Cesta: ${packageInfo.applicationInfo.sourceDir}")
-            
-            // 3. INFO O WIDGETU
+
             val appWidgetManager = AppWidgetManager.getInstance(context)
-            val componentName = ComponentName(context, TankONOWidget::class.java)
+            val componentName = ComponentName(context, TankONOWidgetReceiver::class.java)
             val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-            
-            log(context, "SystemInfo", "Widget component: ${componentName.flattenToString()}")
+
             log(context, "SystemInfo", "Widget IDs nalezeno: ${appWidgetIds.size}")
-            
-            if (appWidgetIds.isNotEmpty()) {
-                for (id in appWidgetIds) {
-                    log(context, "SystemInfo", "  - Widget ID: $id")
-                    // Zkusíme získat info o velikosti widgetu
-                    try {
-                        val options = appWidgetManager.getAppWidgetOptions(id)
-                        log(context, "SystemInfo", "    - MinWidth: ${options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)}")
-                        log(context, "SystemInfo", "    - MinHeight: ${options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)}")
-                    } catch (e: Exception) {
-                        log(context, "SystemInfo", "    - Nelze získat velikost: ${e.message}")
-                    }
-                }
-            } else {
+
+            if (appWidgetIds.isEmpty()) {
                 log(context, "SystemInfo", "❌ ŽÁDNÝ WIDGET NENALEZEN NA PLOŠE!")
-                log(context, "SystemInfo", "Zkontrolujte, zda je widget přidán na plochu.")
             }
-            
-            // 4. OPRÁVNĚNÍ
+
             log(context, "SystemInfo", "=== OPRÁVNĚNÍ ===")
             val permissions = listOf(
                 android.Manifest.permission.INTERNET,
@@ -100,30 +78,7 @@ object DebugHelper {
                 }
                 log(context, "SystemInfo", "$perm: $status")
             }
-            
-            // 5. NASTAVENÍ SYSTÉMU (ovlivňuje widgety)
-            log(context, "SystemInfo", "=== NASTAVENÍ SYSTÉMU ===")
-            
-            // Zda má aplikace povoleno zobrazovat widgety (Android 8+)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                try {
-                    val canDrawOverlays = Settings.canDrawOverlays(context)
-                    log(context, "SystemInfo", "Zobrazení přes jiné aplikace: $canDrawOverlays")
-                } catch (e: Exception) {
-                    log(context, "SystemInfo", "Nelze zjistit zobrazení přes jiné aplikace: ${e.message}")
-                }
-            }
-            
-            // 6. OMEZENÍ POZADÍ (Battery Optimization)
-            try {
-                val powerManager = context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
-                val isIgnoringBatteryOptimizations = powerManager.isIgnoringBatteryOptimizations(context.packageName)
-                log(context, "SystemInfo", "Vypnuta optimalizace baterie: $isIgnoringBatteryOptimizations")
-            } catch (e: Exception) {
-                log(context, "SystemInfo", "Nelze zjistit optimalizaci baterie: ${e.message}")
-            }
-            
-            // 7. DATA MANAGER - KONTROLA ULOŽENÝCH DAT
+
             log(context, "SystemInfo", "=== ULOŽENÁ DATA ===")
             val prices = DataManager.getPrices(context)
             if (prices != null) {
@@ -133,23 +88,21 @@ object DebugHelper {
             } else {
                 log(context, "SystemInfo", "❌ Žádná data nejsou uložena!")
             }
-            
-            // 8. ZKUSÍME WIDGET VYTVOŘIT/ZOBRAZIT
-            log(context, "SystemInfo", "=== POKUS O VYTVOŘENÍ WIDGETU ===")
-            try {
-                // Zkusíme ručně aktualizovat widget
-                TankONOWidget.updateAllWidgets(context)
-                log(context, "SystemInfo", "✅ Widget aktualizován (updateAllWidgets volán)")
-            } catch (e: Exception) {
-                log(context, "SystemInfo", "❌ Chyba při aktualizaci widgetu: ${e.message}")
-                e.printStackTrace()
+
+            log(context, "SystemInfo", "=== POKUS O AKTUALIZACI WIDGETU ===")
+            GlobalScope.launch {
+                try {
+                    TankONOWidget().updateAll(context)
+                    log(context, "SystemInfo", "✅ Widget aktualizován")
+                } catch (e: Exception) {
+                    log(context, "SystemInfo", "❌ Chyba: ${e.message}")
+                }
             }
-            
+
             log(context, "SystemInfo", "=== KONEC SYSTÉMOVÝCH INFORMACÍ ===")
-            
+
         } catch (e: Exception) {
-            log(context, "SystemInfo", "❌ CHYBA PŘI ZÍSKÁVÁNÍ SYSTÉMOVÝCH INFORMACÍ: ${e.message}")
-            e.printStackTrace()
+            log(context, "SystemInfo", "❌ CHYBA: ${e.message}")
         }
     }
 
