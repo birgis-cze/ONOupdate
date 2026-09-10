@@ -20,27 +20,27 @@
             android:background="@color/yellow">
 
             <ImageView
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="22dp"
-                android:layout_weight="1"
                 android:src="@drawable/logo_text"
                 android:scaleType="fitStart"
                 android:paddingStart="4dp"
                 android:contentDescription="ONO text" />
 
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="match_parent"
+                android:layout_weight="1"
                 android:text="Nastavení"
                 android:textSize="18sp"
                 android:textColor="@color/red"
                 android:textStyle="bold"
-                android:gravity="center_vertical"
+                android:gravity="center_vertical|end"
                 android:paddingEnd="8dp" />
 
         </LinearLayout>
 
-        <!-- LOGO LINKA – OPAKOVANÁ PŘES 90% ŠÍŘKY -->
+        <!-- LOGO LINKA – 90% ŠÍŘKY (5% mezera vlevo a vpravo) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -50,20 +50,20 @@
 
             <View
                 android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_weight="5"
                 android:layout_height="1dp" />
 
             <ImageView
                 android:layout_width="0dp"
-                android:layout_weight="8"
-                android:layout_height="6dp"
+                android:layout_weight="90"
+                android:layout_height="4dp"
                 android:src="@drawable/logo_linka"
                 android:scaleType="fitXY"
                 android:contentDescription="Linka" />
 
             <View
                 android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_weight="5"
                 android:layout_height="1dp" />
 
         </LinearLayout>
