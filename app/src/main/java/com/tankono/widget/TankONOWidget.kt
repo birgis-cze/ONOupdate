@@ -53,7 +53,11 @@ class TankONOWidget : GlanceAppWidget() {
         val textSize = if (isCompact) 13.sp else 11.sp
         val rowPadding = if (isCompact) 3.dp else 1.dp
 
-        val red = ColorProvider(0xFFD32F2F.toInt())
+        // Použití ID ze zdrojů R.color
+        val redColor = ColorProvider(R.color.red)
+        val whiteColor = ColorProvider(R.color.white)
+        val grayColor = ColorProvider(R.color.widget_text_gray)
+        val darkGrayColor = ColorProvider(R.color.widget_text_dark_gray)
 
         provideContent {
             Box(
@@ -99,7 +103,7 @@ class TankONOWidget : GlanceAppWidget() {
                                     Text(
                                         text = "Změna: $lastChangeDate",
                                         style = TextStyle(
-                                            color = ColorProvider(0xFFB0BEC5.toInt()),
+                                            color = grayColor,
                                             fontSize = 9.sp
                                         )
                                     )
@@ -112,7 +116,7 @@ class TankONOWidget : GlanceAppWidget() {
                                 Text(
                                     text = "Akt: $timeStr",
                                     style = TextStyle(
-                                        color = ColorProvider(0xFF78909C.toInt()),
+                                        color = darkGrayColor,
                                         fontSize = 9.sp
                                     )
                                 )
@@ -122,28 +126,28 @@ class TankONOWidget : GlanceAppWidget() {
 
                     Spacer(modifier = GlanceModifier.height(6.dp))
 
-                    // Seznam cen
+                    // SEZNAM CEN
                     if (data != null) {
-                        if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.getN95Trend(oldData), red, textSize, rowPadding)
-                        if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.getN95pTrend(oldData), red, textSize, rowPadding)
-                        if ("n98" in visibleKeys) PriceRow("Natural 98", data.n98, data.getN98Trend(oldData), red, textSize, rowPadding)
-                        if ("diesel" in visibleKeys) PriceRow("Diesel", data.diesel, data.getDieselTrend(oldData), red, textSize, rowPadding)
-                        if ("dieselPlus" in visibleKeys) PriceRow("Diesel+", data.dieselPlus, data.getDieselPlusTrend(oldData), red, textSize, rowPadding)
-                        if ("lpg" in visibleKeys) PriceRow("LPG", data.lpg, data.getLpgTrend(oldData), red, textSize, rowPadding)
-                        if ("adBlue" in visibleKeys) PriceRow("AdBlue", data.adBlue, data.getAdBlueTrend(oldData), red, textSize, rowPadding)
-                        if ("om" in visibleKeys) PriceRow("Osobní myčka", data.om, data.getOmTrend(oldData), red, textSize, rowPadding)
-                        if ("nm" in visibleKeys) PriceRow("Nákladní myčka", data.nm, data.getNmTrend(oldData), red, textSize, rowPadding)
-                        if ("euro" in visibleKeys) PriceRow("EUR", data.euro, data.getEuroTrend(oldData), red, textSize, rowPadding)
+                        if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.getN95Trend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.getN95pTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("n98" in visibleKeys) PriceRow("Natural 98", data.n98, data.getN98Trend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("diesel" in visibleKeys) PriceRow("Diesel", data.diesel, data.getDieselTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("dieselPlus" in visibleKeys) PriceRow("Diesel+", data.dieselPlus, data.getDieselPlusTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("lpg" in visibleKeys) PriceRow("LPG", data.lpg, data.getLpgTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("adBlue" in visibleKeys) PriceRow("AdBlue", data.adBlue, data.getAdBlueTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("om" in visibleKeys) PriceRow("Osobní myčka", data.om, data.getOmTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("nm" in visibleKeys) PriceRow("Nákladní myčka", data.nm, data.getNmTrend(oldData), redColor, whiteColor, textSize, rowPadding)
+                        if ("euro" in visibleKeys) PriceRow("EUR", data.euro, data.getEuroTrend(oldData), redColor, whiteColor, textSize, rowPadding)
                     } else {
                         Text(
                             text = "Načítám data...",
-                            style = TextStyle(color = ColorProvider(0xFFFFFFFF.toInt()), fontSize = textSize)
+                            style = TextStyle(color = whiteColor, fontSize = textSize)
                         )
                     }
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
-                    // Patka
+                    // PATKA
                     Row(
                         modifier = GlanceModifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -179,6 +183,7 @@ class TankONOWidget : GlanceAppWidget() {
         price: Double,
         trend: Int,
         priceColor: ColorProvider,
+        labelColor: ColorProvider,
         textSize: androidx.compose.ui.unit.TextUnit,
         padding: androidx.compose.ui.unit.Dp
     ) {
@@ -197,7 +202,7 @@ class TankONOWidget : GlanceAppWidget() {
             Text(
                 text = label,
                 style = TextStyle(
-                    color = ColorProvider(0xFFFFFFFF.toInt()),
+                    color = labelColor,
                     fontSize = textSize,
                     fontWeight = FontWeight.Bold
                 )
