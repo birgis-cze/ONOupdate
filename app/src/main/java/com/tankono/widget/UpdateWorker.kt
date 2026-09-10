@@ -29,33 +29,79 @@ class UpdateWorker(
         DebugHelper.log(ctx, TAG, "=== UPDATEWORKER SPUŠTĚN ===")
 
         return try {
-            // Použijeme společnou logiku
+            // 1. Uložíme předchozí data pro porovnání
+            val previous = DataManager.getPrices(ctx)
+            DebugHelper.log(ctx, TAG, "Předchozí data: N95=${previous?.n95}, Diesel=${previous?.diesel}")
+
+            // 2. Stáhneme nová data přes DataFetcher
+            DebugHelper.log(ctx, TAG, "Stahuji nová data...")
             val success = DataFetcher.fetchAndSave(ctx)
 
-            if (success) {
-                // Zkontrolujeme změny a případně notifikujeme
-                val previous = DataManager.getPrices(ctx)
-                val current = DataManager.getPrices(ctx)
-                // (předchozí je stejné jako current, protože jsme právě uložili,
-                // takže notifikaci přeskočíme – v reálu by se mělo ukládat před a po)
-
-                // Aktualizujeme widget
-                withContext(Dispatchers.Main) {
-                    try {
-                        TankONOWidget().updateAll(ctx)
-                        DebugHelper.log(ctx, TAG, "✅ Widget updateAll úspěšně")
-                    } catch (e: Exception) {
-                        DebugHelper.log(ctx, TAG, "❌ Chyba updateAll: ${e.message}")
-                    }
-                }
-                Result.success()
-            } else {
-                Result.failure()
+            if (!success) {
+                DebugHelper.log(ctx, TAG, "❌ Stahování selhalo")
+                return Result.failure()
             }
+
+            DebugHelper.log(ctx, TAG, "✅ Data stažena a uložena")
+
+            // 3. Zkontrolujeme změny a případně notifikujeme
+            val current = DataManager.getPrices(ctx)
+            DebugHelper.log(ctx, TAG, "Nová data: N95=${current?.n95}, Diesel=${current?.diesel}")
+
+            if (previous != null && current != null) {
+                checkAndNotify(ctx, previous, current)
+            }
+
+            // 4. Aktualizujeme widgety
+            DebugHelper.log(ctx, TAG, "Aktualizuji widgety...")
+            withContext(Dispatchers.Main) {
+                try {
+                    TankONOWidget().updateAll(ctx)
+                    DebugHelper.log(ctx, TAG, "✅ Widgety aktualizovány")
+                } catch (e: Exception) {
+                    DebugHelper.log(ctx, TAG, "❌ Chyba updateAll: ${e.message}")
+                }
+            }
+
+            DebugHelper.log(ctx, TAG, "=== ✅ UPDATEWORKER ÚSPĚŠNĚ DOKONČEN ===")
+            Result.success()
+
         } catch (e: Exception) {
             DebugHelper.log(ctx, TAG, "❌ CHYBA: ${e.message}")
+            e.printStackTrace()
             Result.failure()
         }
+    }
+
+    private fun checkAndNotify(context: Context, previous: PriceData, current: PriceData) {
+        val changes = mutableListOf<String>()
+        val diff = 0.5
+
+        checkChange(previous.n95, current.n95, "Natural 95", diff)?.let { changes.add(it) }
+        checkChange(previous.n95p, current.n95p, "Natural 95+", diff)?.let { changes.add(it) }
+        checkChange(previous.n98, current.n98, "Natural 98", diff)?.let { changes.add(it) }
+        checkChange(previous.diesel, current.diesel, "Diesel", diff)?.let { changes.add(it) }
+        checkChange(previous.dieselPlus, current.dieselPlus, "Diesel+", diff)?.let { changes.add(it) }
+        checkChange(previous.lpg, current.lpg, "LPG", diff)?.let { changes.add(it) }
+        checkChange(previous.adBlue, current.adBlue, "AdBlue", diff)?.let { changes.add(it) }
+        checkChange(previous.om, current.om, "Osobní myčka", diff)?.let { changes.add(it) }
+        checkChange(previous.nm, current.nm, "Nákladní myčka", diff)?.let { changes.add(it) }
+        checkChange(previous.euro, current.euro, "EUR", diff)?.let { changes.add(it) }
+
+        if (changes.isNotEmpty()) {
+            DebugHelper.log(context, TAG, "Změny cen: ${changes.joinToString()}")
+            DataManager.saveChangeNotified(context, true)
+            showNotification(context, changes)
+        } else {
+            DebugHelper.log(context, TAG, "Žádné změny cen")
+        }
+    }
+
+    private fun checkChange(old: Double, new: Double, name: String, diff: Double): String? {
+        return if (kotlin.math.abs(old - new) >= diff) {
+            val direction = if (new > old) "↑" else "↓"
+            "$name $direction ${String.format("%.2f", new)}"
+        } else null
     }
 
     private fun showNotification(context: Context, changes: List<String>) {

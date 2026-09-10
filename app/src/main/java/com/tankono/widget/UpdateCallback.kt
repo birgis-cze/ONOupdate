@@ -12,9 +12,10 @@ class UpdateCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: ActionParameters
     ) {
-        DebugHelper.log(context, "UpdateCallback", "=== KLIKNUTÍ NA WIDGET ===")
+        DebugHelper.log(context, "UpdateCallback", "=== KLIKNUTÍ NA WIDGET (glanceId=$glanceId) ===")
 
         try {
+            // Stáhneme data
             val success = DataFetcher.fetchAndSave(context)
 
             if (success) {
@@ -23,9 +24,9 @@ class UpdateCallback : ActionCallback {
                 DebugHelper.log(context, "UpdateCallback", "❌ Aktualizace selhala")
             }
 
-            // Aktualizujeme widget
-            TankONOWidget().updateAll(context)
-            DebugHelper.log(context, "UpdateCallback", "✅ Widget překreslen")
+            // ✅ AKTUALIZUJEME KONKRÉTNÍ WIDGET (ne všechny)
+            TankONOWidget().update(context, glanceId)
+            DebugHelper.log(context, "UpdateCallback", "✅ Widget překreslen (glanceId=$glanceId)")
 
         } catch (e: Exception) {
             DebugHelper.log(context, "UpdateCallback", "❌ CHYBA: ${e.message}")

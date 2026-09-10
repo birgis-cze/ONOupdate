@@ -15,6 +15,7 @@ import androidx.work.WorkManager
 import com.google.android.material.switchmaterial.SwitchMaterial
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -62,14 +63,26 @@ class MainActivity : AppCompatActivity() {
 
         TankONOWidgetScheduler.scheduleUpdates(this)
 
-        val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
-        WorkManager.getInstance(this).enqueue(workRequest)
-
+        // ============================================================
+        // INICIALIZACE – STAŽENÍ DAT A AKTUALIZACE WIDGETŮ
+        // ============================================================
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                DebugHelper.log(this@MainActivity, "MainActivity", "=== START: Spouštím UpdateWorker ===")
+
+                // 1. Spustíme stažení dat
+                val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
+                WorkManager.getInstance(this@MainActivity).enqueue(workRequest)
+
+                // 2. Počkáme 3 sekundy, aby UpdateWorker stihl doběhnout
+                delay(3000)
+
+                // 3. Aktualizujeme widgety
                 TankONOWidget().updateAll(this@MainActivity)
+                DebugHelper.log(this@MainActivity, "MainActivity", "✅ Widgety aktualizovány po startu")
+
             } catch (e: Exception) {
-                DebugHelper.log(this@MainActivity, "MainActivity", "Chyba updateAll: ${e.message}")
+                DebugHelper.log(this@MainActivity, "MainActivity", "Chyba při inicializaci: ${e.message}")
             }
         }
     }
@@ -102,7 +115,12 @@ class MainActivity : AppCompatActivity() {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(this).enqueue(workRequest)
             Toast.makeText(this, "Aktualizace spuštěna", Toast.LENGTH_SHORT).show()
-            loadAndDisplayData()
+
+            // Po 3 sekundách obnovíme zobrazení
+            CoroutineScope(Dispatchers.Main).launch {
+                delay(3000)
+                loadAndDisplayData()
+            }
         }
 
         findViewById<Button>(R.id.btn_show_log).setOnClickListener {
@@ -143,6 +161,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        // Špička – krok 15 min
         findViewById<Button>(R.id.btn_peak_start_minus).setOnClickListener {
             peakStartMinutes = (peakStartMinutes - 15 + 24 * 60) % (24 * 60)
             updateAllTexts()
@@ -160,6 +179,7 @@ class MainActivity : AppCompatActivity() {
             updateAllTexts()
         }
 
+        // Intervaly – krok 5 min
         findViewById<Button>(R.id.btn_peak_interval_minus).setOnClickListener {
             if (peakInterval > 5) peakInterval -= 5
             updateAllTexts()
@@ -177,6 +197,7 @@ class MainActivity : AppCompatActivity() {
             updateAllTexts()
         }
 
+        // Velikost textu widgetu – krok 2sp
         findViewById<Button>(R.id.btn_widget_text_minus).setOnClickListener {
             if (widgetTextSize > 10) widgetTextSize -= 2
             updateAllTexts()
@@ -253,14 +274,25 @@ class MainActivity : AppCompatActivity() {
             apply()
         }
 
+        DebugHelper.log(this, "MainActivity", "=== NASTAVENÍ ULOŽENO ===")
+        DebugHelper.log(this, "MainActivity", "show_n95=${switchN95.isChecked}, show_n95p=${switchN95p.isChecked}")
+        DebugHelper.log(this, "MainActivity", "show_n98=${switchN98.isChecked}, show_diesel=${switchDiesel.isChecked}")
+        DebugHelper.log(this, "MainActivity", "show_diesel_plus=${switchDieselPlus.isChecked}, show_lpg=${switchLpg.isChecked}")
+        DebugHelper.log(this, "MainActivity", "show_adblue=${switchAdBlue.isChecked}, show_om=${switchOm.isChecked}")
+        DebugHelper.log(this, "MainActivity", "show_nm=${switchNm.isChecked}, show_euro=${switchEuro.isChecked}")
+        DebugHelper.log(this, "MainActivity", "widget_text_size=$widgetTextSize")
+
+        // Aktualizujeme widgety po uložení
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                delay(500)
                 TankONOWidget().updateAll(this@MainActivity)
-                DebugHelper.log(this@MainActivity, "MainActivity", "✅ Widget přegenerován po uložení")
+                DebugHelper.log(this@MainActivity, "MainActivity", "✅ Widgety aktualizovány po uložení nastavení")
             } catch (e: Exception) {
                 DebugHelper.log(this@MainActivity, "MainActivity", "Chyba updateAll: ${e.message}")
             }
         }
+
         TankONOWidgetScheduler.scheduleUpdates(this)
     }
 

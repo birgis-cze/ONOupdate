@@ -133,8 +133,7 @@ class TankONOWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(2.dp))
 
-            // ✅ CENY – vždy zobrazíme VŠECHNY položky bez ohledu na viditelnost,
-            // pokud jsou v datech (pro jistotu)
+            // CENY
             if (data != null && data.n95 > 0) {
                 if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.n95Trend, red, textSize)
                 if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.n95pTrend, red, textSize)
@@ -233,11 +232,10 @@ class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate volán (${appWidgetIds.size} widgetů)")
 
-        // ✅ SPUSTÍME STÁHNUTÍ DAT PŘI KAŽDÉ AKTUALIZACI WIDGETU
+        // Spustíme stažení dat
         try {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
             WorkManager.getInstance(context).enqueue(workRequest)
-            DebugHelper.log(context, "TankONOWidgetReceiver", "UpdateWorker spuštěn")
         } catch (e: Exception) {
             DebugHelper.log(context, "TankONOWidgetReceiver", "Chyba: ${e.message}")
         }
