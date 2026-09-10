@@ -264,7 +264,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Interval aktualizací špička / mimo"
+                android:text="Interval aktualizací špička / mimo špičku"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/red"
@@ -527,6 +527,16 @@
             android:textColor="@color/grey_text"
             android:gravity="center"
             android:layout_marginTop="16dp" />
+
+        <TextView
+            android:id="@+id/copylast_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Autor: birgis 2026"
+            android:textSize="12sp"
+            android:textColor="@color/grey_text"
+            android:gravity="center"
+            android:layout_marginTop="32dp" />
 
     </LinearLayout>
 
