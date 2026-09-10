@@ -18,6 +18,7 @@ import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
 import androidx.glance.layout.Alignment
+import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
@@ -32,6 +33,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -40,6 +42,7 @@ class TankONOWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = DataManager.getPrices(context)
         val lastChangeDate = DataManager.getLastChangeDate(context)
+        val lastUpdate = DataManager.getLastUpdate(context)
         val visibleItems = MainActivity.getVisibleItems(context)
         val visibleKeys = visibleItems.map { it.first }.toSet()
 
@@ -47,6 +50,7 @@ class TankONOWidget : GlanceAppWidget() {
             WidgetContent(
                 data = data,
                 lastChangeDate = lastChangeDate,
+                lastUpdate = lastUpdate,
                 visibleKeys = visibleKeys
             )
         }
@@ -56,6 +60,7 @@ class TankONOWidget : GlanceAppWidget() {
     private fun WidgetContent(
         data: PriceData?,
         lastChangeDate: Long,
+        lastUpdate: Long,
         visibleKeys: Set<String>
     ) {
         val yellow = Color(0xFFFFD600)
@@ -66,49 +71,55 @@ class TankONOWidget : GlanceAppWidget() {
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(yellow)
-                .padding(4.dp)
+                .padding(3.dp)
                 .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
         ) {
-            Row(
+            // HLAVIČKA – vrstvená (linka + logo)
+            Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .height(28.dp)
             ) {
+                // Vrstva 1: Linka pozadí (zarovnaná dolů)
                 Image(
-                    provider = ImageProvider(R.drawable.logo_text),
-                    contentDescription = "ONO",
+                    provider = ImageProvider(R.drawable.logo_linka),
+                    contentDescription = "Linka",
                     modifier = GlanceModifier
-                        .width(80.dp)
-                        .height(18.dp)
+                        .fillMaxWidth()
+                        .height(28.dp)
                 )
 
-                Spacer(modifier = GlanceModifier.defaultWeight())
-
-                Text(
-                    text = if (lastChangeDate > 0) {
-                        val formatter = SimpleDateFormat("d.M. HH:mm", Locale.getDefault())
-                        formatter.format(Date(lastChangeDate))
-                    } else {
-                        "--:--"
-                    },
-                    style = TextStyle(
-                        color = ColorProvider(red),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
+                // Vrstva 2: Obsah nad linkou
+                Row(
+                    modifier = GlanceModifier
+                        .fillMaxSize()
+                        .padding(start = 4.dp, end = 4.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.logo_text),
+                        contentDescription = "ONO",
+                        modifier = GlanceModifier
+                            .width(50.dp)
+                            .height(24.dp)
                     )
-                )
-            }
 
-            Spacer(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(red)
-            )
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+
+                    Text(
+                        text = buildTimestampText(lastChangeDate, lastUpdate),
+                        style = TextStyle(
+                            color = ColorProvider(red),
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
 
             Spacer(modifier = GlanceModifier.height(2.dp))
 
+            // CENY
             if (data != null && data.n95 > 0) {
                 if ("n95" in visibleKeys) PriceRow("N95", data.n95, data.n95Trend, red)
                 if ("n95p" in visibleKeys) PriceRow("N95+", data.n95p, data.n95pTrend, red)
@@ -125,11 +136,35 @@ class TankONOWidget : GlanceAppWidget() {
                     text = "Načítání...",
                     style = TextStyle(
                         color = ColorProvider(red),
-                        fontSize = 11.sp
+                        fontSize = 10.sp
                     )
                 )
             }
         }
+    }
+
+    /**
+     * Sestaví text: "st 09.09.2026 15:45 (10:25)"
+     * - datum a čas poslední změny cen
+     * - v závorce čas posledního updatu
+     */
+    private fun buildTimestampText(lastChangeDate: Long, lastUpdate: Long): String {
+        val changeFormatter = SimpleDateFormat("EEE dd.MM.yyyy HH:mm", Locale("cs", "CZ"))
+        val updateFormatter = SimpleDateFormat("HH:mm", Locale.getDefault())
+
+        val changeStr = if (lastChangeDate > 0) {
+            changeFormatter.format(Date(lastChangeDate)).lowercase(Locale("cs", "CZ"))
+        } else {
+            "--"
+        }
+
+        val updateStr = if (lastUpdate > 0) {
+            updateFormatter.format(Date(lastUpdate))
+        } else {
+            "--:--"
+        }
+
+        return "$changeStr ($updateStr)"
     }
 
     @Composable
@@ -142,14 +177,14 @@ class TankONOWidget : GlanceAppWidget() {
         Row(
             modifier = GlanceModifier
                 .fillMaxWidth()
-                .height(16.dp),
+                .height(15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = label,
                 style = TextStyle(
                     color = ColorProvider(color),
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 ),
                 modifier = GlanceModifier.defaultWeight()
@@ -163,16 +198,16 @@ class TankONOWidget : GlanceAppWidget() {
             Image(
                 provider = ImageProvider(trendIcon),
                 contentDescription = "Trend",
-                modifier = GlanceModifier.size(12.dp)
+                modifier = GlanceModifier.size(10.dp)
             )
 
-            Spacer(modifier = GlanceModifier.width(4.dp))
+            Spacer(modifier = GlanceModifier.width(3.dp))
 
             Text(
                 text = String.format("%.2f", value),
                 style = TextStyle(
                     color = ColorProvider(color),
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
             )

@@ -11,33 +11,32 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- HLAVIČKA – VRSTVENÁ -->
+        <!-- HLAVIČKA – VRSTVENÁ (linka + logo + Nastavení) -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="30dp"
-            android:background="@color/yellow">
+            android:layout_height="30dp">
 
-            <!-- VRSTVA 1: Logo linka (zarovnaná dolů, opakovaná) -->
+            <!-- VRSTVA 1: Linka pozadí (zarovnaná dolů) -->
             <ImageView
                 android:layout_width="match_parent"
-                android:layout_height="6dp"
+                android:layout_height="30dp"
                 android:layout_gravity="bottom"
                 android:src="@drawable/logo_linka"
                 android:scaleType="fitXY"
                 android:contentDescription="Linka" />
 
-            <!-- VRSTVA 2: Logo text vlevo + Název vpravo -->
+            <!-- VRSTVA 2: Logo vlevo + text vpravo -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp">
+                android:gravity="bottom"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp">
 
                 <ImageView
-                    android:layout_width="60dp"
-                    android:layout_height="22dp"
+                    android:layout_width="50dp"
+                    android:layout_height="26dp"
                     android:src="@drawable/logo_text"
                     android:scaleType="fitStart"
                     android:contentDescription="ONO text" />
@@ -47,10 +46,11 @@
                     android:layout_height="match_parent"
                     android:layout_weight="1"
                     android:text="Nastavení"
-                    android:textSize="18sp"
+                    android:textSize="16sp"
                     android:textColor="@color/red"
                     android:textStyle="bold"
-                    android:gravity="center_vertical|end" />
+                    android:gravity="bottom|end"
+                    android:paddingBottom="2dp" />
 
             </LinearLayout>
 
