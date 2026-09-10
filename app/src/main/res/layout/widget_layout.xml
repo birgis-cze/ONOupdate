@@ -7,32 +7,52 @@
     android:background="@color/yellow"
     android:padding="4dp">
 
-    <!-- HLAVIČKA S LOGEM -->
-    <LinearLayout
+    <!-- HLAVIČKA S LOGEM A ČASEM -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="24dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:layout_height="24dp">
 
+        <!-- 1. VRSTVA: Pozadí s linkou na celou šířku zarovnanou dolů -->
         <ImageView
-            android:layout_width="80dp"
-            android:layout_height="18dp"
-            android:src="@drawable/logo_text"
-            android:scaleType="fitStart"
-            android:contentDescription="ONO text" />
-
-        <TextView
-            android:id="@+id/tv_time"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="--:--"
-            android:textSize="9sp"
-            android:textColor="@color/red"
-            android:textStyle="bold"
-            android:gravity="end" />
+            android:layout_gravity="bottom"
+            android:src="@drawable/logo_linka"
+            android:scaleType="fitXY"
+            android:contentDescription="" />
 
-    </LinearLayout>
+        <!-- 2. VRSTVA: Obsah nad pozadím -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <!-- Logo vlevo s odstupem 1 znaku (8dp), zarovnané dolů -->
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="8dp"
+                android:src="@drawable/logo_text"
+                android:adjustViewBounds="true"
+                android:scaleType="fitStart"
+                android:gravity="bottom"
+                android:contentDescription="ONO text" />
+
+            <!-- Časový údaj vpravo, mírně nahoře -->
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="--:--"
+                android:textSize="9sp"
+                android:textColor="@color/red"
+                android:textStyle="bold"
+                android:gravity="end|top" />
+
+        </LinearLayout>
+
+    </FrameLayout>
 
     <!-- CENY -->
     <LinearLayout
