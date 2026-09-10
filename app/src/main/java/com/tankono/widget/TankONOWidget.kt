@@ -53,7 +53,7 @@ class TankONOWidget : GlanceAppWidget() {
         val textSize = if (isCompact) 13.sp else 11.sp
         val rowPadding = if (isCompact) 3.dp else 1.dp
 
-        // Použití ID ze zdrojů R.color
+        // Bezpečné načtení barev z R.color
         val redColor = ColorProvider(R.color.red)
         val whiteColor = ColorProvider(R.color.white)
         val grayColor = ColorProvider(R.color.widget_text_gray)
@@ -238,11 +238,19 @@ class RefreshCallback : ActionCallback {
         glanceId: GlanceId,
         parameters: androidx.glance.action.ActionParameters
     ) {
-        DataFetcher.fetchAndSave(context)
-        TankONOWidget().updateAll(context)
+        try {
+            DataFetcher.fetchAndSave(context)
+            TankONOWidget().updateAll(context)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
 
 suspend fun updateAllWidgetsState(context: Context) {
-    TankONOWidget().updateAll(context)
+    try {
+        TankONOWidget().updateAll(context)
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
 }
