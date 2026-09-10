@@ -7,18 +7,10 @@ import org.jsoup.Jsoup
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
-/**
- * Sdílená logika pro stažení a parsování dat.
- * Používá ji UpdateWorker i UpdateCallback.
- */
 object DataFetcher {
 
     private const val TAG = "DataFetcher"
 
-    /**
-     * Stáhne a zpracuje data ze serveru.
-     * Vrací true, pokud byla data úspěšně uložena.
-     */
     suspend fun fetchAndSave(context: Context): Boolean {
         DebugHelper.log(context, TAG, "=== STAHOVÁNÍ DAT ===")
 
@@ -74,7 +66,6 @@ object DataFetcher {
             DebugHelper.log(context, TAG, "Datum poslední změny: ${if (lastChangeDate != null) java.util.Date(lastChangeDate) else "Nenalezeno"}")
 
             // Uložíme data
-            val previous = DataManager.getPrices(context)
             DataManager.savePrices(context, priceData)
             DataManager.saveLastUpdate(context, System.currentTimeMillis())
 
@@ -189,15 +180,16 @@ object DataFetcher {
             val matcher = pattern.matcher(text)
 
             if (matcher.find()) {
+                // ✅ BEZPEČNÉ PARSOVÁNÍ (odstraní warning "Unsafe use of nullable receiver")
+                val day = matcher.group(1)?.toIntOrNull() ?: 0
+                val month = matcher.group(2)?.toIntOrNull() ?: 1
+                val year = matcher.group(3)?.toIntOrNull() ?: 2026
+                val hour = matcher.group(4)?.toIntOrNull() ?: 0
+                val minute = matcher.group(5)?.toIntOrNull() ?: 0
+                val second = matcher.group(6)?.toIntOrNull() ?: 0
+
                 val calendar = java.util.Calendar.getInstance()
-                calendar.set(
-                    matcher.group(3).toInt(),
-                    matcher.group(2).toInt() - 1,
-                    matcher.group(1).toInt(),
-                    matcher.group(4).toInt(),
-                    matcher.group(5).toInt(),
-                    matcher.group(6).toInt()
-                )
+                calendar.set(year, month - 1, day, hour, minute, second)
                 calendar.set(java.util.Calendar.MILLISECOND, 0)
                 calendar.timeInMillis
             } else null

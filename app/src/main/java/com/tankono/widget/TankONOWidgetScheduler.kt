@@ -20,7 +20,7 @@ object TankONOWidgetScheduler {
         val peakInterval = MainActivity.getPeakInterval(context)
         val offPeakInterval = MainActivity.getOffPeakInterval(context)
 
-        // OKAMŽITÁ AKTUALIZACE
+        // OKAMŽITÁ AKTUÁLIZACE
         val immediateRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
         workManager.enqueue(immediateRequest)
 
@@ -45,15 +45,16 @@ object TankONOWidgetScheduler {
             TimeUnit.MILLISECONDS
         ).build()
 
+        // ✅ POUŽIJEME UPDATE místo REPLACE (odstraní deprecated warning)
         workManager.enqueueUniquePeriodicWork(
             "base_update",
-            ExistingPeriodicWorkPolicy.REPLACE,
+            ExistingPeriodicWorkPolicy.UPDATE,
             baseRequest
         )
 
         workManager.enqueueUniquePeriodicWork(
             "peak_update",
-            ExistingPeriodicWorkPolicy.REPLACE,
+            ExistingPeriodicWorkPolicy.UPDATE,
             peakRequest
         )
 

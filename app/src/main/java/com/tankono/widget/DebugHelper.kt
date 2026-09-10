@@ -8,7 +8,8 @@ import android.os.Build
 import android.os.Environment
 import android.util.Log
 import androidx.glance.appwidget.updateAll
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
@@ -53,7 +54,15 @@ object DebugHelper {
             val packageName = context.packageName
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
             log(context, "SystemInfo", "Aplikace: $packageName")
-            log(context, "SystemInfo", "Verze: ${packageInfo.versionName} (${packageInfo.versionCode})")
+
+            // ✅ POUŽIJEME longVersionCode místo versionCode (odstraní deprecated warning)
+            val longVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
+            log(context, "SystemInfo", "Verze: ${packageInfo.versionName} ($longVersionCode)")
 
             val appWidgetManager = AppWidgetManager.getInstance(context)
             val componentName = ComponentName(context, TankONOWidgetReceiver::class.java)
@@ -90,7 +99,10 @@ object DebugHelper {
             }
 
             log(context, "SystemInfo", "=== POKUS O AKTUALIZACI WIDGETU ===")
-            GlobalScope.launch {
+
+            // ✅ POUŽIJEME VLASTNÍ CoroutineScope místo GlobalScope (odstraní delicate API warning)
+            val scope = CoroutineScope(Dispatchers.IO)
+            scope.launch {
                 try {
                     TankONOWidget().updateAll(context)
                     log(context, "SystemInfo", "✅ Widget aktualizován")
