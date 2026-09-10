@@ -49,33 +49,24 @@ object DataFetcher {
             val aktualityResponse = client.newCall(aktualityRequest).execute()
             val aktualityHtml = if (aktualityResponse.isSuccessful) aktualityResponse.body?.string() else null
 
-            // 3. Parsování dat
-            val parsedPrices = parseCenik(cenikHtml)
-            if (parsedPrices == null) {
-                DebugHelper.log(context, TAG, "❌ Chyba při parsování ceníku")
-                return false
-            }
+            // 3. Parsování dat ceníku
+            val currentPrices = DataManager.getPrices(context)
+            val parsedPrices = parseCenik(cenikHtml, currentPrices)
 
             DebugHelper.log(context, TAG, "✅ Ceny parsovány: N95=${parsedPrices.n95}, Diesel=${parsedPrices.diesel}")
 
             // 4. Parsování datumu změny
-            var lastChangeFormatted = ""
             if (!aktualityHtml.isNullOrEmpty()) {
                 val changeTimestamp = parseLastChangeDate(aktualityHtml)
                 if (changeTimestamp != null && changeTimestamp > 0) {
                     val sdf = java.text.SimpleDateFormat("dd.MM.", java.util.Locale.getDefault())
-                    lastChangeFormatted = sdf.format(java.util.Date(changeTimestamp))
+                    val lastChangeFormatted = sdf.format(java.util.Date(changeTimestamp))
                     DataManager.saveLastChangeDate(context, lastChangeFormatted)
                     DebugHelper.log(context, TAG, "✅ Datum změny uloženo: $lastChangeFormatted")
                 }
             }
 
-            // 5. Uložení starých barev/cen a nových dat
-            val currentOldPrices = DataManager.getPrices(context)
-            if (currentOldPrices != null) {
-                DataManager.saveOldPrices(context, currentOldPrices)
-            }
-
+            // 5. Uložení stažených cen a času
             DataManager.savePrices(context, parsedPrices)
             DataManager.saveLastUpdate(context, System.currentTimeMillis())
 
@@ -88,27 +79,26 @@ object DataFetcher {
         }
     }
 
-    private fun parseCenik(html: String): FuelPrices? {
+    private fun parseCenik(html: String, existingPrices: DataManager.PricesData?): DataManager.PricesData {
         return try {
             val doc = Jsoup.parse(html)
             val rows = doc.select("div.divrow2")
 
-            var n95 = 0.0
-            var n95p = 0.0
-            var n98 = 0.0
-            var diesel = 0.0
-            var dieselPlus = 0.0
-            var lpg = 0.0
-            var adBlue = 0.0
-            var om = 0.0
-            var nm = 0.0
-            var euro = 0.0
+            var n95 = existingPrices?.n95 ?: 0.0
+            var n95p = existingPrices?.n95p ?: 0.0
+            var n98 = existingPrices?.n98 ?: 0.0
+            var diesel = existingPrices?.diesel ?: 0.0
+            var dieselPlus = existingPrices?.dieselPlus ?: 0.0
+            var lpg = existingPrices?.lpg ?: 0.0
+            var adBlue = existingPrices?.adBlue ?: 0.0
+            var om = existingPrices?.om ?: 0.0
+            var nm = existingPrices?.nm ?: 0.0
+            var euro = existingPrices?.euro ?: 0.0
 
             for (row in rows) {
                 val labelElement = row.selectFirst("div[class^=divpr], div[class^=divex]") ?: continue
                 val label = labelElement.text().trim().uppercase()
 
-                // Pokud jde o EURO, prodejní kurz je v divexpro
                 val price = if (label.contains("EURO")) {
                     val exPro = row.selectFirst("div.divexpro")
                     parsePriceFromElement(exPro)
@@ -117,21 +107,23 @@ object DataFetcher {
                     parsePriceFromElement(priceElem)
                 }
 
-                when {
-                    label.contains("NATURAL 95+") -> n95p = price
-                    label.contains("NATURAL 95") -> n95 = price
-                    label.contains("NATURAL 98") -> n98 = price
-                    label.contains("DIESEL+") -> dieselPlus = price
-                    label.contains("DIESEL") -> diesel = price
-                    label.contains("LPG") -> lpg = price
-                    label.contains("AD BLUE") || label.contains("ADBLUE") -> adBlue = price
-                    label.contains("OM") -> om = price
-                    label.contains("NM") -> nm = price
-                    label.contains("EURO") -> euro = price
+                if (price > 0.0) {
+                    when {
+                        label.contains("NATURAL 95+") -> n95p = price
+                        label.contains("NATURAL 95") -> n95 = price
+                        label.contains("NATURAL 98") -> n98 = price
+                        label.contains("DIESEL+") -> dieselPlus = price
+                        label.contains("DIESEL") -> diesel = price
+                        label.contains("LPG") -> lpg = price
+                        label.contains("AD BLUE") || label.contains("ADBLUE") -> adBlue = price
+                        label.contains("OM") -> om = price
+                        label.contains("NM") -> nm = price
+                        label.contains("EURO") -> euro = price
+                    }
                 }
             }
 
-            FuelPrices(
+            DataManager.PricesData(
                 n95 = n95,
                 n95p = n95p,
                 n98 = n98,
@@ -145,7 +137,7 @@ object DataFetcher {
             )
         } catch (e: Exception) {
             e.printStackTrace()
-            null
+            existingPrices ?: DataManager.PricesData()
         }
     }
 
@@ -153,7 +145,6 @@ object DataFetcher {
         if (element == null) return 0.0
         return try {
             val sup = element.selectFirst("sup")?.text()?.trim() ?: "00"
-            // Získání celých korun (vše před <sup>)
             val mainPart = element.ownText().replace("[^0-9]".toRegex(), "").trim()
             
             if (mainPart.isEmpty()) return 0.0
@@ -170,7 +161,6 @@ object DataFetcher {
             val firstNews = doc.selectFirst("div.divnews") ?: return null
             val text = firstNews.text()
 
-            // Vzor odpovídá datumu: 10.9.2026 (14:42:44)
             val pattern = Pattern.compile("(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})\\s*\\((\\d{2}):(\\d{2}):(\\d{2})\\)")
             val matcher = pattern.matcher(text)
 
