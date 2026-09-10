@@ -10,7 +10,6 @@ import android.widget.RemoteViews
 import cz.tankono.widget.R
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.PriceFormatter
-import cz.tankono.widget.data.model.PriceSpannable
 import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.SettingsStore
@@ -27,23 +26,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Sestavuje a aplikuje RemoteViews pro widget.
- * Řeší barvy dle systémového tématu, skupiny produktů, oddělovače a formátování.
- */
 object WidgetRenderer {
 
     private const val TAG = "WidgetRenderer"
 
-    // Barvy
-    private const val COLOR_LIGHT_BG = 0xFFFFD600.toInt()   // žlutá
-    private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()   // červená
-    private const val COLOR_DARK_BG  = 0xFFC92200.toInt()   // červená
-    private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()   // žlutá
+    private const val COLOR_LIGHT_BG = 0xFFFFD600.toInt()
+    private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()
+    private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
+    private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-    /** Zavolá render asynchronně – načte nastavení + data, pak překreslí. */
     fun render(context: Context, mgr: AppWidgetManager, widgetId: Int) {
         scope.launch {
             try {
@@ -54,8 +47,17 @@ object WidgetRenderer {
                 withContext(Dispatchers.Main) {
                     mgr.updateAppWidget(widgetId, views)
                 }
+                Log.d(TAG, "Widget $widgetId vykreslen")
             } catch (t: Throwable) {
                 Log.e(TAG, "Chyba při renderu widgetu $widgetId", t)
+                // Fallback: alespoň prázdný widget s hlavičkou
+                try {
+                    val fallback = RemoteViews(context.packageName, R.layout.widget_tankono)
+                    fallback.setTextViewText(R.id.header_datetime, "--")
+                    mgr.updateAppWidget(widgetId, fallback)
+                } catch (t2: Throwable) {
+                    Log.e(TAG, "I fallback selhal", t2)
+                }
             }
         }
     }
@@ -78,7 +80,7 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
-        // ---------- HLAVIČKA ----------
+        // Hlavička
         val published = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetched = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
@@ -87,12 +89,10 @@ object WidgetRenderer {
         views.setTextViewText(R.id.header_datetime, "$published ($fetched)")
         views.setTextColor(R.id.header_datetime, fg)
 
-        // ---------- ŘÁDKY PRODUKTŮ ----------
+        // Řádky
         views.removeAllViews(R.id.rows_container)
 
         val visible = Product.entries.filter { it in settings.visibleProducts }
-
-        // Rozdělit do skupin dle Kind, v pevném pořadí
         val groups = listOf(
             Product.Kind.FUEL,
             Product.Kind.OTHER,
@@ -101,7 +101,6 @@ object WidgetRenderer {
             .filter { it.isNotEmpty() }
 
         if (groups.isEmpty()) {
-            // Prázdný widget
             val empty = RemoteViews(context.packageName, R.layout.widget_empty)
             empty.setTextViewText(R.id.empty_text, "Nejsou vybrány žádné produkty")
             empty.setTextColor(R.id.empty_text, fg)
@@ -110,13 +109,11 @@ object WidgetRenderer {
         }
 
         groups.forEachIndexed { index, group ->
-            // Oddělovač mezi skupinami (ne před první)
             if (index > 0) {
+                // Oddělovač – barvu má XML, takže žádný setInt
                 val divider = RemoteViews(context.packageName, R.layout.widget_divider)
-                divider.setInt(R.id.divider, "setBackgroundColor", fg)
                 views.addView(R.id.rows_container, divider)
             }
-            // Řádky skupiny
             group.forEach { product ->
                 val row = buildRow(context, product, settings, state, fg)
                 views.addView(R.id.rows_container, row)
@@ -143,7 +140,7 @@ object WidgetRenderer {
         row.setTextColor(R.id.row_name, fg)
         row.setFloat(R.id.row_name, "setTextSize", settings.fontSizeSp.toFloat())
 
-        // Stará cena v závorce (jen pokud existuje old)
+        // Stará cena v závorce
         val oldText: CharSequence = if (old != null) {
             "(${PriceFormatter.format(old, settings.currency)})"
         } else ""
@@ -151,8 +148,8 @@ object WidgetRenderer {
         row.setTextColor(R.id.row_old, fg)
         row.setFloat(R.id.row_old, "setTextSize", (settings.fontSizeSp - 1).toFloat())
 
-        // Aktuální cena – se superscriptem
-        val curText = PriceSpannable.forEntry(cur, settings.currency)
+        // Aktuální cena – DOČASNĚ bez superscriptu (test)
+        val curText: CharSequence = PriceFormatter.format(cur, settings.currency)
         row.setTextViewText(R.id.row_price, curText)
         row.setTextColor(R.id.row_price, fg)
         row.setFloat(R.id.row_price, "setTextSize", settings.fontSizeSp.toFloat())
