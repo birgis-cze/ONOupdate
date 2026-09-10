@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Firemní barvy Tank ONO -->
+    <color name="ono_yellow">#FFD600</color>
+    <color name="ono_red">#C92200</color>
+
+    <!-- Pozadí a text dle režimu -->
+    <color name="widget_bg_light">#FFD600</color>
+    <color name="widget_fg_light">#C92200</color>
+    <color name="widget_bg_dark">#C92200</color>
+    <color name="widget_fg_dark">#FFD600</color>
+
+    <!-- Bílé/černé neutrální -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

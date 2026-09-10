@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tank ONO</string>
+    <string name="widget_label">Tank ONO ceny</string>
+    <string name="widget_description">Zobrazuje aktuální ceny pohonných hmot Tank ONO</string>
+
+    <!-- Obrazovka nastavení -->
+    <string name="settings_title">Nastavení widgetu</string>
+
+    <string name="section_products">Zobrazované produkty</string>
+    <string name="section_currency">Měna</string>
+    <string name="section_peak">Špička (pravděpodobný čas aktualizace cen)</string>
+    <string name="section_interval">Interval aktualizací špička / mimo špičku</string>
+    <string name="section_font">Velikost písma widgetu</string>
+
+    <string name="group_fuel">Paliva</string>
+    <string name="group_other">Ostatní</string>
+    <string name="group_exchange">Směnárna</string>
+
+    <string name="currency_czk">Kč</string>
+    <string name="currency_eur">€</string>
+
+    <string name="btn_save">Uložit nastavení widgetu</string>
+    <string name="btn_refresh">Aktualizovat data</string>
+
+    <string name="interval_warning">Intervaly kratší než 15 min jsou systémem Androidu omezeny na 15 min.</string>
+    <string name="empty_products_warning">Musíte vybrat alespoň jeden produkt.</string>
+
+    <string name="saved_toast">Nastavení uloženo</string>
+    <string name="refreshing_toast">Aktualizuji data…</string>
+</resources>
