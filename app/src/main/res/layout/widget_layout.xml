@@ -10,9 +10,9 @@
     <!-- HLAVIČKA S LOGEM A ČASEM -->
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="24dp">
+        android:layout_height="32dp">
 
-        <!-- 1. VRSTVA: Pozadí s linkou na celou šířku zarovnanou dolů -->
+        <!-- 1. VRSTVA: Pozadí - linka pod logem i textem -->
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -22,35 +22,39 @@
             android:contentDescription="" />
 
         <!-- 2. VRSTVA: Obsah nad pozadím -->
-        <LinearLayout
+        <RelativeLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal">
+            android:layout_height="match_parent">
 
-            <!-- Logo vlevo s odstupem 1 znaku (8dp), zarovnané dolů -->
+            <!-- Logo vlevo s odstupem 1 znaku (8dp), sedí přímo na lince -->
             <ImageView
+                android:id="@+id/img_logo"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentBottom="true"
                 android:layout_marginStart="8dp"
-                android:src="@drawable/logo_text"
                 android:adjustViewBounds="true"
-                android:scaleType="fitStart"
-                android:gravity="bottom"
+                android:src="@drawable/logo_text"
                 android:contentDescription="ONO text" />
 
-            <!-- Časový údaj vpravo, mírně nahoře -->
+            <!-- Časový údaj vpravo, mírně nahoře nad linkou -->
             <TextView
                 android:id="@+id/tv_time"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentBottom="true"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="4dp"
                 android:text="--:--"
-                android:textSize="9sp"
+                android:textSize="11sp"
                 android:textColor="@color/red"
-                android:textStyle="bold"
-                android:gravity="end|top" />
+                android:textStyle="bold" />
 
-        </LinearLayout>
+        </RelativeLayout>
 
     </FrameLayout>
 
