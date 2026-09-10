@@ -111,7 +111,7 @@ object DataFetcher {
                     label.contains("NATURAL 95", ignoreCase = true) && !label.contains("+", ignoreCase = true) && !label.contains("98", ignoreCase = true) -> n95 = priceCzk
                     label.contains("NATURAL 95+", ignoreCase = true) -> n95p = priceCzk
                     label.contains("NATURAL 98", ignoreCase = true) -> n98 = priceCzk
-                    label.equals("DIESEL", ignoreCase = true) -> diesel = priceCzk
+                    label.equals("DIESEL", ignoreCase = true) && !label.contains("+", ignoreCase = true) -> diesel = priceCzk
                     label.contains("DIESEL+", ignoreCase = true) -> dieselPlus = priceCzk
                     label.equals("LPG", ignoreCase = true) -> lpg = priceCzk
                     label.equals("AD BLUE", ignoreCase = true) -> adBlue = priceCzk

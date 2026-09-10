@@ -63,7 +63,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Zobrazení"
-            android:textSize="18sp"
+            android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="@color/red"
             android:layout_marginTop="16dp" />
@@ -172,7 +172,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Špička"
+                android:text="Špička - obvyklý čas aktualizace cen"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/red" />
@@ -183,12 +183,6 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:layout_marginTop="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="od"
-                    android:textSize="15sp" />
 
                 <Button
                     android:id="@+id/btn_peak_start_minus"
@@ -226,14 +220,6 @@
                     android:minWidth="0dp"
                     android:insetTop="0dp"
                     android:insetBottom="0dp" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="do"
-                    android:textSize="15sp"
-                    android:gravity="end" />
 
                 <Button
                     android:id="@+id/btn_peak_end_minus"
@@ -278,7 +264,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Interval špička / mimo"
+                android:text="Interval aktualizací špička / mimo"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/red"
@@ -327,15 +313,6 @@
                     android:insetTop="0dp"
                     android:insetBottom="0dp" />
 
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="min"
-                    android:textSize="15sp"
-                    android:gravity="end"
-                    android:layout_marginEnd="16dp" />
-
                 <Button
                     android:id="@+id/btn_off_peak_interval_minus"
                     android:layout_width="48dp"
@@ -378,7 +355,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Velikost textu widgetu"
+                android:text="Velikost textu widgetu:"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="@color/red"
@@ -387,7 +364,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:gravity="center_vertical"
                 android:layout_marginTop="6dp">
 
@@ -434,15 +411,6 @@
         <!-- ============================================================ -->
         <!-- SEKCE: VZHLED                                                 -->
         <!-- ============================================================ -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Vzhled"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@color/red"
-            android:layout_marginTop="16dp" />
-
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -474,7 +442,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Uložit"
+                android:text="Uložit nastavení"
                 android:textSize="16sp"
                 android:backgroundTint="@color/red"
                 android:layout_marginEnd="8dp" />
@@ -484,7 +452,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="Aktualizovat nyní"
+                android:text="Aktualizovat data"
                 android:textSize="16sp"
                 android:backgroundTint="@color/red" />
 

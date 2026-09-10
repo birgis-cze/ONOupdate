@@ -34,13 +34,6 @@
 
     </LinearLayout>
 
-    <!-- ČÁRA -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/red"
-        android:layout_marginVertical="2dp" />
-
     <!-- CENY -->
     <LinearLayout
         android:layout_width="match_parent"
