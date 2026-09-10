@@ -23,7 +23,7 @@ android {
 //            keyAlias = "androiddebugkey"
 //            keyPassword = "android"
 //        }
-//    }
+//     }
 
     buildTypes {
         getByName("debug") {
