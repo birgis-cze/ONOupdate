@@ -22,19 +22,27 @@ class UpdateWorker(
         private const val TAG = "UpdateWorker"
         const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "tankono_channel"
+        
+        // ✅ ZABRÁNÍ DUPLICITNÍM BĚHŮM
+        @Volatile
+        private var isRunning = false
     }
 
     override suspend fun doWork(): Result {
         val ctx = applicationContext
-        DebugHelper.log(ctx, TAG, "=== UPDATEWORKER SPUŠTĚN ===")
 
-        return try {
-            // 1. Uložíme předchozí data pro porovnání
+        if (isRunning) {
+            DebugHelper.log(ctx, TAG, "⚠️ UpdateWorker už běží, přeskakuji")
+            return Result.success()
+        }
+        isRunning = true
+
+        try {
+            DebugHelper.log(ctx, TAG, "=== UPDATEWORKER SPUŠTĚN ===")
+
             val previous = DataManager.getPrices(ctx)
-            DebugHelper.log(ctx, TAG, "Předchozí data: N95=${previous?.n95}, Diesel=${previous?.diesel}")
+            DebugHelper.log(ctx, TAG, "Předchozí: N95=${previous?.n95}")
 
-            // 2. Stáhneme nová data přes DataFetcher
-            DebugHelper.log(ctx, TAG, "Stahuji nová data...")
             val success = DataFetcher.fetchAndSave(ctx)
 
             if (!success) {
@@ -42,34 +50,31 @@ class UpdateWorker(
                 return Result.failure()
             }
 
-            DebugHelper.log(ctx, TAG, "✅ Data stažena a uložena")
-
-            // 3. Zkontrolujeme změny a případně notifikujeme
             val current = DataManager.getPrices(ctx)
-            DebugHelper.log(ctx, TAG, "Nová data: N95=${current?.n95}, Diesel=${current?.diesel}")
+            DebugHelper.log(ctx, TAG, "Nové: N95=${current?.n95}, NM=${current?.nm}, EUR=${current?.euro}")
 
             if (previous != null && current != null) {
                 checkAndNotify(ctx, previous, current)
             }
 
-            // 4. Aktualizujeme widgety
-            DebugHelper.log(ctx, TAG, "Aktualizuji widgety...")
+            // ✅ updateAll na Main
             withContext(Dispatchers.Main) {
                 try {
                     TankONOWidget().updateAll(ctx)
                     DebugHelper.log(ctx, TAG, "✅ Widgety aktualizovány")
                 } catch (e: Exception) {
-                    DebugHelper.log(ctx, TAG, "❌ Chyba updateAll: ${e.message}")
+                    DebugHelper.log(ctx, TAG, "❌ Chyba: ${e.message}")
                 }
             }
 
-            DebugHelper.log(ctx, TAG, "=== ✅ UPDATEWORKER ÚSPĚŠNĚ DOKONČEN ===")
-            Result.success()
+            DebugHelper.log(ctx, TAG, "=== ✅ HOTOVO ===")
+            return Result.success()
 
         } catch (e: Exception) {
             DebugHelper.log(ctx, TAG, "❌ CHYBA: ${e.message}")
-            e.printStackTrace()
-            Result.failure()
+            return Result.failure()
+        } finally {
+            isRunning = false
         }
     }
 
@@ -89,11 +94,8 @@ class UpdateWorker(
         checkChange(previous.euro, current.euro, "EUR", diff)?.let { changes.add(it) }
 
         if (changes.isNotEmpty()) {
-            DebugHelper.log(context, TAG, "Změny cen: ${changes.joinToString()}")
             DataManager.saveChangeNotified(context, true)
             showNotification(context, changes)
-        } else {
-            DebugHelper.log(context, TAG, "Žádné změny cen")
         }
     }
 

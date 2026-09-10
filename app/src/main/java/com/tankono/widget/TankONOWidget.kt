@@ -38,10 +38,10 @@ import java.util.Locale
 
 class TankONOWidget : GlanceAppWidget() {
 
-    // ✅ SPRÁVNÉ ROZMĚRY HLAVIČKY
-    private val HEADER_HEIGHT = 57.dp
-    private val LOGO_WIDTH = 155.dp
-    private val LOGO_HEIGHT = 57.dp
+    // ✅ POLOVIČNÍ VÝŠKA (57/2 ≈ 28)
+    private val HEADER_HEIGHT = 28.dp
+    private val LOGO_WIDTH = 78.dp
+    private val LOGO_HEIGHT = 28.dp
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = DataManager.getPrices(context)
@@ -52,10 +52,9 @@ class TankONOWidget : GlanceAppWidget() {
         val textSize = MainActivity.getWidgetTextSize(context)
 
         DebugHelper.log(context, "TankONOWidget",
-            "provideGlance: N95=${data?.n95}, NM=${data?.nm}, EUR=${data?.euro}, textSize=$textSize")
+            "provideGlance: NM=${data?.nm}, EUR=${data?.euro}, keys=$visibleKeys, textSize=$textSize")
 
         if (data == null) {
-            DebugHelper.log(context, "TankONOWidget", "Data chybí – spouštím UpdateWorker")
             try {
                 val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
                 WorkManager.getInstance(context).enqueue(workRequest)
@@ -93,16 +92,12 @@ class TankONOWidget : GlanceAppWidget() {
                 .padding(3.dp)
                 .clickable(actionRunCallback<UpdateCallback>())
         ) {
-            // ============================================================
-            // HLAVIČKA – vrstvená (linka na pozadí, logo vlevo, čas vpravo)
-            // ============================================================
+            // HLAVIČKA
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .height(HEADER_HEIGHT)
             ) {
-                // ✅ VRSTVA 1: Linka natažená přes CELOU ŠÍŘKU (1×57 → natažená)
-                // Zarovnaná DOLŮ
                 Image(
                     provider = ImageProvider(R.drawable.logo_linka),
                     contentDescription = "Linka",
@@ -111,15 +106,12 @@ class TankONOWidget : GlanceAppWidget() {
                         .height(HEADER_HEIGHT)
                 )
 
-                // ✅ VRSTVA 2: Logo 155×57 vlevo + čas vpravo
-                // Zarovnané NAHORU (přes celou výšku)
                 Row(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .padding(start = 0.dp, end = 4.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
-                    // Logo – přesně 155×57
                     Image(
                         provider = ImageProvider(R.drawable.logo_text),
                         contentDescription = "ONO",
@@ -130,7 +122,6 @@ class TankONOWidget : GlanceAppWidget() {
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
-                    // Čas – vpravo dole
                     Text(
                         text = buildTimestampText(lastChangeDate, lastUpdate),
                         style = TextStyle(
@@ -144,7 +135,7 @@ class TankONOWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(2.dp))
 
-            // CENY
+            // CENY – bez kontroly n95
             if (data != null) {
                 if ("n95" in visibleKeys) PriceRow("Natural 95", data.n95, data.n95Trend, red, textSize)
                 if ("n95p" in visibleKeys) PriceRow("Natural 95+", data.n95p, data.n95pTrend, red, textSize)
@@ -241,7 +232,7 @@ class TankONOWidgetReceiver : GlanceAppWidgetReceiver() {
         appWidgetIds: IntArray
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
-        DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate volán (${appWidgetIds.size} widgetů)")
+        DebugHelper.log(context, "TankONOWidgetReceiver", "onUpdate (${appWidgetIds.size})")
 
         try {
             val workRequest = OneTimeWorkRequestBuilder<UpdateWorker>().build()
