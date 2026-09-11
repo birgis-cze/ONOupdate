@@ -251,7 +251,7 @@ private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = int
 
 /**
  * Vytvoří [ShaderBrush] z drawable – obrázek se opakuje doprava (REPEAT),
- * svisle se roztáhne (CLAMP). Určeno pro úzké dlaždice (např. logo_linka).
+ * svisle se roztáhne (CLAMP). Určeno pro 1×N px dlaždice (např. logo_linka).
  */
 @Composable
 private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
@@ -284,17 +284,15 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth(0.9f)
             .height(headerHeight)
-            // ── logo_linka jako pozadí celého boxu (opakuje se doprava) ──
+            // ── Pozadí: logo_linka opakovaná doprava ──
             .background(tiledBrushFromResource(R.drawable.logo_linka))
     ) {
-        // ── Logo ONO vlevo nahoře – překryje linku pod sebou ──
-        // POZN.: logo_text by měl být jen "ONO" bez linky.
-        //        Pokud obsahuje linku, uvidíš ji dvakrát.
+        // ── Popředí: logo_text vlevo ──
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
-                .align(Alignment.TopStart)
+                .align(Alignment.CenterStart)
                 .fillMaxHeight()
                 .wrapContentWidth(),
             contentScale = ContentScale.Fit
@@ -304,7 +302,7 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
         Text(
             text = "Nastavení",
             color = OnoRed,
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .align(Alignment.TopEnd)
