@@ -325,6 +325,7 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .matchParentSize(),
             contentScale = ContentScale.Fit
+            alignment = Alignment.CenterStart
         )
 
         // ═══════════════════════════════════════════════════════════════
