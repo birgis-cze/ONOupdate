@@ -59,13 +59,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.ShaderBrush
@@ -79,7 +77,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import cz.tankono.widget.data.model.Currency
@@ -254,7 +251,7 @@ private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = int
 
 /**
  * Vytvoří [ShaderBrush] z drawable – obrázek se opakuje doprava (REPEAT),
- * svisle se roztáhne (CLAMP). Určeno pro 1×N px dlaždice (např. logo_linka).
+ * svisle se roztáhne (CLAMP). Určeno pro úzké dlaždice (např. logo_linka).
  */
 @Composable
 private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
@@ -277,31 +274,36 @@ private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
 
 
 // =============================================================================
-// HLAVIČKA (top-level @Composable)
+// HLAVIČKA
 // =============================================================================
+
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
     val headerHeight = 57.dp
-    val logoTextWidth = 155.dp
+    val lineThickness = 3.dp      // tloušťka každé linky
+    val lineGap = 2.dp            // mezera mezi dvěma linkami
+    val lineBlockHeight = lineThickness * 2 + lineGap   // celková výška bloku linek
 
     Box(
         modifier = modifier
             .fillMaxWidth(0.9f)
             .height(headerHeight)
-            // Pozadí: 1px dlaždice opakovaná doprava na plnou šířku a výšku
-            .background(tiledBrushFromResource(R.drawable.logo_linka))
     ) {
-        // Logo text – vlevo nahoře, 155×57, bez opakování
+        // ── Logo ONO vlevo (nad linkou) ──
+        // POZN.: použij oříznutý obrázek bez linky (logo_ono).
+        //        Pokud máš jen logo_text s linkou, uvidíš linku dvakrát.
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .size(width = logoTextWidth, height = headerHeight),
+                .padding(bottom = lineBlockHeight)
+                .fillMaxHeight()
+                .wrapContentWidth(),
             contentScale = ContentScale.Fit
         )
 
-        // „Nastavení" – vpravo nahoře
+        // ── "Nastavení" vpravo (nad linkou) ──
         Text(
             text = "Nastavení",
             color = OnoRed,
@@ -309,8 +311,32 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(end = 16.dp, top = 4.dp)
+                .padding(end = 8.dp, top = 4.dp, bottom = lineBlockHeight)
         )
+
+        // ── Dvojitá linka dole přes celou šířku ──
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+        ) {
+            // horní linka
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(lineThickness)
+                    .background(tiledBrushFromResource(R.drawable.logo_linka))
+            )
+            // mezera
+            Spacer(Modifier.height(lineGap))
+            // dolní linka
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(lineThickness)
+                    .background(tiledBrushFromResource(R.drawable.logo_linka))
+            )
+        }
     }
 }
 
@@ -360,7 +386,9 @@ private fun SettingsScreen(
 
             // ============ HLAVIČKA ============
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 OnoHeader()
