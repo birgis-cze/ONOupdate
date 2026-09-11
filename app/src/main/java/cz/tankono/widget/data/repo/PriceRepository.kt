@@ -10,14 +10,11 @@ import cz.tankono.widget.data.model.PriceSnapshot
 import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.remote.TankOnoScraper
+import cz.tankono.widget.util.AppLogger
 import kotlinx.coroutines.flow.first
 
 private val Context.priceDataStore by preferencesDataStore(name = "tankono_prices")
 
-/**
- * Ukládá dva snapshoty – aktuální ("new") a předchozí ("old").
- * Při každém úspěšném stažení nového ceníku se "new" posune do "old".
- */
 class PriceRepository(private val context: Context) {
 
     private object Keys {
@@ -30,22 +27,35 @@ class PriceRepository(private val context: Context) {
         val DATA_NEW      = stringPreferencesKey("data_new")
     }
 
-    /**
-     * Zkontroluje, zda je na stránce aktualit novější záznam než ten uložený.
-     * Pokud ano, stáhne ceník, posune old ← new, uloží nový snapshot.
-     * Vrací true, když se data změnila (nový ceník).
-     */
     suspend fun refresh(): Boolean {
-        val news = TankOnoScraper.fetchLatestNewsDate() ?: return false
+        AppLogger.d("--- refresh() START ---")
+
+        AppLogger.d("Stahuji datum z aktualit…")
+        val news = TankOnoScraper.fetchLatestNewsDate()
+        AppLogger.d("Datum z aktualit: $news")
+
+        if (news == null) {
+            AppLogger.w("Nepodařilo se získat datum z aktualit")
+            return false
+        }
+
         val stored = context.priceDataStore.data.first()[Keys.PUBLISHED_NEW]
+        AppLogger.d("Uložené datum: $stored")
 
-        // Pokud máme stejné datum, nic se nezměnilo
-        if (stored != null && news == stored) return false
+        if (stored != null && news == stored) {
+            AppLogger.d("Datum je stejné – ceník se nezměnil")
+            return false
+        }
 
-        val snapshot = TankOnoScraper.fetchPrices() ?: return false
+        AppLogger.i("Nový ceník! Stahuji…")
+        val snapshot = TankOnoScraper.fetchPrices()
+        if (snapshot == null) {
+            AppLogger.w("Nepodařilo se stáhnout ceník")
+            return false
+        }
+        AppLogger.d("Ceník stažen: ${snapshot.entries.size} položek")
 
         context.priceDataStore.edit { p ->
-            // Posun new → old
             val oldPublished = p[Keys.PUBLISHED_NEW]
             val oldFetched   = p[Keys.FETCHED_NEW]
             val oldData      = p[Keys.DATA_NEW]
@@ -54,32 +64,39 @@ class PriceRepository(private val context: Context) {
             if (oldFetched   != null) p[Keys.FETCHED_OLD]   = oldFetched
             if (oldData      != null) p[Keys.DATA_OLD]      = oldData
 
-            // Zapsat nová data
             p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: news
             p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
             p[Keys.DATA_NEW]      = serialize(snapshot)
         }
+        AppLogger.i("Ceník uložen do DataStore")
         return true
     }
 
     /**
-     * Vynutí stažení ceníku bez ohledu na datum.
-     * Používá se pro tlačítko "Aktualizovat data" v nastavení.
-     * Vrací true, když se něco stáhlo.
+     * Vždy zkusí stáhnout ceník. Pokud se datum nezměnilo, jen aktualizuje čas fetchedAt.
      */
     suspend fun forceRefresh(): Boolean {
-        val snapshot = TankOnoScraper.fetchPrices() ?: return false
+        AppLogger.d("--- forceRefresh() START ---")
+
+        val snapshot = TankOnoScraper.fetchPrices()
+        if (snapshot == null) {
+            AppLogger.w("forceRefresh: nepodařilo se stáhnout ceník")
+            return false
+        }
+
         val stored = context.priceDataStore.data.first()[Keys.PUBLISHED_NEW]
 
-        // Pokud datum zůstává stejné, jen aktualizujeme "fetched_new" čas
+        // Stejné datum – jen aktualizuj čas fetchedAt
         if (stored != null && stored == snapshot.publishedAt) {
+            AppLogger.d("forceRefresh: datum stejné, aktualizuji jen fetchedAt")
             context.priceDataStore.edit { p ->
                 p[Keys.FETCHED_NEW] = snapshot.fetchedAt
             }
             return false
         }
 
-        // Jinak posun old ← new a ulož nová data
+        // Nové datum – posun old ← new
+        AppLogger.i("forceRefresh: nová data, posouvám old ← new")
         context.priceDataStore.edit { p ->
             val oldPublished = p[Keys.PUBLISHED_NEW]
             val oldFetched   = p[Keys.FETCHED_NEW]
@@ -96,21 +113,14 @@ class PriceRepository(private val context: Context) {
         return true
     }
 
-    /** Načte aktuální stav z DataStore. */
     suspend fun loadState(): PriceState {
         val p = context.priceDataStore.data.first()
-        return PriceState(
-            current  = deserialize(p[Keys.DATA_NEW], p[Keys.PUBLISHED_NEW], p[Keys.FETCHED_NEW] ?: 0L),
-            previous = deserialize(p[Keys.DATA_OLD], p[Keys.PUBLISHED_OLD], p[Keys.FETCHED_OLD]   ?: 0L)
-        )
+        val current = deserialize(p[Keys.DATA_NEW], p[Keys.PUBLISHED_NEW], p[Keys.FETCHED_NEW] ?: 0L)
+        val previous = deserialize(p[Keys.DATA_OLD], p[Keys.PUBLISHED_OLD], p[Keys.FETCHED_OLD] ?: 0L)
+        AppLogger.d("loadState: current=${current?.entries?.size ?: 0}, previous=${previous?.entries?.size ?: 0}")
+        return PriceState(current = current, previous = previous)
     }
 
-    // ---------- Serializace ----------
-
-    /**
-     * Formát: "id:czk:eur|id:czk:eur|...#published"
-     * Prázdná hodnota = null.
-     */
     private fun serialize(s: PriceSnapshot): String {
         val body = s.entries.values.joinToString("|") { e ->
             "${e.product.id}:${e.czk ?: -1}:${e.eur ?: -1}"

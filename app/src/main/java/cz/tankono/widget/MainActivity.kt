@@ -138,9 +138,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun refreshNow() {
-        AppLogger.i("Manuální refresh")
+        AppLogger.i("Manuální refresh – forceRefresh")
         Toast.makeText(this, getString(R.string.refreshing_toast), Toast.LENGTH_SHORT).show()
-        WorkScheduler.runNow(this)
+        lifecycleScope.launch {
+            try {
+                val repo = cz.tankono.widget.data.repo.PriceRepository(this@MainActivity)
+                repo.forceRefresh()
+                cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this@MainActivity)
+            } catch (t: Throwable) {
+                AppLogger.e("Chyba při forceRefresh", t)
+            }
+        }
     }
 
     private fun exportLog() {
