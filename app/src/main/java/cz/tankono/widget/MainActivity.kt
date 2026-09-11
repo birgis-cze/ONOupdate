@@ -242,46 +242,48 @@ private fun SettingsScreen(
         ) {
 
             // ============ HLAVIČKA ============
+            val linkaBitmap = imageResource(id = R.drawable.logo_linka)
+            val repeatingLinkaBrush = remember(linkaBitmap) {
+                ShaderBrush(
+                    ImageShader(
+                        image = linkaBitmap,
+                        tileModeX = TileMode.Repeated, // Opakovat vedle sebe
+                        tileModeY = TileMode.Clamp    // Neopakovat svisle
+                    )
+                )
+            }
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally // Centruje Box na středu obrazovky
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f) // Šířka 90%
-                        .height(60.dp)
+                        .fillMaxWidth(0.9f)
+                        .height(57.dp)
+                        .background(repeatingLinkaBrush) // Vrstva 0: logo_linka jako opakované pozadí
                 ) {
-                    // Vrstva 0: Pozadí (logo_linka) – roztažené přes celou šířku boxu
+                    // Vrstva 1 vlevo: logo_text – zarovnané dole vlevo s odsazením o 1 znak
                     Image(
-                        painter = painterResource(id = R.drawable.logo_linka),
-                        contentDescription = null,
+                        painter = painterResource(id = R.drawable.logo_text),
+                        contentDescription = "Tank ONO",
                         modifier = Modifier
-                            .matchParentSize()
-                            .align(Alignment.BottomStart),
-                        contentScale = ContentScale.FillWidth 
+                            .align(Alignment.BottomStart)
+                            .padding(start = 12.dp)
+                            .height(57.dp),
+                        contentScale = ContentScale.Fit
                     )
 
-                    // Vrstva 1 vlevo: logo_text – dole vlevo s odsazením
-                    //Image(
-                    //    painter = painterResource(id = R.drawable.logo_text),
-                    //    contentDescription = "Tank ONO",
-                    //    modifier = Modifier
-                    //        .align(Alignment.BottomStart)
-                    //        .padding(start = 12.dp)
-                    //        .height(60.dp),
-                    //    contentScale = ContentScale.Fit
-                    //)
-
                     // Vrstva 1 vpravo: "Nastavení" – horní pravý roh
-                    //Text(
-                    //    text =  "Nastavení",
-                    //    color = OnoRed,
-                    //    fontSize = 18.sp,
-                    //    fontWeight = FontWeight.Bold,
-                    //    modifier = Modifier
-                    //        .align(Alignment.TopEnd)
-                    //        .padding(end = 16.dp, top = 8.dp)
-                    //)
+                    Text(
+                        text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
+                        color = OnoRed,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = 16.dp, top = 4.dp)
+                    )
                 }
             }
 
