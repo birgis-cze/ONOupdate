@@ -242,13 +242,24 @@ private fun SettingsScreen(
 
             // ---- Měna ----
             SettingsCard {
-                SectionTitle("Měna")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CurrencyButton("Kč", s.currency == Currency.CZK) {
-                        state.value = s.copy(currency = Currency.CZK)
-                    }
-                    CurrencyButton("€", s.currency == Currency.EUR) {
-                        state.value = s.copy(currency = Currency.EUR)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Měna:",
+                        color = OnoRed,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CurrencyButton("Kč", s.currency == Currency.CZK) {
+                            state.value = s.copy(currency = Currency.CZK)
+                        }
+                        CurrencyButton("€", s.currency == Currency.EUR) {
+                            state.value = s.copy(currency = Currency.EUR)
+                        }
                     }
                 }
             }
@@ -399,6 +410,10 @@ private fun SectionTitle(text: String) {
     )
 }
 
+/**
+ * Řádek se dvěma steppery vedle sebe.
+ * Mezi nimi je vždy alespoň 16 dp mezera.
+ */
 @Composable
 private fun TwoSteppersRow(
     value1: String,
@@ -414,10 +429,14 @@ private fun TwoSteppersRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         NumberStepper(value = value1, onMinus = onMinus1, onPlus = onPlus1)
+        Spacer(Modifier.width(16.dp))
         NumberStepper(value = value2, onMinus = onMinus2, onPlus = onPlus2)
     }
 }
 
+/**
+ * Jeden stepper: [−]  hodnota  [+]
+ */
 @Composable
 private fun NumberStepper(
     value: String,
@@ -486,6 +505,16 @@ private fun ProductGroup(
 ) {
     Column {
         Text(title, color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+
+        // Červená linka pod nadpisem (cca 40 % šířky, zarovnaná vlevo)
+        Box(
+            modifier = Modifier
+                .padding(top = 2.dp, bottom = 6.dp)
+                .fillMaxWidth(0.4f)
+                .height(2.dp)
+                .background(OnoRed)
+        )
+
         products.forEach { product ->
             val checked = product in settings.visibleProducts
             Row(
@@ -529,10 +558,11 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     val fg = if (selected) OnoYellow else OnoRed
     Box(
         modifier = Modifier
+            .width(60.dp)
+            .height(44.dp)
             .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
             .background(bg, RoundedCornerShape(8.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 24.dp, vertical = 8.dp),
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
