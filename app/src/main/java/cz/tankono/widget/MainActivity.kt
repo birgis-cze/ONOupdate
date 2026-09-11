@@ -244,28 +244,31 @@ private fun SettingsScreen(
             // ============ HLAVIČKA ============
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
+                    .fillMaxWidth(0.9f) // Šířka 90% plochy
+                    .wrapContentWidth(Alignment.CenterHorizontally) // Uprostřed
+                    .height(60.dp) // Celý box vysoký 60.dp
             ) {
-                // Vrstva 0: logo_linka – DOLE, přes celou šířku
+                // Vrstva 0: Pozadí (logo_linka) – přes celou šířku boxu, dole
                 Image(
                     painter = painterResource(id = R.drawable.logo_linka),
                     contentDescription = null,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(60.dp),
-                    contentScale = ContentScale.FillWidth
+                        .matchParentSize()
+                        .align(Alignment.BottomStart),
+                    // Použijte ContentScale.FillWidth pro roztažení, 
+                    // nebo ContentScale.Repeat pro opakování vedle sebe
+                    contentScale = ContentScale.FillWidth 
                 )
 
-                // Vrstva 1 vlevo: logo_text – DOLE VLEVO (na lince)
+                // Vrstva 1 vlevo: logo_text – dole vlevo, odsazené o cca 1 znak (12.dp), výška 60
                 Image(
                     painter = painterResource(id = R.drawable.logo_text),
                     contentDescription = "Tank ONO",
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 16.dp)
-                        .height(60.dp)
+                        .padding(start = 12.dp) // Odsazení zleva o 1 znak
+                        .height(60.dp),
+                    contentScale = ContentScale.Fit // Zachová poměr stran, aby se 155x57 px nedeformovalo
                 )
 
                 // Vrstva 1 vpravo: "Nastavení" – HORNÍ PRAVÝ roh
@@ -279,7 +282,7 @@ private fun SettingsScreen(
                         .padding(end = 16.dp, top = 8.dp)
                 )
             }
-
+            
             // ============ SCROLLOVATELNÝ OBSAH ============
             Column(
                 modifier = Modifier
@@ -329,7 +332,7 @@ private fun SettingsScreen(
                                 state.value = s.copy(currency = Currency.EUR)
                             }
                         }
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(10.dp))
                     }
                 }
 
