@@ -59,7 +59,6 @@ object WidgetRenderer {
                 AppLogger.i("Widget $widgetId úspěšně vykreslen")
             } catch (t: Throwable) {
                 AppLogger.e("Chyba při renderu widgetu $widgetId", t)
-                // Fallback
                 try {
                     val fallback = RemoteViews(context.packageName, R.layout.widget_tankono)
                     fallback.setTextViewText(R.id.header_datetime, "--")
@@ -80,16 +79,13 @@ object WidgetRenderer {
         val night = isNight(context)
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
-        AppLogger.d("Night mode: $night, bg=${Integer.toHexString(bg)}, fg=${Integer.toHexString(fg)}")
 
         val views = RemoteViews(context.packageName, R.layout.widget_tankono)
 
         views.setInt(R.id.widget_root, "setBackgroundColor", bg)
-        AppLogger.d("Pozadí nastaveno")
 
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
-        AppLogger.d("Klik nastaven")
 
         // Hlavička
         val published = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
@@ -102,8 +98,7 @@ object WidgetRenderer {
         views.setTextColor(R.id.header_datetime, fg)
         AppLogger.d("Hlavička: '$headerText'")
 
-        // Řádky
-        AppLogger.d("Volám removeAllViews…")
+        // Vyčistit rows_container
         try {
             views.removeAllViews(R.id.rows_container)
             AppLogger.d("removeAllViews OK")
@@ -133,7 +128,7 @@ object WidgetRenderer {
 
         groups.forEachIndexed { index, group ->
             if (index > 0) {
-                AppLogger.d("Přidávám divider ${index}")
+                AppLogger.d("Přidávám divider $index")
                 try {
                     val divider = RemoteViews(context.packageName, R.layout.widget_divider)
                     views.addView(R.id.rows_container, divider)
