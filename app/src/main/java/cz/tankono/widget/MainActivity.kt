@@ -11,10 +11,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -224,12 +226,13 @@ private fun SettingsScreen(
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
 
-            // ============ HLAVIČKA (bez paddingu, aby linka šla přes celou šířku) ============
+            // ============ HLAVIČKA ============
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(64.dp)
             ) {
+                // Vrstva 0: logo_linka – dole, přes celou šířku
                 Image(
                     painter = painterResource(id = R.drawable.logo_linka),
                     contentDescription = null,
@@ -240,15 +243,17 @@ private fun SettingsScreen(
                     contentScale = ContentScale.FillWidth
                 )
 
+                // Vrstva 1 vlevo: logo_text – dole vlevo
                 Image(
                     painter = painterResource(id = R.drawable.logo_text),
                     contentDescription = "Tank ONO",
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 16.dp)
+                        .padding(start = 16.dp, bottom = 4.dp)
                         .height(40.dp)
                 )
 
+                // Vrstva 1 vpravo: "Nastavení" – nahoře vpravo
                 Text(
                     text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
                     color = OnoRed,
@@ -315,51 +320,85 @@ private fun SettingsScreen(
                 // ---- Špička ----
                 SettingsCard {
                     SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
-                    TwoSteppersRow(
-                        value1 = formatTime(s.peakStartMinutes),
-                        value2 = formatTime(s.peakEndMinutes),
-                        onMinus1 = {
-                            val newVal = (s.peakStartMinutes - 15 + 1440) % 1440
-                            state.value = s.copy(peakStartMinutes = newVal)
-                        },
-                        onPlus1 = {
-                            val newVal = (s.peakStartMinutes + 15) % 1440
-                            state.value = s.copy(peakStartMinutes = newVal)
-                        },
-                        onMinus2 = {
-                            val newVal = (s.peakEndMinutes - 15 + 1440) % 1440
-                            state.value = s.copy(peakEndMinutes = newVal)
-                        },
-                        onPlus2 = {
-                            val newVal = (s.peakEndMinutes + 15) % 1440
-                            state.value = s.copy(peakEndMinutes = newVal)
-                        }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        NumberStepper(
+                            value = formatTime(s.peakStartMinutes),
+                            onMinus = {
+                                val newVal = (s.peakStartMinutes - 15).coerceAtLeast(0)
+                                state.value = s.copy(peakStartMinutes = newVal)
+                            },
+                            onPlus = {
+                                val newVal = (s.peakStartMinutes + 15).coerceAtMost(1440)
+                                state.value = s.copy(peakStartMinutes = newVal)
+                            },
+                            canMinus = s.peakStartMinutes > 0,
+                            canPlus = s.peakStartMinutes < 1440,
+                            onMin = { state.value = s.copy(peakStartMinutes = 0) },
+                            onMax = { state.value = s.copy(peakStartMinutes = 1440) }
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        NumberStepper(
+                            value = formatTime(s.peakEndMinutes),
+                            onMinus = {
+                                val newVal = (s.peakEndMinutes - 15).coerceAtLeast(0)
+                                state.value = s.copy(peakEndMinutes = newVal)
+                            },
+                            onPlus = {
+                                val newVal = (s.peakEndMinutes + 15).coerceAtMost(1440)
+                                state.value = s.copy(peakEndMinutes = newVal)
+                            },
+                            canMinus = s.peakEndMinutes > 0,
+                            canPlus = s.peakEndMinutes < 1440,
+                            onMin = { state.value = s.copy(peakEndMinutes = 0) },
+                            onMax = { state.value = s.copy(peakEndMinutes = 1440) }
+                        )
+                    }
                 }
 
                 // ---- Interval ----
                 SettingsCard {
                     SectionTitle("Interval aktualizací špička / mimo špičku (min)")
-                    TwoSteppersRow(
-                        value1 = s.intervalPeakMin.toString(),
-                        value2 = s.intervalOffPeakMin.toString(),
-                        onMinus1 = {
-                            val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
-                            state.value = s.copy(intervalPeakMin = newVal)
-                        },
-                        onPlus1 = {
-                            val newVal = (s.intervalPeakMin + 5).coerceAtMost(180)
-                            state.value = s.copy(intervalPeakMin = newVal)
-                        },
-                        onMinus2 = {
-                            val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
-                            state.value = s.copy(intervalOffPeakMin = newVal)
-                        },
-                        onPlus2 = {
-                            val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(720)
-                            state.value = s.copy(intervalOffPeakMin = newVal)
-                        }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        NumberStepper(
+                            value = s.intervalPeakMin.toString(),
+                            onMinus = {
+                                val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
+                                state.value = s.copy(intervalPeakMin = newVal)
+                            },
+                            onPlus = {
+                                val newVal = (s.intervalPeakMin + 5).coerceAtMost(360)
+                                state.value = s.copy(intervalPeakMin = newVal)
+                            },
+                            canMinus = s.intervalPeakMin > 15,
+                            canPlus = s.intervalPeakMin < 360,
+                            onMin = { state.value = s.copy(intervalPeakMin = 15) },
+                            onMax = { state.value = s.copy(intervalPeakMin = 360) }
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        NumberStepper(
+                            value = s.intervalOffPeakMin.toString(),
+                            onMinus = {
+                                val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
+                                state.value = s.copy(intervalOffPeakMin = newVal)
+                            },
+                            onPlus = {
+                                val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(360)
+                                state.value = s.copy(intervalOffPeakMin = newVal)
+                            },
+                            canMinus = s.intervalOffPeakMin > 15,
+                            canPlus = s.intervalOffPeakMin < 360,
+                            onMin = { state.value = s.copy(intervalOffPeakMin = 15) },
+                            onMax = { state.value = s.copy(intervalOffPeakMin = 360) }
+                        )
+                    }
                 }
 
                 // ---- Velikost písma ----
@@ -382,9 +421,13 @@ private fun SettingsScreen(
                                 state.value = s.copy(fontSizeSp = newVal)
                             },
                             onPlus = {
-                                val newVal = (s.fontSizeSp + 1).coerceAtMost(25)
+                                val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
                                 state.value = s.copy(fontSizeSp = newVal)
-                            }
+                            },
+                            canMinus = s.fontSizeSp > 10,
+                            canPlus = s.fontSizeSp < 30,
+                            onMin = { state.value = s.copy(fontSizeSp = 10) },
+                            onMax = { state.value = s.copy(fontSizeSp = 30) }
                         )
                     }
                 }
@@ -421,6 +464,18 @@ private fun SettingsScreen(
                 ) {
                     Text("Exportovat log")
                 }
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    "Tank ONO widget v1.0 · autor: birgis",
+                    color = OnoRed.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
@@ -454,51 +509,49 @@ private fun SectionTitle(text: String) {
     )
 }
 
-@Composable
-private fun TwoSteppersRow(
-    value1: String,
-    value2: String,
-    onMinus1: () -> Unit,
-    onPlus1: () -> Unit,
-    onMinus2: () -> Unit,
-    onPlus2: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        NumberStepper(value = value1, onMinus = onMinus1, onPlus = onPlus1)
-        Spacer(Modifier.width(16.dp))
-        NumberStepper(value = value2, onMinus = onMinus2, onPlus = onPlus2)
-    }
-}
-
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NumberStepper(
     value: String,
     onMinus: () -> Unit,
-    onPlus: () -> Unit
+    onPlus: () -> Unit,
+    canMinus: Boolean = true,
+    canPlus: Boolean = true,
+    onMin: (() -> Unit)? = null,
+    onMax: (() -> Unit)? = null
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        // Tlačítko −
         Box(
             modifier = Modifier
                 .size(44.dp)
                 .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .clickable { onMinus() },
+                .then(
+                    if (canMinus && onMin != null) {
+                        Modifier.combinedClickable(
+                            onClick = onMinus,
+                            onLongClick = onMin
+                        )
+                    } else if (canMinus) {
+                        Modifier.clickable { onMinus() }
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.Default.Remove,
-                contentDescription = "Mínus",
-                tint = OnoRed,
-                modifier = Modifier.size(20.dp)
-            )
+            if (canMinus) {
+                Icon(
+                    Icons.Default.Remove,
+                    contentDescription = "Mínus",
+                    tint = OnoRed,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
+        // Hodnota
         Box(
             modifier = Modifier
                 .width(80.dp)
@@ -514,19 +567,31 @@ private fun NumberStepper(
             )
         }
 
+        // Tlačítko +
         Box(
             modifier = Modifier
                 .size(44.dp)
                 .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .clickable { onPlus() },
+                .then(
+                    if (canPlus && onMax != null) {
+                        Modifier.combinedClickable(
+                            onClick = onPlus,
+                            onLongClick = onMax
+                        )
+                    } else if (canPlus) {
+                        Modifier.clickable { onPlus() }
+                    } else Modifier
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = "Plus",
-                tint = OnoRed,
-                modifier = Modifier.size(20.dp)
-            )
+            if (canPlus) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Plus",
+                    tint = OnoRed,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
@@ -592,7 +657,7 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     val fg = if (selected) OnoYellow else OnoRed
     Box(
         modifier = Modifier
-            .width(80.dp)
+            .width(90.dp)
             .height(44.dp)
             .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
             .background(bg, RoundedCornerShape(8.dp))
@@ -604,6 +669,7 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
 }
 
 private fun formatTime(minutes: Int): String {
+    if (minutes >= 1440) return "24:00"
     val h = (minutes / 60) % 24
     val m = minutes % 60
     return "%d:%02d".format(h, m)

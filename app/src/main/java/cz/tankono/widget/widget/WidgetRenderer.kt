@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.view.View
 import android.widget.RemoteViews
 import cz.tankono.widget.R
 import cz.tankono.widget.data.model.PriceFormatter
@@ -32,12 +31,6 @@ object WidgetRenderer {
     private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()
     private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
-
-    private val ROW_IDS = intArrayOf(
-        R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
-        R.id.row_5, R.id.row_6, R.id.row_7, R.id.row_8, R.id.row_9,
-        R.id.row_10
-    )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -74,6 +67,7 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
+        // Hlavička
         val published = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetched = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
@@ -82,14 +76,24 @@ object WidgetRenderer {
         views.setTextViewText(R.id.header_datetime, "$published ($fetched)")
         views.setTextColor(R.id.header_datetime, fg)
 
+        // Všechny produkty jako jeden text
         val visible = Product.entries.filter { it in settings.visibleProducts }
+        val groups = listOf(
+            Product.Kind.FUEL,
+            Product.Kind.OTHER,
+            Product.Kind.EXCHANGE
+        ).map { kind -> visible.filter { it.kind == kind } }
+            .filter { it.isNotEmpty() }
 
-        ROW_IDS.forEachIndexed { index, rowId ->
-            if (index < visible.size) {
-                val product = visible[index]
+        val sb = StringBuilder()
+        groups.forEachIndexed { gIndex, group ->
+            if (gIndex > 0) {
+                sb.append("\n")
+            }
+            group.forEachIndexed { pIndex, product ->
+                if (pIndex > 0) sb.append("\n")
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
-
                 val name = product.displayName
                 val oldText = if (old != null) "(${PriceFormatter.format(old, settings.currency)})" else ""
                 val curText = PriceFormatter.format(cur, settings.currency)
@@ -98,23 +102,20 @@ object WidgetRenderer {
                     val curVal = PriceFormatter.valueFor(cur, settings.currency)
                     when {
                         oldVal == null || curVal == null -> ""
-                        curVal > oldVal -> "▲"
-                        curVal < oldVal -> "▼"
-                        else -> "="
+                        curVal > oldVal -> " ▲"
+                        curVal < oldVal -> " ▼"
+                        else -> " ="
                     }
                 } else ""
-
-                val text = "$name   $oldText   $curText  $arrow"
-
-                views.setTextViewText(rowId, text)
-                views.setTextColor(rowId, fg)
-                views.setFloat(rowId, "setTextSize", settings.fontSizeSp.toFloat())
-                views.setViewVisibility(rowId, View.VISIBLE)
-                AppLogger.d("Řádek $index: $text")
-            } else {
-                views.setViewVisibility(rowId, View.GONE)
+                sb.append("$name   $oldText  $curText$arrow")
             }
         }
+
+        views.setTextViewText(R.id.rows_text, sb.toString())
+        views.setTextColor(R.id.rows_text, fg)
+        views.setFloat(R.id.rows_text, "setTextSize", settings.fontSizeSp.toFloat())
+
+        AppLogger.d("Widget text:\n$sb")
 
         return views
     }
