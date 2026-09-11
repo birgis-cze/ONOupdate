@@ -428,8 +428,9 @@ private fun SettingsScreen(
                             canPlus = s.fontSizeSp < 30,
                             onMin = { state.value = s.copy(fontSizeSp = 10) },
                             onMax = { state.value = s.copy(fontSizeSp = 30) }
+                            Spacer(Modifier.width(8.dp))  // ← PŘIDAT
                         )
-                        Spacer(Modifier.width(8.dp))  // ← PŘIDAT
+                        //Spacer(Modifier.width(8.dp))  // ← PŘIDAT
                     }
                 }
 
