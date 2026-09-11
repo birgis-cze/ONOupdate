@@ -282,22 +282,31 @@ private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
     val headerHeight = 57.dp
+    val lineHeight = 8.dp           // ← výška pruhu, kde je linka (dvojitá)
+    val lineBottomOffset = 6.dp     // ← mezera mezi linkou a spodkem hlavičky
 
     Box(
         modifier = modifier
             .fillMaxWidth(0.9f)
             .height(headerHeight)
-            // ── Pozadí: logo_linka opakovaná doprava ──
-            .background(tiledBrushFromResource(R.drawable.logo_linka))
     ) {
-        // ── Popředí: logo_text vlevo ──
+        // ── Linka v pozadí – posunutá dolů, jen v pruhu výšky lineHeight ──
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(bottom = lineBottomOffset)
+                .height(lineHeight)
+                .background(tiledBrushFromResource(R.drawable.logo_linka))
+        )
+
+        // ── Logo ONO vlevo, přes linku ──
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .wrapContentWidth(),
+                .fillMaxHeight(),
             contentScale = ContentScale.Fit
         )
 
