@@ -284,30 +284,39 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
     val headerHeight = 60.dp
 
     Box(
-        modifier = modifier
-            .fillMaxWidth(0.9f)
-            .height(headerHeight)
+    modifier = modifier
+        .fillMaxWidth(0.9f)
+        .height(headerHeight)
+) {
+    // ── Pozadí: logo_linka zarovnaná DOLŮ ──
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomStart)   // ← DOLŮ
+            .fillMaxWidth()
+            .height(headerHeight)            // ← výška = výška boxu
             .background(tiledBrushFromResource(R.drawable.logo_linka))
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.logo_text),
-            contentDescription = "Tank ONO",
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight(),
-            contentScale = ContentScale.Fit
-        )
+    )
 
-        Text(
-            text = "Nastavení",
-            color = OnoRed,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 8.dp, top = 4.dp)
-        )
-    }
+    // ── Logo: logo_text zarovnané DOLŮ ──
+    Image(
+        painter = painterResource(id = R.drawable.logo_text),
+        contentDescription = "Tank ONO",
+        modifier = Modifier
+            .align(Alignment.BottomStart)    // ← DOLŮ
+            .fillMaxHeight(),                 // ← výška = výška boxu
+        contentScale = ContentScale.Fit
+    )
+
+    // ── Nastavení vpravo nahoře ──
+    Text(
+        text = "Nastavení",
+        color = OnoRed,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .align(Alignment.TopEnd)
+            .padding(end = 8.dp, top = 4.dp)
+    )
 }
 
 
