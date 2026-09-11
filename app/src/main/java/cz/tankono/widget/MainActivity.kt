@@ -243,7 +243,21 @@ private fun SettingsScreen(
         ) {
 
             // ============ HLAVIČKA ============
-           Column(
+            val context = LocalContext.current
+            val linkaBitmap = remember {
+                ImageBitmap.imageResource(context.resources, R.drawable.logo_linka)
+            }
+            val repeatingLinkaBrush = remember(linkaBitmap) {
+                ShaderBrush(
+                    ImageShader(
+                        image = linkaBitmap,
+                        tileModeX = TileMode.Repeated,
+                        tileModeY = TileMode.Clamp
+                    )
+                )
+            }
+
+            Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -251,14 +265,9 @@ private fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .height(57.dp)
-                        // Vrstva 0: logo_linka použitá jako opakované pozadí pouze vodorovně
-                        .paint(
-                            painter = painterResource(id = R.drawable.logo_linka),
-                            contentScale = ContentScale.Inside, // nebo Tile, Compose zde automaticky dlaždicuje
-                            alignment = Alignment.TopStart
-                        )
+                        .background(repeatingLinkaBrush) // Pozadí opakované vodorovně
                 ) {
-                    // Vrstva 1 vlevo: logo_text – zarovnané dole vlevo s odsazením o 1 znak
+                    // Vrstva vlevo: logo_text – zarovnané dole vlevo s odsazením
                     Image(
                         painter = painterResource(id = R.drawable.logo_text),
                         contentDescription = "Tank ONO",
@@ -269,9 +278,9 @@ private fun SettingsScreen(
                         contentScale = ContentScale.Fit
                     )
 
-                    // Vrstva 1 vpravo: "Nastavení" – horní pravý roh
+                    // Vrstva vpravo: "Nastavení" – horní pravý roh
                     Text(
-                        text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
+                        text = "Nastavení",
                         color = OnoRed,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
