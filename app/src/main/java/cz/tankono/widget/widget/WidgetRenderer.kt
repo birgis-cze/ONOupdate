@@ -5,6 +5,13 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.text.SpannableString
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.text.style.SuperscriptSpan
+import android.graphics.Typeface
 import android.widget.RemoteViews
 import cz.tankono.widget.R
 import cz.tankono.widget.data.model.PriceFormatter
@@ -67,7 +74,7 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
-        // ---------- HLAVIČKA – dva časy ----------
+        // ---------- HLAVIČKA ----------
         val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetchedTime = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
@@ -93,37 +100,136 @@ object WidgetRenderer {
         ).map { kind -> visible.filter { it.kind == kind } }
             .filter { it.isNotEmpty() }
 
-        val sb = StringBuilder()
+        // Sestavíme SpannableString pro celý blok
+        val sb = SpannableStringBuilder()
+
         groups.forEachIndexed { gIndex, group ->
             if (gIndex > 0) sb.append("\n")
             group.forEachIndexed { pIndex, product ->
                 if (pIndex > 0) sb.append("\n")
-                val cur = state.current?.entries?.get(product)
-                val old = state.previous?.entries?.get(product)
-                val name = product.displayName
-                val oldText = if (old != null) "(${PriceFormatter.format(old, settings.currency)})" else ""
-                val curText = PriceFormatter.format(cur, settings.currency)
-                val arrow = if (old != null && cur != null) {
-                    val oldVal = PriceFormatter.valueFor(old, settings.currency)
-                    val curVal = PriceFormatter.valueFor(cur, settings.currency)
-                    when {
-                        oldVal == null || curVal == null -> ""
-                        curVal > oldVal -> " ▲"
-                        curVal < oldVal -> " ▼"
-                        else -> " ="
-                    }
-                } else ""
-                sb.append("$name   $oldText  $curText$arrow")
+                appendProductRow(sb, product, state, settings, settings.fontSizeSp)
             }
         }
 
-        views.setTextViewText(R.id.rows_text, sb.toString())
+        views.setTextViewText(R.id.rows_text, sb)
         views.setTextColor(R.id.rows_text, fg)
         views.setFloat(R.id.rows_text, "setTextSize", settings.fontSizeSp.toFloat())
 
-        AppLogger.d("Widget text:\n$sb")
-
         return views
+    }
+
+    /**
+     * Připojí jeden řádek produktu do SpannableStringBuilder:
+     *   "Natural 95      (42,50)   42,90 ▲"
+     *   - název: BOLD, normální velikost
+     *   - stará cena: ITALIC, menší, v závorce
+     *   - aktuální cena: BOLD, s nadsazenou desetinnou částí
+     *   - trend: ▲ / ▼ / =
+     */
+    private fun appendProductRow(
+        sb: SpannableStringBuilder,
+        product: Product,
+        state: PriceState,
+        settings: WidgetSettings,
+        fontSizeSp: Int
+    ) {
+        val cur = state.current?.entries?.get(product)
+        val old = state.previous?.entries?.get(product)
+
+        // 1) Název – tučně
+        val name = product.displayName
+        val nameStart = sb.length
+        sb.append(name)
+        sb.setSpan(
+            StyleSpan(Typeface.BOLD),
+            nameStart, sb.length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+
+        // 2) Mezera + stará cena v závorce (italic, menší)
+        sb.append("   ")
+        if (old != null) {
+            val oldStr = "(${PriceFormatter.format(old, settings.currency)})"
+            val oldStart = sb.length
+            sb.append(oldStr)
+            sb.setSpan(
+                StyleSpan(Typeface.ITALIC),
+                oldStart, sb.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            sb.setSpan(
+                RelativeSizeSpan(0.8f),
+                oldStart, sb.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        } else {
+            sb.append("     ")
+        }
+
+        // 3) Mezera + aktuální cena (bold, desetinná část nadsazená)
+        sb.append("   ")
+        if (cur != null) {
+            val curVal = PriceFormatter.valueFor(cur, settings.currency)
+            if (curVal == null) {
+                sb.append("--")
+            } else {
+                // Celá část (bold)
+                val whole: String
+                val frac: String
+                if (product.kind == Product.Kind.EXCHANGE || settings.currency == cz.tankono.widget.data.model.Currency.CZK) {
+                    // CZK: 2 desetinná místa
+                    whole = (curVal / 100).toString()
+                    frac = "%02d".format(curVal % 100)
+                } else {
+                    // EUR: 3 desetinná místa
+                    whole = (curVal / 1000).toString()
+                    frac = "%03d".format(curVal % 1000)
+                }
+
+                val wholeStart = sb.length
+                sb.append(whole)
+                sb.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    wholeStart, sb.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+
+                // Desetinná část (bold + superscript + menší)
+                val fracStart = sb.length
+                sb.append(frac)
+                sb.setSpan(
+                    StyleSpan(Typeface.BOLD),
+                    fracStart, sb.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                sb.setSpan(
+                    SuperscriptSpan(),
+                    fracStart, sb.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                sb.setSpan(
+                    RelativeSizeSpan(0.7f),
+                    fracStart, sb.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        } else {
+            sb.append("--")
+        }
+
+        // 4) Trend
+        sb.append(" ")
+        if (old != null && cur != null) {
+            val oldVal = PriceFormatter.valueFor(old, settings.currency)
+            val curVal = PriceFormatter.valueFor(cur, settings.currency)
+            val arrow = when {
+                oldVal == null || curVal == null -> ""
+                curVal > oldVal -> "▲"
+                curVal < oldVal -> "▼"
+                else -> "="
+            }
+            sb.append(arrow)
+        }
     }
 
     private fun buildRefreshPendingIntent(context: Context): PendingIntent {

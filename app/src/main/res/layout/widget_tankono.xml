@@ -7,27 +7,27 @@
     android:padding="6dp"
     android:background="@color/ono_yellow">
 
-    <!-- HLAVIČKA – vrstvená, stejná jako v nastavení -->
+    <!-- HLAVIČKA – oba obrázky stejná výška, zarovnané dolů -->
     <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="48dp">
+        android:layout_height="40dp">
 
-        <!-- Vrstva 0: logo_linka – DOLE, výška 32dp jako logo_text, roztáhnout -->
+        <!-- Vrstva 0: logo_linka – DOLE, výška 40dp, roztáhnout -->
         <ImageView
             android:id="@+id/header_linka"
             android:layout_width="match_parent"
-            android:layout_height="32dp"
+            android:layout_height="40dp"
             android:layout_alignParentBottom="true"
             android:scaleType="fitXY"
             android:src="@drawable/logo_linka"
             android:contentDescription="@null"/>
 
-        <!-- Vrstva 1 vlevo: logo_text – DOLE, výška 32dp -->
+        <!-- Vrstva 1 vlevo: logo_text – DOLE, výška 40dp -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
-            android:layout_height="32dp"
+            android:layout_height="40dp"
             android:layout_alignParentBottom="true"
             android:layout_alignParentStart="true"
             android:layout_marginStart="2dp"
@@ -65,7 +65,7 @@
         </LinearLayout>
     </RelativeLayout>
 
-    <!-- Text produktů -->
+    <!-- Text produktů – SpannableString -->
     <TextView
         android:id="@+id/rows_text"
         android:layout_width="match_parent"
