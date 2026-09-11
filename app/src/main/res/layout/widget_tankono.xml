@@ -7,13 +7,12 @@
     android:padding="8dp"
     android:background="@color/ono_yellow">
 
-    <!-- HLAVIČKA – RelativeLayout místo FrameLayout (lepší podpora v RemoteViews) -->
+    <!-- HLAVIČKA -->
     <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- Vrstva 0: logo_linka – dole, plná šířka -->
         <ImageView
             android:id="@+id/header_linka"
             android:layout_width="match_parent"
@@ -23,7 +22,6 @@
             android:src="@drawable/logo_linka"
             android:contentDescription="@null"/>
 
-        <!-- Vrstva 1 vlevo: logo_text – dole, odsazeno -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
@@ -35,7 +33,6 @@
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- Vrstva 1 vpravo: datum + čas v jednom řádku -->
         <TextView
             android:id="@+id/header_datetime"
             android:layout_width="wrap_content"
@@ -50,11 +47,69 @@
             android:singleLine="true"/>
     </RelativeLayout>
 
-    <!-- ŘÁDKY PRODUKTŮ -->
+    <!-- ŘÁDKY – připravené pro maximálně 11 produktů -->
     <LinearLayout
-        android:id="@+id/rows_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginTop="6dp"/>
+        android:layout_marginTop="6dp">
+
+        <!-- 0: Natural 95 -->
+        <include layout="@layout/widget_row" android:id="@+id/row_0"/>
+        <!-- 1: Natural 95+ -->
+        <include layout="@layout/widget_row" android:id="@+id/row_1"/>
+        <!-- 2: Natural 98 -->
+        <include layout="@layout/widget_row" android:id="@+id/row_2"/>
+        <!-- 3: Diesel -->
+        <include layout="@layout/widget_row" android:id="@+id/row_3"/>
+        <!-- 4: Diesel+ -->
+        <include layout="@layout/widget_row" android:id="@+id/row_4"/>
+        <!-- 5: LPG -->
+        <include layout="@layout/widget_row" android:id="@+id/row_5"/>
+        <!-- 6: Ad Blue -->
+        <include layout="@layout/widget_row" android:id="@+id/row_6"/>
+        <!-- 7: Osobní myčka -->
+        <include layout="@layout/widget_row" android:id="@+id/row_7"/>
+        <!-- 8: Nákladní myčka -->
+        <include layout="@layout/widget_row" android:id="@+id/row_8"/>
+        <!-- 9: EUR nákup -->
+        <include layout="@layout/widget_row" android:id="@+id/row_9"/>
+        <!-- 10: EUR prodej -->
+        <include layout="@layout/widget_row" android:id="@+id/row_10"/>
+    </LinearLayout>
+
+    <!-- ODDĚLOVAČE – připravené pro maximálně 3 skupiny -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/divider_0"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="3dp"
+            android:background="@color/ono_red"
+            android:contentDescription="@null"/>
+
+        <ImageView
+            android:id="@+id/divider_1"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="3dp"
+            android:background="@color/ono_red"
+            android:contentDescription="@null"/>
+
+        <ImageView
+            android:id="@+id/divider_2"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="3dp"
+            android:background="@color/ono_red"
+            android:contentDescription="@null"/>
+    </LinearLayout>
 </LinearLayout>
