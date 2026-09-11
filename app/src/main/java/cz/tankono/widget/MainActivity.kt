@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -262,9 +263,6 @@ private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = int
  * Vytvoří [ShaderBrush] z drawable – obrázek se PŘEDROZTÁHNE proporcionálně
  * na [targetHeight] (zachová poměr stran), pak se opakuje doprava (REPEAT)
  * a svisle se nechá být (CLAMP).
- *
- * Předroztahování zajistí, že se dlaždice škáluje STEJNĚ jako `Image`
- * s `ContentScale.Fit` – linka v dlaždici pak sedí s linkou v `logo_text`.
  */
 @Composable
 private fun tiledBrushFromResource(
@@ -279,7 +277,6 @@ private fun tiledBrushFromResource(
             ?: error("Drawable s id=$id nebyl nalezen")
         val src = drawable.toBitmapSafe().asImageBitmap().asAndroidBitmap()
 
-        // Cílová výška v px
         val targetHeightPx = with(density) { targetHeight.toPx() }.toInt().coerceAtLeast(1)
 
         // Proporcionální roztah – ZACHOVÁ POMĚR STRAN
@@ -302,7 +299,7 @@ private fun tiledBrushFromResource(
 
 
 // =============================================================================
-// HLAVIČKA
+// HLAVIČKA – dvě vrstvy přesně přes sebe
 // =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
@@ -311,26 +308,29 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             .fillMaxWidth(0.9f)
             .height(HeaderHeight)
     ) {
-        // ── Pozadí: logo_linka zarovnaná DOLŮ ──
+        // ═══════════════════════════════════════════════════════════════
+        // VRSTVA 1: logo_linka – pozadí, přesně velká jako Box
+        // ═══════════════════════════════════════════════════════════════
         Box(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-                .height(HeaderHeight)
+                .matchParentSize()
                 .background(tiledBrushFromResource(R.drawable.logo_linka, HeaderHeight))
         )
 
-        // ── Logo: logo_text zarovnané DOLŮ ──
+        // ═══════════════════════════════════════════════════════════════
+        // VRSTVA 2: logo_text – popředí, přesně velká jako Box
+        // ═══════════════════════════════════════════════════════════════
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxHeight(),
+                .matchParentSize(),
             contentScale = ContentScale.Fit
         )
 
-        // ── Nastavení vpravo nahoře ──
+        // ═══════════════════════════════════════════════════════════════
+        // Nastavení – vpravo nahoře
+        // ═══════════════════════════════════════════════════════════════
         Text(
             text = "Nastavení",
             color = OnoRed,
@@ -661,7 +661,6 @@ private fun NumberStepper(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        // Tlačítko −
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -688,7 +687,6 @@ private fun NumberStepper(
             }
         }
 
-        // Hodnota
         Box(
             modifier = Modifier
                 .width(80.dp)
@@ -704,7 +702,6 @@ private fun NumberStepper(
             )
         }
 
-        // Tlačítko +
         Box(
             modifier = Modifier
                 .size(44.dp)
