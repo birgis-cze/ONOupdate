@@ -7,14 +7,12 @@
     android:padding="8dp"
     android:background="@color/ono_yellow">
 
-    <!-- HLAVIČKA – vrstvená -->
     <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:minHeight="48dp">
 
-        <!-- Vrstva 0: logo_linka – dole, plná šířka, roztahuje se -->
         <ImageView
             android:id="@+id/header_linka"
             android:layout_width="match_parent"
@@ -24,7 +22,6 @@
             android:src="@drawable/logo_linka"
             android:contentDescription="@null"/>
 
-        <!-- Vrstva 1: logo_text – vlevo dole, odsazeno -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
@@ -36,7 +33,6 @@
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- Datum + čas – vpravo, mírně nadsazené -->
         <TextView
             android:id="@+id/header_datetime"
             android:layout_width="wrap_content"
@@ -51,7 +47,6 @@
             android:singleLine="true"/>
     </RelativeLayout>
 
-    <!-- ŘÁDKY PRODUKTŮ -->
     <LinearLayout
         android:id="@+id/rows_container"
         android:layout_width="match_parent"

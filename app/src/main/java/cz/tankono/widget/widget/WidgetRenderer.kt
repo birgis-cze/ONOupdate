@@ -38,20 +38,10 @@ object WidgetRenderer {
         AppLogger.d("=== RENDER widgetId=$widgetId ===")
         scope.launch {
             try {
-                AppLogger.d("Načítám nastavení…")
                 val settings = SettingsStore(context).settings.first()
-                AppLogger.d("Nastavení: visible=${settings.visibleProducts.size}, " +
-                        "currency=${settings.currency}, font=${settings.fontSizeSp}")
-
-                AppLogger.d("Načítám data z repository…")
                 val state = PriceRepository(context).loadState()
-                AppLogger.d("Data: current=${state.current?.entries?.size ?: 0} entries, " +
-                        "previous=${state.previous?.entries?.size ?: 0} entries, " +
-                        "published=${state.current?.publishedAt}")
 
-                AppLogger.d("Sestavuji views…")
                 val views = buildViews(context, settings, state)
-                AppLogger.d("Views sestaveny, aplikuji…")
 
                 withContext(Dispatchers.Main) {
                     mgr.updateAppWidget(widgetId, views)
@@ -63,7 +53,6 @@ object WidgetRenderer {
                     val fallback = RemoteViews(context.packageName, R.layout.widget_tankono)
                     fallback.setTextViewText(R.id.header_datetime, "--")
                     mgr.updateAppWidget(widgetId, fallback)
-                    AppLogger.w("Fallback aplikován")
                 } catch (t2: Throwable) {
                     AppLogger.e("I fallback selhal", t2)
                 }
@@ -96,29 +85,23 @@ object WidgetRenderer {
         val headerText = "$published ($fetched)"
         views.setTextViewText(R.id.header_datetime, headerText)
         views.setTextColor(R.id.header_datetime, fg)
-        AppLogger.d("Hlavička: '$headerText'")
 
         // Vyčistit rows_container
         try {
             views.removeAllViews(R.id.rows_container)
-            AppLogger.d("removeAllViews OK")
         } catch (t: Throwable) {
             AppLogger.e("removeAllViews selhal", t)
         }
 
         val visible = Product.entries.filter { it in settings.visibleProducts }
-        AppLogger.d("Viditelné produkty: ${visible.map { it.id }}")
-
         val groups = listOf(
             Product.Kind.FUEL,
             Product.Kind.OTHER,
             Product.Kind.EXCHANGE
         ).map { kind -> visible.filter { it.kind == kind } }
             .filter { it.isNotEmpty() }
-        AppLogger.d("Skupiny: ${groups.map { it.size }}")
 
         if (groups.isEmpty()) {
-            AppLogger.w("Žádné skupiny – zobrazuji empty")
             val empty = RemoteViews(context.packageName, R.layout.widget_empty)
             empty.setTextViewText(R.id.empty_text, "Nejsou vybrány žádné produkty")
             empty.setTextColor(R.id.empty_text, fg)
@@ -128,58 +111,36 @@ object WidgetRenderer {
 
         groups.forEachIndexed { index, group ->
             if (index > 0) {
-                AppLogger.d("Přidávám divider $index")
-                try {
-                    val divider = RemoteViews(context.packageName, R.layout.widget_divider)
-                    views.addView(R.id.rows_container, divider)
-                    AppLogger.d("Divider OK")
-                } catch (t: Throwable) {
-                    AppLogger.e("Divider selhal", t)
-                }
+                val divider = RemoteViews(context.packageName, R.layout.widget_divider)
+                views.addView(R.id.rows_container, divider)
             }
             group.forEach { product ->
-                AppLogger.d("Přidávám řádek pro ${product.id}")
-                try {
-                    val row = buildRow(context, product, settings, state, fg)
-                    views.addView(R.id.rows_container, row)
-                    AppLogger.d("Řádek ${product.id} OK")
-                } catch (t: Throwable) {
-                    AppLogger.e("Řádek ${product.id} selhal", t)
-                }
+                val row = buildRow(product, settings, state, fg)
+                views.addView(R.id.rows_container, row)
             }
         }
 
         return views
     }
 
+    /**
+     * Sestaví jeden řádek jako jeden TextView:
+     *   "Natural 95   (42,50)  42,90 ▲"
+     */
     private fun buildRow(
-        context: Context,
         product: Product,
         settings: WidgetSettings,
         state: PriceState,
         fg: Int
     ): RemoteViews {
-        val row = RemoteViews(context.packageName, R.layout.widget_row)
+        val row = RemoteViews("cz.tankono.widget", R.layout.widget_row)
 
         val cur = state.current?.entries?.get(product)
         val old = state.previous?.entries?.get(product)
 
-        row.setTextViewText(R.id.row_name, product.displayName)
-        row.setTextColor(R.id.row_name, fg)
-        row.setFloat(R.id.row_name, "setTextSize", settings.fontSizeSp.toFloat())
-
-        val oldText: CharSequence = if (old != null) {
-            "(${PriceFormatter.format(old, settings.currency)})"
-        } else ""
-        row.setTextViewText(R.id.row_old, oldText)
-        row.setTextColor(R.id.row_old, fg)
-        row.setFloat(R.id.row_old, "setTextSize", (settings.fontSizeSp - 1).toFloat())
-
-        val curText: CharSequence = PriceFormatter.format(cur, settings.currency)
-        row.setTextViewText(R.id.row_price, curText)
-        row.setTextColor(R.id.row_price, fg)
-        row.setFloat(R.id.row_price, "setTextSize", settings.fontSizeSp.toFloat())
-
+        val name = product.displayName
+        val oldText = if (old != null) "(${PriceFormatter.format(old, settings.currency)})" else ""
+        val curText = PriceFormatter.format(cur, settings.currency)
         val arrow = if (old != null && cur != null) {
             val oldVal = PriceFormatter.valueFor(old, settings.currency)
             val curVal = PriceFormatter.valueFor(cur, settings.currency)
@@ -190,9 +151,13 @@ object WidgetRenderer {
                 else -> "="
             }
         } else ""
-        row.setTextViewText(R.id.row_trend, arrow)
-        row.setTextColor(R.id.row_trend, fg)
-        row.setFloat(R.id.row_trend, "setTextSize", settings.fontSizeSp.toFloat())
+
+        // Sestavíme text s mezerami pro zarovnání
+        val text = "$name   $oldText   $curText  $arrow"
+
+        row.setTextViewText(R.id.row_text, text)
+        row.setTextColor(R.id.row_text, fg)
+        row.setFloat(R.id.row_text, "setTextSize", settings.fontSizeSp.toFloat())
 
         return row
     }

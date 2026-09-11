@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,7 +28,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -207,176 +210,214 @@ private fun SettingsScreen(
     }
 
     Surface(color = OnoYellow, modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
-                color = OnoRed,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+        Column(modifier = Modifier.fillMaxSize()) {
 
-            // ---- Produkty ----
-            SettingsCard {
-                SectionTitle("Zobrazované produkty")
-                ProductGroup("Paliva",
-                    Product.entries.filter { it.kind == Product.Kind.FUEL }, s, state)
-                ProductGroup("Ostatní",
-                    Product.entries.filter { it.kind == Product.Kind.OTHER }, s, state)
-                ProductGroup("Směnárna",
-                    Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
-                if (s.visibleProducts.isEmpty()) {
-                    Text(
-                        "Musíte vybrat alespoň jeden produkt.",
-                        color = OnoRed,
-                        fontSize = 12.sp
-                    )
-                }
-            }
-
-            // ---- Měna ----
-            SettingsCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Měna:",
-                        color = OnoRed,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CurrencyButton("Kč", s.currency == Currency.CZK) {
-                            state.value = s.copy(currency = Currency.CZK)
-                        }
-                        CurrencyButton("€", s.currency == Currency.EUR) {
-                            state.value = s.copy(currency = Currency.EUR)
-                        }
-                    }
-                }
-            }
-
-            // ---- Špička ----
-            SettingsCard {
-                SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
-                TwoSteppersRow(
-                    value1 = formatTime(s.peakStartMinutes),
-                    value2 = formatTime(s.peakEndMinutes),
-                    onMinus1 = {
-                        val newVal = (s.peakStartMinutes - 15 + 1440) % 1440
-                        state.value = s.copy(peakStartMinutes = newVal)
-                    },
-                    onPlus1 = {
-                        val newVal = (s.peakStartMinutes + 15) % 1440
-                        state.value = s.copy(peakStartMinutes = newVal)
-                    },
-                    onMinus2 = {
-                        val newVal = (s.peakEndMinutes - 15 + 1440) % 1440
-                        state.value = s.copy(peakEndMinutes = newVal)
-                    },
-                    onPlus2 = {
-                        val newVal = (s.peakEndMinutes + 15) % 1440
-                        state.value = s.copy(peakEndMinutes = newVal)
-                    }
+            // ============ HLAVIČKA (fixní nahoře) ============
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .height(56.dp)
+            ) {
+                // Vrstva 0: logo_linka – dole, plná šířka
+                Image(
+                    painter = painterResource(id = R.drawable.logo_linka),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    contentScale = ContentScale.FillWidth
                 )
-            }
 
-            // ---- Interval ----
-            SettingsCard {
-                SectionTitle("Interval aktualizací špička / mimo špičku (min)")
-                TwoSteppersRow(
-                    value1 = s.intervalPeakMin.toString(),
-                    value2 = s.intervalOffPeakMin.toString(),
-                    onMinus1 = {
-                        val newVal = (s.intervalPeakMin - 5).coerceAtLeast(5)
-                        state.value = s.copy(intervalPeakMin = newVal)
-                    },
-                    onPlus1 = {
-                        val newVal = (s.intervalPeakMin + 5).coerceAtMost(180)
-                        state.value = s.copy(intervalPeakMin = newVal)
-                    },
-                    onMinus2 = {
-                        val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(5)
-                        state.value = s.copy(intervalOffPeakMin = newVal)
-                    },
-                    onPlus2 = {
-                        val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(720)
-                        state.value = s.copy(intervalOffPeakMin = newVal)
-                    }
+                // Vrstva 1: logo_text – vlevo dole
+                Image(
+                    painter = painterResource(id = R.drawable.logo_text),
+                    contentDescription = "Tank ONO",
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 8.dp)
+                        .height(40.dp)
                 )
+
+                // Vpravo: text
                 Text(
-                    "Intervaly kratší než 15 min jsou systémem Androidu omezeny na 15 min.",
-                    color = OnoRed.copy(alpha = 0.7f),
-                    fontSize = 11.sp
+                    text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
+                    color = OnoRed,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(end = 4.dp, top = 4.dp)
                 )
             }
 
-            // ---- Velikost písma ----
-            SettingsCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Velikost textu widgetu:",
-                        color = OnoRed,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
-                    )
-                    NumberStepper(
-                        value = s.fontSizeSp.toString(),
-                        onMinus = {
-                            val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
-                            state.value = s.copy(fontSizeSp = newVal)
+            // ============ SCROLLOVATELNÝ OBSAH ============
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+
+                // ---- Produkty ----
+                SettingsCard {
+                    SectionTitle("Zobrazované produkty")
+                    ProductGroup("Paliva",
+                        Product.entries.filter { it.kind == Product.Kind.FUEL }, s, state)
+                    ProductGroup("Ostatní",
+                        Product.entries.filter { it.kind == Product.Kind.OTHER }, s, state)
+                    ProductGroup("Směnárna",
+                        Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
+                    if (s.visibleProducts.isEmpty()) {
+                        Text(
+                            "Musíte vybrat alespoň jeden produkt.",
+                            color = OnoRed,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                // ---- Měna ----
+                SettingsCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Zobrazování ceny:",
+                            color = OnoRed,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CurrencyButton("Kč", s.currency == Currency.CZK) {
+                                state.value = s.copy(currency = Currency.CZK)
+                            }
+                            CurrencyButton("€", s.currency == Currency.EUR) {
+                                state.value = s.copy(currency = Currency.EUR)
+                            }
+                        }
+                    }
+                }
+
+                // ---- Špička ----
+                SettingsCard {
+                    SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
+                    TwoSteppersRow(
+                        value1 = formatTime(s.peakStartMinutes),
+                        value2 = formatTime(s.peakEndMinutes),
+                        onMinus1 = {
+                            val newVal = (s.peakStartMinutes - 15 + 1440) % 1440
+                            state.value = s.copy(peakStartMinutes = newVal)
                         },
-                        onPlus = {
-                            val newVal = (s.fontSizeSp + 1).coerceAtMost(25)
-                            state.value = s.copy(fontSizeSp = newVal)
+                        onPlus1 = {
+                            val newVal = (s.peakStartMinutes + 15) % 1440
+                            state.value = s.copy(peakStartMinutes = newVal)
+                        },
+                        onMinus2 = {
+                            val newVal = (s.peakEndMinutes - 15 + 1440) % 1440
+                            state.value = s.copy(peakEndMinutes = newVal)
+                        },
+                        onPlus2 = {
+                            val newVal = (s.peakEndMinutes + 15) % 1440
+                            state.value = s.copy(peakEndMinutes = newVal)
                         }
                     )
                 }
-            }
 
-            Spacer(Modifier.height(4.dp))
+                // ---- Interval ----
+                SettingsCard {
+                    SectionTitle("Interval aktualizací špička / mimo špičku (min)")
+                    TwoSteppersRow(
+                        value1 = s.intervalPeakMin.toString(),
+                        value2 = s.intervalOffPeakMin.toString(),
+                        onMinus1 = {
+                            val newVal = (s.intervalPeakMin - 5).coerceAtLeast(5)
+                            state.value = s.copy(intervalPeakMin = newVal)
+                        },
+                        onPlus1 = {
+                            val newVal = (s.intervalPeakMin + 5).coerceAtMost(180)
+                            state.value = s.copy(intervalPeakMin = newVal)
+                        },
+                        onMinus2 = {
+                            val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(5)
+                            state.value = s.copy(intervalOffPeakMin = newVal)
+                        },
+                        onPlus2 = {
+                            val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(720)
+                            state.value = s.copy(intervalOffPeakMin = newVal)
+                        }
+                    )
+                    Text(
+                        "Intervaly kratší než 15 min jsou systémem Androidu omezeny na 15 min.",
+                        color = OnoRed.copy(alpha = 0.7f),
+                        fontSize = 11.sp
+                    )
+                }
 
-            // ---- Tlačítka ----
-            Button(
-                onClick = { onSave(s) },
-                enabled = s.visibleProducts.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = OnoRed,
-                    contentColor = OnoYellow
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (isConfiguring) "Přidat widget" else "Uložit nastavení widgetu")
-            }
+                // ---- Velikost písma ----
+                SettingsCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Velikost textu widgetu:",
+                            color = OnoRed,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        NumberStepper(
+                            value = s.fontSizeSp.toString(),
+                            onMinus = {
+                                val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
+                                state.value = s.copy(fontSizeSp = newVal)
+                            },
+                            onPlus = {
+                                val newVal = (s.fontSizeSp + 1).coerceAtMost(25)
+                                state.value = s.copy(fontSizeSp = newVal)
+                            }
+                        )
+                    }
+                }
 
-            OutlinedButton(
-                onClick = onRefresh,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Aktualizovat data")
-            }
+                Spacer(Modifier.height(4.dp))
 
-            OutlinedButton(
-                onClick = onExportLog,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Exportovat log")
+                // ---- Tlačítka ----
+                Button(
+                    onClick = { onSave(s) },
+                    enabled = s.visibleProducts.isNotEmpty(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = OnoRed,
+                        contentColor = OnoYellow
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isConfiguring) "Přidat widget" else "Uložit nastavení widgetu")
+                }
+
+                OutlinedButton(
+                    onClick = onRefresh,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Aktualizovat data")
+                }
+
+                OutlinedButton(
+                    onClick = onExportLog,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Exportovat log")
+                }
             }
         }
     }
@@ -412,7 +453,7 @@ private fun SectionTitle(text: String) {
 
 /**
  * Řádek se dvěma steppery vedle sebe.
- * Mezi nimi je vždy alespoň 16 dp mezera.
+ * Tlačítka pevná 44dp, hodnota pevná 90dp. Mezi stepry 16dp mezera.
  */
 @Composable
 private fun TwoSteppersRow(
@@ -436,6 +477,7 @@ private fun TwoSteppersRow(
 
 /**
  * Jeden stepper: [−]  hodnota  [+]
+ * Tlačítka 44x44, hodnota bez rámečku (jen text) – tučný, 90dp šířka, centrovaný.
  */
 @Composable
 private fun NumberStepper(
@@ -445,8 +487,9 @@ private fun NumberStepper(
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
+        // Tlačítko −
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -462,23 +505,23 @@ private fun NumberStepper(
             )
         }
 
+        // Hodnota – bez rámečku, jen text
         Box(
             modifier = Modifier
                 .width(90.dp)
-                .height(44.dp)
-                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .background(Color.White, RoundedCornerShape(8.dp)),
+                .height(44.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = value,
                 color = OnoRed,
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
         }
 
+        // Tlačítko +
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -558,7 +601,7 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     val fg = if (selected) OnoYellow else OnoRed
     Box(
         modifier = Modifier
-            .width(60.dp)
+            .width(80.dp)
             .height(44.dp)
             .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
             .background(bg, RoundedCornerShape(8.dp))
