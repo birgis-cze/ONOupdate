@@ -4,6 +4,7 @@ import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Shader
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -44,6 +45,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -62,6 +69,7 @@ import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
+
 
 
 private val OnoYellow = Color(0xFFFFD600)
@@ -197,6 +205,16 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Chyba: ${t.message}", Toast.LENGTH_LONG).show()
         }
     }
+
+    fun Drawable.toBitmap(width: Int = intrinsicWidth, height: Int = intrinsicHeight): Bitmap {
+        if (this is BitmapDrawable) return bitmap
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        setBounds(0, 0, canvas.width, canvas.height)
+        draw(canvas)
+        return bmp
+    }
+
 }
 
 // =============================================================================
@@ -243,35 +261,43 @@ private fun SettingsScreen(
         ) {
 
             // ============ HLAVIČKA ============
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.9f)
-                        .height(57.dp)
-                ) {
-                    // Vrstva 0: Pozadí – logo_linka roztažené na celou šířku a výšku 57.dp
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_linka),
-                        contentDescription = null,
-                        modifier = Modifier.matchParentSize(),
-                        contentScale = ContentScale.FillWidth
-                    )
+            fun OnoHeader(modifier: Modifier = Modifier) {
+                val context = LocalContext.current
+                val tileBitmap = remember {
+                    ContextCompat.getDrawable(context, R.drawable.logo_linka)!!
+                        .toBitmap() // mělo by vrátit 1x57
+                }
+                val headerHeight = 57.dp
 
-                    // Vrstva 1 vlevo: logo_text – zarovnané dole vlevo s odsazením
+                Box(
+                    modifier = modifier
+                        .fillMaxWidth(0.9f)
+                        .height(headerHeight)
+                        .drawBehind {
+                            val shader = android.graphics.BitmapShader(
+                                tileBitmap,
+                                Shader.TileMode.REPEAT,
+                                Shader.TileMode.CLAMP
+                            )
+                            val paint = android.graphics.Paint().apply { this.shader = shader }
+                            drawIntoCanvas { canvas ->
+                                canvas.nativeCanvas.drawRect(
+                                    0f, 0f, size.width, size.height, paint
+                                )
+                            }
+                        }
+                ) {
+                    // Logo text – vlevo nahoře, 155x57, bez opakování
                     Image(
                         painter = painterResource(id = R.drawable.logo_text),
                         contentDescription = "Tank ONO",
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 4.dp)
-                            .height(57.dp),
+                            .align(Alignment.TopStart)
+                            .size(width = 155.dp, height = headerHeight),
                         contentScale = ContentScale.Fit
                     )
 
-                    // Vrstva 1 vpravo: "Nastavení" – horní pravý roh
+                    // Nastavení – vpravo nahoře
                     Text(
                         text = "Nastavení",
                         color = OnoRed,
@@ -283,6 +309,7 @@ private fun SettingsScreen(
                     )
                 }
             }
+
             // ============ SCROLLOVATELNÝ OBSAH ============
             Column(
                 modifier = Modifier
