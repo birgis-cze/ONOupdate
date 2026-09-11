@@ -262,26 +262,26 @@ private fun SettingsScreen(
                     )
 
                     // Vrstva 1 vlevo: logo_text – dole vlevo s odsazením
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_text),
-                        contentDescription = "Tank ONO",
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 12.dp)
-                            .height(60.dp),
-                        contentScale = ContentScale.Fit
-                    )
+                    //Image(
+                    //    painter = painterResource(id = R.drawable.logo_text),
+                    //    contentDescription = "Tank ONO",
+                    //    modifier = Modifier
+                    //        .align(Alignment.BottomStart)
+                    //        .padding(start = 12.dp)
+                    //        .height(60.dp),
+                    //    contentScale = ContentScale.Fit
+                    //)
 
                     // Vrstva 1 vpravo: "Nastavení" – horní pravý roh
-                    Text(
-                        text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
-                        color = OnoRed,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 16.dp, top = 8.dp)
-                    )
+                    //Text(
+                    //    text =  "Nastavení",
+                    //    color = OnoRed,
+                    //    fontSize = 18.sp,
+                    //    fontWeight = FontWeight.Bold,
+                    //    modifier = Modifier
+                    //        .align(Alignment.TopEnd)
+                    //        .padding(end = 16.dp, top = 8.dp)
+                    //)
                 }
             }
 
