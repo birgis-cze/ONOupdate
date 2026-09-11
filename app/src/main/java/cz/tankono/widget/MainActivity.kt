@@ -287,18 +287,17 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth(0.9f)
             .height(headerHeight)
-            // ── Pozadí: logo_linka, opakuje se doprava ──
+            // ── Pozadí: logo_linka (1×57 px), opakuje se doprava ──
             .background(tiledBrushFromResource(R.drawable.logo_linka))
     ) {
-        // ── Popředí: logo_text – stejná výška, stejné zarovnání ──
+        // ── Popředí: logo_text (155×57 px) ──
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .fillMaxHeight()
-                .wrapContentWidth(),
-            contentScale = ContentScale.None   // ← DŮLEŽITÉ: 1:1 bez škálování
+                .fillMaxHeight(),          // výška = 57 dp = stejná jako linka
+            contentScale = ContentScale.Fit
         )
 
         // ── "Nastavení" vpravo nahoře ──
