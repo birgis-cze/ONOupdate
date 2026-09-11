@@ -30,16 +30,15 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -73,9 +72,11 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -90,12 +91,17 @@ import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
 
 
-
 // =============================================================================
 // BARVY
 // =============================================================================
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
+
+
+// =============================================================================
+// HLAVIČKA – konstanta
+// =============================================================================
+private val HeaderHeight = 60.dp
 
 
 // =============================================================================
@@ -253,23 +259,42 @@ private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = int
 }
 
 /**
- * Vytvoří [ShaderBrush] z drawable – obrázek se opakuje doprava (REPEAT),
- * svisle se roztáhne (CLAMP). Určeno pro 1×N px dlaždice (např. logo_linka).
+ * Vytvoří [ShaderBrush] z drawable – obrázek se PŘEDROZTÁHNE proporcionálně
+ * na [targetHeight] (zachová poměr stran), pak se opakuje doprava (REPEAT)
+ * a svisle se nechá být (CLAMP).
+ *
+ * Předroztahování zajistí, že se dlaždice škáluje STEJNĚ jako `Image`
+ * s `ContentScale.Fit` – linka v dlaždici pak sedí s linkou v `logo_text`.
  */
 @Composable
-private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
+private fun tiledBrushFromResource(
+    @DrawableRes id: Int,
+    targetHeight: Dp
+): ShaderBrush {
     val context = LocalContext.current
-    val imageBitmap: ImageBitmap = remember(id, context) {
+    val density = LocalDensity.current
+
+    val scaledBitmap: ImageBitmap = remember(id, targetHeight, density) {
         val drawable = ContextCompat.getDrawable(context, id)
             ?: error("Drawable s id=$id nebyl nalezen")
-        drawable.toBitmapSafe().asImageBitmap()
+        val src = drawable.toBitmapSafe().asImageBitmap().asAndroidBitmap()
+
+        // Cílová výška v px
+        val targetHeightPx = with(density) { targetHeight.toPx() }.toInt().coerceAtLeast(1)
+
+        // Proporcionální roztah – ZACHOVÁ POMĚR STRAN
+        val scale = targetHeightPx.toFloat() / src.height
+        val targetWidthPx = (src.width * scale).toInt().coerceAtLeast(1)
+
+        val scaled = Bitmap.createScaledBitmap(src, targetWidthPx, targetHeightPx, true)
+        scaled.asImageBitmap()
     }
 
-    return remember(imageBitmap) {
+    return remember(scaledBitmap) {
         val shader = BitmapShader(
-            imageBitmap.asAndroidBitmap(),
-            Shader.TileMode.REPEAT,
-            Shader.TileMode.CLAMP
+            scaledBitmap.asAndroidBitmap(),
+            Shader.TileMode.REPEAT,   // horizontálně: opakuje se doprava
+            Shader.TileMode.CLAMP     // vertikálně: nic (už je správná výška)
         )
         ShaderBrush(shader)
     }
@@ -281,42 +306,41 @@ private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
 // =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
-    val headerHeight = 60.dp
-
     Box(
-    modifier = modifier
-        .fillMaxWidth(0.9f)
-        .height(headerHeight)
-) {
-    // ── Pozadí: logo_linka zarovnaná DOLŮ ──
-    Box(
-        modifier = Modifier
-            .align(Alignment.BottomStart)   // ← DOLŮ
-            .fillMaxWidth()
-            .height(headerHeight)            // ← výška = výška boxu
-            .background(tiledBrushFromResource(R.drawable.logo_linka))
-    )
+        modifier = modifier
+            .fillMaxWidth(0.9f)
+            .height(HeaderHeight)
+    ) {
+        // ── Pozadí: logo_linka zarovnaná DOLŮ ──
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .height(HeaderHeight)
+                .background(tiledBrushFromResource(R.drawable.logo_linka, HeaderHeight))
+        )
 
-    // ── Logo: logo_text zarovnané DOLŮ ──
-    Image(
-        painter = painterResource(id = R.drawable.logo_text),
-        contentDescription = "Tank ONO",
-        modifier = Modifier
-            .align(Alignment.BottomStart)    // ← DOLŮ
-            .fillMaxHeight(),                 // ← výška = výška boxu
-        contentScale = ContentScale.Fit
-    )
+        // ── Logo: logo_text zarovnané DOLŮ ──
+        Image(
+            painter = painterResource(id = R.drawable.logo_text),
+            contentDescription = "Tank ONO",
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxHeight(),
+            contentScale = ContentScale.Fit
+        )
 
-    // ── Nastavení vpravo nahoře ──
-    Text(
-        text = "Nastavení",
-        color = OnoRed,
-        fontSize = 18.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier
-            .align(Alignment.TopEnd)
-            .padding(end = 8.dp, top = 4.dp)
-    )
+        // ── Nastavení vpravo nahoře ──
+        Text(
+            text = "Nastavení",
+            color = OnoRed,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 8.dp, top = 4.dp)
+        )
+    }
 }
 
 
