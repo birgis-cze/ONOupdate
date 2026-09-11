@@ -4,62 +4,72 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="8dp"
+    android:padding="6dp"
     android:background="@color/ono_yellow">
 
-    <!-- HLAVIČKA – pevná výška 56dp, bez RelativeLayout triků -->
-    <LinearLayout
+    <!-- HLAVIČKA – vrstvená, stejná jako v nastavení -->
+    <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:orientation="vertical">
+        android:layout_height="48dp">
 
-        <!-- Horní řádek: logo_text vlevo, datum vpravo -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <ImageView
-                android:id="@+id/header_logo_text"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginStart="4dp"
-                android:adjustViewBounds="true"
-                android:src="@drawable/logo_text"
-                android:contentDescription="@string/app_name"/>
-
-            <TextView
-                android:id="@+id/header_datetime"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="end"
-                android:layout_marginEnd="4dp"
-                android:textColor="@color/ono_red"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:singleLine="true"/>
-        </LinearLayout>
-
-        <!-- Spodní řádek: logo_linka přes celou šířku -->
+        <!-- Vrstva 0: logo_linka – DOLE, výška 32dp jako logo_text, roztáhnout -->
         <ImageView
             android:id="@+id/header_linka"
             android:layout_width="match_parent"
-            android:layout_height="8dp"
+            android:layout_height="32dp"
+            android:layout_alignParentBottom="true"
             android:scaleType="fitXY"
             android:src="@drawable/logo_linka"
             android:contentDescription="@null"/>
-    </LinearLayout>
 
-    <!-- Text produktů – zbytek výšky -->
+        <!-- Vrstva 1 vlevo: logo_text – DOLE, výška 32dp -->
+        <ImageView
+            android:id="@+id/header_logo_text"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="2dp"
+            android:adjustViewBounds="true"
+            android:src="@drawable/logo_text"
+            android:contentDescription="@string/app_name"/>
+
+        <!-- Vrstva 1 vpravo: dva časy pod sebou -->
+        <LinearLayout
+            android:id="@+id/header_times"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginEnd="2dp"
+            android:layout_marginTop="1dp"
+            android:orientation="vertical"
+            android:gravity="end">
+
+            <TextView
+                android:id="@+id/header_date_web"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/ono_red"
+                android:textStyle="bold"
+                android:singleLine="true"/>
+
+            <TextView
+                android:id="@+id/header_date_update"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/ono_red"
+                android:textStyle="bold"
+                android:singleLine="true"/>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Text produktů -->
     <TextView
         android:id="@+id/rows_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:textColor="@color/ono_red"
-        android:textSize="14sp"/>
+        android:layout_marginTop="4dp"
+        android:textColor="@color/ono_red"/>
 </LinearLayout>

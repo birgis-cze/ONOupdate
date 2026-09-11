@@ -67,16 +67,24 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
-        // Hlavička
-        val published = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
-        val fetched = state.current?.fetchedAt?.let { ts ->
+        // ---------- HLAVIČKA – dva časy ----------
+        val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
+        val fetchedTime = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
             else "--"
         } ?: "--"
-        views.setTextViewText(R.id.header_datetime, "$published ($fetched)")
-        views.setTextColor(R.id.header_datetime, fg)
 
-        // Všechny produkty jako jeden text
+        val headerFontSize = (settings.fontSizeSp - 4).coerceAtLeast(8).toFloat()
+
+        views.setTextViewText(R.id.header_date_web, publishedFormatted)
+        views.setTextColor(R.id.header_date_web, fg)
+        views.setFloat(R.id.header_date_web, "setTextSize", headerFontSize)
+
+        views.setTextViewText(R.id.header_date_update, "($fetchedTime)")
+        views.setTextColor(R.id.header_date_update, fg)
+        views.setFloat(R.id.header_date_update, "setTextSize", headerFontSize)
+
+        // ---------- PRODUKTY ----------
         val visible = Product.entries.filter { it in settings.visibleProducts }
         val groups = listOf(
             Product.Kind.FUEL,
@@ -87,9 +95,7 @@ object WidgetRenderer {
 
         val sb = StringBuilder()
         groups.forEachIndexed { gIndex, group ->
-            if (gIndex > 0) {
-                sb.append("\n")
-            }
+            if (gIndex > 0) sb.append("\n")
             group.forEachIndexed { pIndex, product ->
                 if (pIndex > 0) sb.append("\n")
                 val cur = state.current?.entries?.get(product)
