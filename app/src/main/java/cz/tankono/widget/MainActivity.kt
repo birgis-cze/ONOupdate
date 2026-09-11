@@ -29,10 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import cz.tankono.widget.data.model.Currency
@@ -42,7 +42,6 @@ import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
-import java.io.File
 
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
@@ -66,7 +65,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inicializovat logger
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
 
@@ -142,7 +140,6 @@ class MainActivity : ComponentActivity() {
         WorkScheduler.runNow(this)
     }
 
-    /** Export logu přes systémové sdílení. */
     private fun exportLog() {
         try {
             val logFile = AppLogger.getLogFile(this)
@@ -150,11 +147,10 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Log je prázdný", Toast.LENGTH_SHORT).show()
                 return
             }
-            // Zkopírujeme do cache, aby FileProvider mohl sdílet
-            val cacheFile = File(cacheDir, "tankono_log.txt")
+            val cacheFile = java.io.File(cacheDir, "tankono_log.txt")
             logFile.copyTo(cacheFile, overwrite = true)
 
-            val uri = FileProvider.getUriForFile(
+            val uri = androidx.core.content.FileProvider.getUriForFile(
                 this,
                 "$packageName.fileprovider",
                 cacheFile
@@ -226,6 +222,7 @@ private fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
 
+            // ---- Produkty ----
             SettingsCard {
                 SectionTitle("Zobrazované produkty")
                 ProductGroup("Paliva",
@@ -243,6 +240,7 @@ private fun SettingsScreen(
                 }
             }
 
+            // ---- Měna ----
             SettingsCard {
                 SectionTitle("Měna")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -255,68 +253,54 @@ private fun SettingsScreen(
                 }
             }
 
+            // ---- Špička ----
             SettingsCard {
                 SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    NumberStepper(
-                        value = formatTime(s.peakStartMinutes),
-                        onMinus = {
-                            val newVal = (s.peakStartMinutes - 15 + 1440) % 1440
-                            state.value = s.copy(peakStartMinutes = newVal)
-                        },
-                        onPlus = {
-                            val newVal = (s.peakStartMinutes + 15) % 1440
-                            state.value = s.copy(peakStartMinutes = newVal)
-                        }
-                    )
-                    Text("|", color = OnoRed, fontSize = 18.sp)
-                    NumberStepper(
-                        value = formatTime(s.peakEndMinutes),
-                        onMinus = {
-                            val newVal = (s.peakEndMinutes - 15 + 1440) % 1440
-                            state.value = s.copy(peakEndMinutes = newVal)
-                        },
-                        onPlus = {
-                            val newVal = (s.peakEndMinutes + 15) % 1440
-                            state.value = s.copy(peakEndMinutes = newVal)
-                        }
-                    )
-                }
+                TwoSteppersRow(
+                    value1 = formatTime(s.peakStartMinutes),
+                    value2 = formatTime(s.peakEndMinutes),
+                    onMinus1 = {
+                        val newVal = (s.peakStartMinutes - 15 + 1440) % 1440
+                        state.value = s.copy(peakStartMinutes = newVal)
+                    },
+                    onPlus1 = {
+                        val newVal = (s.peakStartMinutes + 15) % 1440
+                        state.value = s.copy(peakStartMinutes = newVal)
+                    },
+                    onMinus2 = {
+                        val newVal = (s.peakEndMinutes - 15 + 1440) % 1440
+                        state.value = s.copy(peakEndMinutes = newVal)
+                    },
+                    onPlus2 = {
+                        val newVal = (s.peakEndMinutes + 15) % 1440
+                        state.value = s.copy(peakEndMinutes = newVal)
+                    }
+                )
             }
 
+            // ---- Interval ----
             SettingsCard {
                 SectionTitle("Interval aktualizací špička / mimo špičku (min)")
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    NumberStepper(
-                        value = s.intervalPeakMin.toString(),
-                        onMinus = {
-                            val newVal = (s.intervalPeakMin - 5).coerceAtLeast(5)
-                            state.value = s.copy(intervalPeakMin = newVal)
-                        },
-                        onPlus = {
-                            val newVal = (s.intervalPeakMin + 5).coerceAtMost(180)
-                            state.value = s.copy(intervalPeakMin = newVal)
-                        }
-                    )
-                    Text("|", color = OnoRed, fontSize = 18.sp)
-                    NumberStepper(
-                        value = s.intervalOffPeakMin.toString(),
-                        onMinus = {
-                            val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(5)
-                            state.value = s.copy(intervalOffPeakMin = newVal)
-                        },
-                        onPlus = {
-                            val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(720)
-                            state.value = s.copy(intervalOffPeakMin = newVal)
-                        }
-                    )
-                }
+                TwoSteppersRow(
+                    value1 = s.intervalPeakMin.toString(),
+                    value2 = s.intervalOffPeakMin.toString(),
+                    onMinus1 = {
+                        val newVal = (s.intervalPeakMin - 5).coerceAtLeast(5)
+                        state.value = s.copy(intervalPeakMin = newVal)
+                    },
+                    onPlus1 = {
+                        val newVal = (s.intervalPeakMin + 5).coerceAtMost(180)
+                        state.value = s.copy(intervalPeakMin = newVal)
+                    },
+                    onMinus2 = {
+                        val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(5)
+                        state.value = s.copy(intervalOffPeakMin = newVal)
+                    },
+                    onPlus2 = {
+                        val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(720)
+                        state.value = s.copy(intervalOffPeakMin = newVal)
+                    }
+                )
                 Text(
                     "Intervaly kratší než 15 min jsou systémem Androidu omezeny na 15 min.",
                     color = OnoRed.copy(alpha = 0.7f),
@@ -324,23 +308,36 @@ private fun SettingsScreen(
                 )
             }
 
+            // ---- Velikost písma ----
             SettingsCard {
-                SectionTitle("Velikost písma widgetu (sp)")
-                NumberStepper(
-                    value = s.fontSizeSp.toString(),
-                    onMinus = {
-                        val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
-                        state.value = s.copy(fontSizeSp = newVal)
-                    },
-                    onPlus = {
-                        val newVal = (s.fontSizeSp + 1).coerceAtMost(25)
-                        state.value = s.copy(fontSizeSp = newVal)
-                    }
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Velikost textu widgetu:",
+                        color = OnoRed,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    NumberStepper(
+                        value = s.fontSizeSp.toString(),
+                        onMinus = {
+                            val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
+                            state.value = s.copy(fontSizeSp = newVal)
+                        },
+                        onPlus = {
+                            val newVal = (s.fontSizeSp + 1).coerceAtMost(25)
+                            state.value = s.copy(fontSizeSp = newVal)
+                        }
+                    )
+                }
             }
 
             Spacer(Modifier.height(4.dp))
 
+            // ---- Tlačítka ----
             Button(
                 onClick = { onSave(s) },
                 enabled = s.visibleProducts.isNotEmpty(),
@@ -374,6 +371,8 @@ private fun SettingsScreen(
     }
 }
 
+// ---- Společné komponenty ----
+
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
@@ -384,7 +383,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content
         )
     }
@@ -396,9 +395,86 @@ private fun SectionTitle(text: String) {
         text = text,
         color = OnoRed,
         fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 2.dp)
+        fontWeight = FontWeight.Bold
     )
+}
+
+@Composable
+private fun TwoSteppersRow(
+    value1: String,
+    value2: String,
+    onMinus1: () -> Unit,
+    onPlus1: () -> Unit,
+    onMinus2: () -> Unit,
+    onPlus2: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        NumberStepper(value = value1, onMinus = onMinus1, onPlus = onPlus1)
+        NumberStepper(value = value2, onMinus = onMinus2, onPlus = onPlus2)
+    }
+}
+
+@Composable
+private fun NumberStepper(
+    value: String,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                .clickable { onMinus() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Remove,
+                contentDescription = "Mínus",
+                tint = OnoRed,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .width(90.dp)
+                .height(44.dp)
+                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                .background(Color.White, RoundedCornerShape(8.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = value,
+                color = OnoRed,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                .clickable { onPlus() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Plus",
+                tint = OnoRed,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
 }
 
 @Composable
@@ -460,45 +536,6 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
         contentAlignment = Alignment.Center
     ) {
         Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun NumberStepper(
-    value: String,
-    onMinus: () -> Unit,
-    onPlus: () -> Unit
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        IconButton(
-            onClick = onMinus,
-            modifier = Modifier
-                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .size(40.dp)
-        ) {
-            Icon(Icons.Default.Remove, contentDescription = "Mínus", tint = OnoRed)
-        }
-        Text(
-            value,
-            color = OnoRed,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .background(Color.White, RoundedCornerShape(8.dp))
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        )
-        IconButton(
-            onClick = onPlus,
-            modifier = Modifier
-                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .size(40.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Plus", tint = OnoRed)
-        }
     }
 }
 
