@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -86,6 +87,7 @@ import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
+
 
 
 // =============================================================================
