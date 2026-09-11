@@ -243,20 +243,6 @@ private fun SettingsScreen(
         ) {
 
             // ============ HLAVIČKA ============
-            val context = LocalContext.current
-            val linkaBitmap = remember {
-                ImageBitmap.imageResource(context.resources, R.drawable.logo_linka)
-            }
-            val repeatingLinkaBrush = remember(linkaBitmap) {
-                ShaderBrush(
-                    ImageShader(
-                        image = linkaBitmap,
-                        tileModeX = TileMode.Repeated,
-                        tileModeY = TileMode.Clamp
-                    )
-                )
-            }
-
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -265,24 +251,31 @@ private fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .height(57.dp)
-                        .background(repeatingLinkaBrush) // Pozadí opakované vodorovně
                 ) {
-                    // Vrstva vlevo: logo_text – zarovnané dole vlevo s odsazením
+                    // Vrstva 0: Pozadí – logo_linka roztažené na celou šířku a výšku 57.dp
+                    Image(
+                        painter = painterResource(id = R.drawable.logo_linka),
+                        contentDescription = null,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.FillWidth
+                    )
+
+                    // Vrstva 1 vlevo: logo_text – zarovnané dole vlevo s odsazením
                     Image(
                         painter = painterResource(id = R.drawable.logo_text),
                         contentDescription = "Tank ONO",
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(start = 12.dp)
+                            .padding(start = 4.dp)
                             .height(57.dp),
                         contentScale = ContentScale.Fit
                     )
 
-                    // Vrstva vpravo: "Nastavení" – horní pravý roh
+                    // Vrstva 1 vpravo: "Nastavení" – horní pravý roh
                     Text(
                         text = "Nastavení",
                         color = OnoRed,
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
@@ -290,7 +283,6 @@ private fun SettingsScreen(
                     )
                 }
             }
-
             // ============ SCROLLOVATELNÝ OBSAH ============
             Column(
                 modifier = Modifier
