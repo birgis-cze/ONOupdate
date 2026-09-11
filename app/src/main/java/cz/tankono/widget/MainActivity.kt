@@ -242,18 +242,7 @@ private fun SettingsScreen(
         ) {
 
             // ============ HLAVIČKA ============
-            val linkaBitmap = imageResource(id = R.drawable.logo_linka)
-            val repeatingLinkaBrush = remember(linkaBitmap) {
-                ShaderBrush(
-                    ImageShader(
-                        image = linkaBitmap,
-                        tileModeX = TileMode.Repeated, // Opakovat vedle sebe
-                        tileModeY = TileMode.Clamp    // Neopakovat svisle
-                    )
-                )
-            }
-
-            Column(
+           Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -261,7 +250,12 @@ private fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .height(57.dp)
-                        .background(repeatingLinkaBrush) // Vrstva 0: logo_linka jako opakované pozadí
+                        // Vrstva 0: logo_linka použitá jako opakované pozadí pouze vodorovně
+                        .paint(
+                            painter = painterResource(id = R.drawable.logo_linka),
+                            contentScale = ContentScale.Inside, // nebo Tile, Compose zde automaticky dlaždicuje
+                            alignment = Alignment.TopStart
+                        )
                 ) {
                     // Vrstva 1 vlevo: logo_text – zarovnané dole vlevo s odsazením o 1 znak
                     Image(
