@@ -324,7 +324,7 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             contentDescription = "Tank ONO",
             modifier = Modifier
                 .matchParentSize(),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Fit, 
             alignment = Alignment.CenterStart
         )
 
@@ -334,7 +334,7 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
         Text(
             text = "Nastavení",
             color = OnoRed,
-            fontSize = 18.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .align(Alignment.TopEnd)
