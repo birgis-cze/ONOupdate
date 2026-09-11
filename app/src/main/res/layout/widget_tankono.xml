@@ -7,8 +7,8 @@
     android:padding="8dp"
     android:background="@color/ono_yellow">
 
-    <!-- ============ HLAVIČKA (vrstvená) ============ -->
-    <FrameLayout
+    <!-- HLAVIČKA – RelativeLayout místo FrameLayout (lepší podpora v RemoteViews) -->
+    <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -18,7 +18,7 @@
             android:id="@+id/header_linka"
             android:layout_width="match_parent"
             android:layout_height="8dp"
-            android:layout_gravity="bottom"
+            android:layout_alignParentBottom="true"
             android:scaleType="fitXY"
             android:src="@drawable/logo_linka"
             android:contentDescription="@null"/>
@@ -28,7 +28,8 @@
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
-            android:layout_gravity="bottom|start"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
             android:layout_marginStart="8dp"
             android:adjustViewBounds="true"
             android:src="@drawable/logo_text"
@@ -39,16 +40,17 @@
             android:id="@+id/header_datetime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
             android:layout_marginEnd="4dp"
             android:layout_marginBottom="12dp"
             android:textColor="@color/ono_red"
             android:textSize="11sp"
             android:textStyle="bold"
             android:singleLine="true"/>
-    </FrameLayout>
+    </RelativeLayout>
 
-    <!-- ============ ŘÁDKY PRODUKTŮ ============ -->
+    <!-- ŘÁDKY PRODUKTŮ -->
     <LinearLayout
         android:id="@+id/rows_container"
         android:layout_width="match_parent"
