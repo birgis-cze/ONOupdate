@@ -276,34 +276,31 @@ private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
 // =============================================================================
 // HLAVIČKA
 // =============================================================================
-
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
     val headerHeight = 57.dp
-    val lineThickness = 3.dp      // tloušťka každé linky
-    val lineGap = 2.dp            // mezera mezi dvěma linkami
-    val lineBlockHeight = lineThickness * 2 + lineGap   // celková výška bloku linek
 
     Box(
         modifier = modifier
             .fillMaxWidth(0.9f)
             .height(headerHeight)
+            // ── logo_linka jako pozadí celého boxu (opakuje se doprava) ──
+            .background(tiledBrushFromResource(R.drawable.logo_linka))
     ) {
-        // ── Logo ONO vlevo (nad linkou) ──
-        // POZN.: použij oříznutý obrázek bez linky (logo_ono).
-        //        Pokud máš jen logo_text s linkou, uvidíš linku dvakrát.
+        // ── Logo ONO vlevo nahoře – překryje linku pod sebou ──
+        // POZN.: logo_text by měl být jen "ONO" bez linky.
+        //        Pokud obsahuje linku, uvidíš ji dvakrát.
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(bottom = lineBlockHeight)
                 .fillMaxHeight()
                 .wrapContentWidth(),
             contentScale = ContentScale.Fit
         )
 
-        // ── "Nastavení" vpravo (nad linkou) ──
+        // ── "Nastavení" vpravo nahoře ──
         Text(
             text = "Nastavení",
             color = OnoRed,
@@ -311,32 +308,8 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(end = 8.dp, top = 4.dp, bottom = lineBlockHeight)
+                .padding(end = 8.dp, top = 4.dp)
         )
-
-        // ── Dvojitá linka dole přes celou šířku ──
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .fillMaxWidth()
-        ) {
-            // horní linka
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(lineThickness)
-                    .background(tiledBrushFromResource(R.drawable.logo_linka))
-            )
-            // mezera
-            Spacer(Modifier.height(lineGap))
-            // dolní linka
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(lineThickness)
-                    .background(tiledBrushFromResource(R.drawable.logo_linka))
-            )
-        }
     }
 }
 
