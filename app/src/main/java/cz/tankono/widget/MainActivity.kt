@@ -245,7 +245,7 @@ private fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(72.dp)
+                    .height(60.dp)
             ) {
                 // Vrstva 0: logo_linka – DOLE, přes celou šířku
                 Image(
@@ -254,7 +254,7 @@ private fun SettingsScreen(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .height(8.dp),
+                        .height(60.dp),
                     contentScale = ContentScale.FillWidth
                 )
 
@@ -265,7 +265,7 @@ private fun SettingsScreen(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(start = 16.dp)
-                        .height(40.dp)
+                        .height(60.dp)
                 )
 
                 // Vrstva 1 vpravo: "Nastavení" – HORNÍ PRAVÝ roh
@@ -329,6 +329,7 @@ private fun SettingsScreen(
                                 state.value = s.copy(currency = Currency.EUR)
                             }
                         }
+                        Spacer(Modifier.width(8.dp))
                     }
                 }
 
@@ -444,7 +445,7 @@ private fun SettingsScreen(
                             onMin = { state.value = s.copy(fontSizeSp = 10) },
                             onMax = { state.value = s.copy(fontSizeSp = 30) }
                         )
-                        Spacer(Modifier.width(8.dp))  // ← PŘIDAT
+                        Spacer(Modifier.width(10.dp))  // ← PŘIDAT
                     }
                 }
 
