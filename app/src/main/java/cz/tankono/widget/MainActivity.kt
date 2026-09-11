@@ -230,9 +230,9 @@ private fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(64.dp)
+                    .height(72.dp)
             ) {
-                // Vrstva 0: logo_linka – dole, přes celou šířku
+                // Vrstva 0: logo_linka – DOLE, přes celou šířku
                 Image(
                     painter = painterResource(id = R.drawable.logo_linka),
                     contentDescription = null,
@@ -243,17 +243,17 @@ private fun SettingsScreen(
                     contentScale = ContentScale.FillWidth
                 )
 
-                // Vrstva 1 vlevo: logo_text – dole vlevo
+                // Vrstva 1 vlevo: logo_text – DOLE VLEVO (na lince)
                 Image(
                     painter = painterResource(id = R.drawable.logo_text),
                     contentDescription = "Tank ONO",
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, bottom = 4.dp)
+                        .padding(start = 16.dp)
                         .height(40.dp)
                 )
 
-                // Vrstva 1 vpravo: "Nastavení" – nahoře vpravo
+                // Vrstva 1 vpravo: "Nastavení" – HORNÍ PRAVÝ roh
                 Text(
                     text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
                     color = OnoRed,
@@ -429,6 +429,7 @@ private fun SettingsScreen(
                             onMin = { state.value = s.copy(fontSizeSp = 10) },
                             onMax = { state.value = s.copy(fontSizeSp = 30) }
                         )
+                        Spacer(Modifier.width(8.dp))  // ← PŘIDAT
                     }
                 }
 

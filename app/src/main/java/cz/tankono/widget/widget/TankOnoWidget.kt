@@ -32,7 +32,8 @@ class TankOnoWidget : AppWidgetProvider() {
         if (intent.action == ACTION_REFRESH) {
             Log.d(TAG, "Klik na widget – spouštím refresh")
             // Spustí WorkManager jednorázově
-            cz.tankono.widget.work.WorkScheduler.runNow(context)
+            //cz.tankono.widget.work.WorkScheduler.runNow(context)
+            WorkScheduler.runNow(context)
         }
     }
 
