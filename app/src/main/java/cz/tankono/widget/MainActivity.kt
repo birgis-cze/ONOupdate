@@ -32,16 +32,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.WidgetSettings
+import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
+import java.io.File
 
-// Barvy Tank ONO (musí odpovídat res/values/colors.xml)
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
 
@@ -64,6 +66,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Inicializovat logger
+        AppLogger.init(this)
+        AppLogger.i("=== Aplikace spuštěna ===")
+
         configWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID
@@ -82,6 +88,7 @@ class MainActivity : ComponentActivity() {
                 SettingsScreen(
                     onSave = { settings -> saveSettings(settings) },
                     onRefresh = { refreshNow() },
+                    onExportLog = { exportLog() },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
             }
@@ -103,6 +110,8 @@ class MainActivity : ComponentActivity() {
 
     private fun saveSettings(settings: WidgetSettings) {
         lifecycleScope.launch {
+            AppLogger.i("Ukládám nastavení: visible=${settings.visibleProducts.size}, " +
+                    "currency=${settings.currency}")
             SettingsStore(this@MainActivity).save(settings)
             WorkScheduler.schedule(this@MainActivity)
             cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this@MainActivity)
@@ -128,13 +137,45 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun refreshNow() {
+        AppLogger.i("Manuální refresh")
         Toast.makeText(this, getString(R.string.refreshing_toast), Toast.LENGTH_SHORT).show()
         WorkScheduler.runNow(this)
+    }
+
+    /** Export logu přes systémové sdílení. */
+    private fun exportLog() {
+        try {
+            val logFile = AppLogger.getLogFile(this)
+            if (!logFile.exists()) {
+                Toast.makeText(this, "Log je prázdný", Toast.LENGTH_SHORT).show()
+                return
+            }
+            // Zkopírujeme do cache, aby FileProvider mohl sdílet
+            val cacheFile = File(cacheDir, "tankono_log.txt")
+            logFile.copyTo(cacheFile, overwrite = true)
+
+            val uri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                cacheFile
+            )
+
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, "Tank ONO widget – log")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Sdílet log"))
+        } catch (t: Throwable) {
+            AppLogger.e("Chyba při exportu logu", t)
+            Toast.makeText(this, "Chyba: ${t.message}", Toast.LENGTH_LONG).show()
+        }
     }
 }
 
 // =============================================================================
-// COMPOSE OBRAZOVKA
+// COMPOSE
 // =============================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -142,6 +183,7 @@ class MainActivity : ComponentActivity() {
 private fun SettingsScreen(
     onSave: (WidgetSettings) -> Unit,
     onRefresh: () -> Unit,
+    onExportLog: () -> Unit,
     isConfiguring: Boolean
 ) {
     val context = LocalContext.current
@@ -184,7 +226,6 @@ private fun SettingsScreen(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            // ---- Produkty ----
             SettingsCard {
                 SectionTitle("Zobrazované produkty")
                 ProductGroup("Paliva",
@@ -202,7 +243,6 @@ private fun SettingsScreen(
                 }
             }
 
-            // ---- Měna ----
             SettingsCard {
                 SectionTitle("Měna")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -215,7 +255,6 @@ private fun SettingsScreen(
                 }
             }
 
-            // ---- Špička ----
             SettingsCard {
                 SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
                 Row(
@@ -248,7 +287,6 @@ private fun SettingsScreen(
                 }
             }
 
-            // ---- Interval ----
             SettingsCard {
                 SectionTitle("Interval aktualizací špička / mimo špičku (min)")
                 Row(
@@ -286,7 +324,6 @@ private fun SettingsScreen(
                 )
             }
 
-            // ---- Velikost písma ----
             SettingsCard {
                 SectionTitle("Velikost písma widgetu (sp)")
                 NumberStepper(
@@ -304,7 +341,6 @@ private fun SettingsScreen(
 
             Spacer(Modifier.height(4.dp))
 
-            // ---- Tlačítka ----
             Button(
                 onClick = { onSave(s) },
                 enabled = s.visibleProducts.isNotEmpty(),
@@ -325,6 +361,14 @@ private fun SettingsScreen(
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Aktualizovat data")
+            }
+
+            OutlinedButton(
+                onClick = onExportLog,
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Exportovat log")
             }
         }
     }
