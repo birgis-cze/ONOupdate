@@ -13,17 +13,15 @@ import kotlinx.coroutines.flow.map
 
 private val Context.settingsDataStore by preferencesDataStore(name = "tankono_settings")
 
-/** Uživatelské nastavení widgetu. */
 data class WidgetSettings(
     val visibleProducts: Set<Product> = Product.entries.toSet(),
     val currency: Currency = Currency.CZK,
-    val peakStartMinutes: Int = 14 * 60 + 30,  // 14:30
-    val peakEndMinutes: Int = 16 * 60,          // 16:00
-    val intervalPeakMin: Int = 10,
+    val peakStartMinutes: Int = 14 * 60 + 30,
+    val peakEndMinutes: Int = 16 * 60,
+    val intervalPeakMin: Int = 15,
     val intervalOffPeakMin: Int = 60,
     val fontSizeSp: Int = 15
 ) {
-    /** Efektivní interval – Android minimum je 15 minut. */
     val effectiveIntervalMin: Int
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
 }
@@ -51,7 +49,7 @@ class SettingsStore(private val context: Context) {
             } ?: Currency.CZK,
             peakStartMinutes  = p[Keys.PEAK_START]    ?: (14 * 60 + 30),
             peakEndMinutes    = p[Keys.PEAK_END]      ?: (16 * 60),
-            intervalPeakMin   = p[Keys.INTERVAL_PEAK] ?: 10,
+            intervalPeakMin   = p[Keys.INTERVAL_PEAK] ?: 15,
             intervalOffPeakMin= p[Keys.INTERVAL_OFF]  ?: 60,
             fontSizeSp        = p[Keys.FONT_SIZE]     ?: 15
         )

@@ -210,16 +210,18 @@ private fun SettingsScreen(
     }
 
     Surface(color = OnoYellow, modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.statusBars)
+        ) {
 
-            // ============ HLAVIČKA (fixní nahoře) ============
+            // ============ HLAVIČKA (bez paddingu, aby linka šla přes celou šířku) ============
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
                     .height(56.dp)
             ) {
-                // Vrstva 0: logo_linka – dole, plná šířka
                 Image(
                     painter = painterResource(id = R.drawable.logo_linka),
                     contentDescription = null,
@@ -230,17 +232,15 @@ private fun SettingsScreen(
                     contentScale = ContentScale.FillWidth
                 )
 
-                // Vrstva 1: logo_text – vlevo dole
                 Image(
                     painter = painterResource(id = R.drawable.logo_text),
                     contentDescription = "Tank ONO",
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(start = 8.dp)
+                        .padding(start = 16.dp)
                         .height(40.dp)
                 )
 
-                // Vpravo: text
                 Text(
                     text = if (isConfiguring) "Nastavení widgetu" else "Nastavení",
                     color = OnoRed,
@@ -248,7 +248,7 @@ private fun SettingsScreen(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(end = 4.dp, top = 4.dp)
+                        .padding(end = 16.dp, top = 8.dp)
                 )
             }
 
@@ -336,7 +336,7 @@ private fun SettingsScreen(
                         value1 = s.intervalPeakMin.toString(),
                         value2 = s.intervalOffPeakMin.toString(),
                         onMinus1 = {
-                            val newVal = (s.intervalPeakMin - 5).coerceAtLeast(5)
+                            val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
                             state.value = s.copy(intervalPeakMin = newVal)
                         },
                         onPlus1 = {
@@ -344,18 +344,13 @@ private fun SettingsScreen(
                             state.value = s.copy(intervalPeakMin = newVal)
                         },
                         onMinus2 = {
-                            val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(5)
+                            val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
                             state.value = s.copy(intervalOffPeakMin = newVal)
                         },
                         onPlus2 = {
                             val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(720)
                             state.value = s.copy(intervalOffPeakMin = newVal)
                         }
-                    )
-                    Text(
-                        "Intervaly kratší než 15 min jsou systémem Androidu omezeny na 15 min.",
-                        color = OnoRed.copy(alpha = 0.7f),
-                        fontSize = 11.sp
                     )
                 }
 
@@ -451,10 +446,6 @@ private fun SectionTitle(text: String) {
     )
 }
 
-/**
- * Řádek se dvěma steppery vedle sebe.
- * Tlačítka pevná 44dp, hodnota pevná 90dp. Mezi stepry 16dp mezera.
- */
 @Composable
 private fun TwoSteppersRow(
     value1: String,
@@ -466,7 +457,7 @@ private fun TwoSteppersRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically
     ) {
         NumberStepper(value = value1, onMinus = onMinus1, onPlus = onPlus1)
@@ -475,10 +466,6 @@ private fun TwoSteppersRow(
     }
 }
 
-/**
- * Jeden stepper: [−]  hodnota  [+]
- * Tlačítka 44x44, hodnota bez rámečku (jen text) – tučný, 90dp šířka, centrovaný.
- */
 @Composable
 private fun NumberStepper(
     value: String,
@@ -489,7 +476,6 @@ private fun NumberStepper(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        // Tlačítko −
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -505,10 +491,9 @@ private fun NumberStepper(
             )
         }
 
-        // Hodnota – bez rámečku, jen text
         Box(
             modifier = Modifier
-                .width(90.dp)
+                .width(80.dp)
                 .height(44.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -521,7 +506,6 @@ private fun NumberStepper(
             )
         }
 
-        // Tlačítko +
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -549,12 +533,11 @@ private fun ProductGroup(
     Column {
         Text(title, color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
 
-        // Červená linka pod nadpisem (cca 40 % šířky, zarovnaná vlevo)
         Box(
             modifier = Modifier
                 .padding(top = 2.dp, bottom = 6.dp)
                 .fillMaxWidth(0.4f)
-                .height(2.dp)
+                .height(1.dp)
                 .background(OnoRed)
         )
 

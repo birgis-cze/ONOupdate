@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.view.View
 import android.widget.RemoteViews
 import cz.tankono.widget.R
 import cz.tankono.widget.data.model.PriceFormatter
@@ -32,6 +33,12 @@ object WidgetRenderer {
     private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
 
+    private val ROW_IDS = intArrayOf(
+        R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
+        R.id.row_5, R.id.row_6, R.id.row_7, R.id.row_8, R.id.row_9,
+        R.id.row_10
+    )
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun render(context: Context, mgr: AppWidgetManager, widgetId: Int) {
@@ -40,22 +47,13 @@ object WidgetRenderer {
             try {
                 val settings = SettingsStore(context).settings.first()
                 val state = PriceRepository(context).loadState()
-
                 val views = buildViews(context, settings, state)
-
                 withContext(Dispatchers.Main) {
                     mgr.updateAppWidget(widgetId, views)
                 }
                 AppLogger.i("Widget $widgetId úspěšně vykreslen")
             } catch (t: Throwable) {
                 AppLogger.e("Chyba při renderu widgetu $widgetId", t)
-                try {
-                    val fallback = RemoteViews(context.packageName, R.layout.widget_tankono)
-                    fallback.setTextViewText(R.id.header_datetime, "--")
-                    mgr.updateAppWidget(widgetId, fallback)
-                } catch (t2: Throwable) {
-                    AppLogger.e("I fallback selhal", t2)
-                }
             }
         }
     }
@@ -76,90 +74,49 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
-        // Hlavička
         val published = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetched = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
             else "--"
         } ?: "--"
-        val headerText = "$published ($fetched)"
-        views.setTextViewText(R.id.header_datetime, headerText)
+        views.setTextViewText(R.id.header_datetime, "$published ($fetched)")
         views.setTextColor(R.id.header_datetime, fg)
 
-        // Vyčistit rows_container
-        try {
-            views.removeAllViews(R.id.rows_container)
-        } catch (t: Throwable) {
-            AppLogger.e("removeAllViews selhal", t)
-        }
-
         val visible = Product.entries.filter { it in settings.visibleProducts }
-        val groups = listOf(
-            Product.Kind.FUEL,
-            Product.Kind.OTHER,
-            Product.Kind.EXCHANGE
-        ).map { kind -> visible.filter { it.kind == kind } }
-            .filter { it.isNotEmpty() }
 
-        if (groups.isEmpty()) {
-            val empty = RemoteViews(context.packageName, R.layout.widget_empty)
-            empty.setTextViewText(R.id.empty_text, "Nejsou vybrány žádné produkty")
-            empty.setTextColor(R.id.empty_text, fg)
-            views.addView(R.id.rows_container, empty)
-            return views
-        }
+        ROW_IDS.forEachIndexed { index, rowId ->
+            if (index < visible.size) {
+                val product = visible[index]
+                val cur = state.current?.entries?.get(product)
+                val old = state.previous?.entries?.get(product)
 
-        groups.forEachIndexed { index, group ->
-            if (index > 0) {
-                val divider = RemoteViews(context.packageName, R.layout.widget_divider)
-                views.addView(R.id.rows_container, divider)
-            }
-            group.forEach { product ->
-                val row = buildRow(product, settings, state, fg)
-                views.addView(R.id.rows_container, row)
+                val name = product.displayName
+                val oldText = if (old != null) "(${PriceFormatter.format(old, settings.currency)})" else ""
+                val curText = PriceFormatter.format(cur, settings.currency)
+                val arrow = if (old != null && cur != null) {
+                    val oldVal = PriceFormatter.valueFor(old, settings.currency)
+                    val curVal = PriceFormatter.valueFor(cur, settings.currency)
+                    when {
+                        oldVal == null || curVal == null -> ""
+                        curVal > oldVal -> "▲"
+                        curVal < oldVal -> "▼"
+                        else -> "="
+                    }
+                } else ""
+
+                val text = "$name   $oldText   $curText  $arrow"
+
+                views.setTextViewText(rowId, text)
+                views.setTextColor(rowId, fg)
+                views.setFloat(rowId, "setTextSize", settings.fontSizeSp.toFloat())
+                views.setViewVisibility(rowId, View.VISIBLE)
+                AppLogger.d("Řádek $index: $text")
+            } else {
+                views.setViewVisibility(rowId, View.GONE)
             }
         }
 
         return views
-    }
-
-    /**
-     * Sestaví jeden řádek jako jeden TextView:
-     *   "Natural 95   (42,50)  42,90 ▲"
-     */
-    private fun buildRow(
-        product: Product,
-        settings: WidgetSettings,
-        state: PriceState,
-        fg: Int
-    ): RemoteViews {
-        val row = RemoteViews("cz.tankono.widget", R.layout.widget_row)
-
-        val cur = state.current?.entries?.get(product)
-        val old = state.previous?.entries?.get(product)
-
-        val name = product.displayName
-        val oldText = if (old != null) "(${PriceFormatter.format(old, settings.currency)})" else ""
-        val curText = PriceFormatter.format(cur, settings.currency)
-        val arrow = if (old != null && cur != null) {
-            val oldVal = PriceFormatter.valueFor(old, settings.currency)
-            val curVal = PriceFormatter.valueFor(cur, settings.currency)
-            when {
-                oldVal == null || curVal == null -> ""
-                curVal > oldVal -> "▲"
-                curVal < oldVal -> "▼"
-                else -> "="
-            }
-        } else ""
-
-        // Sestavíme text s mezerami pro zarovnání
-        val text = "$name   $oldText   $curText  $arrow"
-
-        row.setTextViewText(R.id.row_text, text)
-        row.setTextColor(R.id.row_text, fg)
-        row.setFloat(R.id.row_text, "setTextSize", settings.fontSizeSp.toFloat())
-
-        return row
     }
 
     private fun buildRefreshPendingIntent(context: Context): PendingIntent {
