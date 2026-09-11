@@ -4,13 +4,18 @@ import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Shader
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -40,17 +45,32 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -58,8 +78,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.paint
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import cz.tankono.widget.data.model.Currency
@@ -71,10 +91,16 @@ import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
 
 
-
+// =============================================================================
+// BARVY
+// =============================================================================
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
 
+
+// =============================================================================
+// MAIN ACTIVITY
+// =============================================================================
 class MainActivity : ComponentActivity() {
 
     private var configWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
@@ -205,20 +231,92 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Chyba: ${t.message}", Toast.LENGTH_LONG).show()
         }
     }
-
-    fun Drawable.toBitmap(width: Int = intrinsicWidth, height: Int = intrinsicHeight): Bitmap {
-        if (this is BitmapDrawable) return bitmap
-        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bmp)
-        setBounds(0, 0, canvas.width, canvas.height)
-        draw(canvas)
-        return bmp
-    }
-
 }
 
+
 // =============================================================================
-// COMPOSE
+// TOP-LEVEL HELPERY
+// =============================================================================
+
+/**
+ * Převede [Drawable] na [Bitmap]. Pokud je to už [BitmapDrawable], vrátí rovnou jeho bitmapu.
+ */
+private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = intrinsicHeight): Bitmap {
+    if (this is BitmapDrawable) return bitmap
+    val w = width.coerceAtLeast(1)
+    val h = height.coerceAtLeast(1)
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(bmp)
+    setBounds(0, 0, canvas.width, canvas.height)
+    draw(canvas)
+    return bmp
+}
+
+/**
+ * Vytvoří [ShaderBrush] z drawable – obrázek se opakuje doprava (REPEAT),
+ * svisle se roztáhne (CLAMP). Určeno pro 1×N px dlaždice (např. logo_linka).
+ */
+@Composable
+private fun tiledBrushFromResource(@DrawableRes id: Int): ShaderBrush {
+    val context = LocalContext.current
+    val imageBitmap: ImageBitmap = remember(id, context) {
+        val drawable = ContextCompat.getDrawable(context, id)
+            ?: error("Drawable s id=$id nebyl nalezen")
+        drawable.toBitmapSafe().asImageBitmap()
+    }
+
+    return remember(imageBitmap) {
+        val shader = BitmapShader(
+            imageBitmap.asAndroidBitmap(),
+            Shader.TileMode.REPEAT,
+            Shader.TileMode.CLAMP
+        )
+        ShaderBrush(shader)
+    }
+}
+
+
+// =============================================================================
+// HLAVIČKA (top-level @Composable)
+// =============================================================================
+@Composable
+private fun OnoHeader(modifier: Modifier = Modifier) {
+    val headerHeight = 57.dp
+    val logoTextWidth = 155.dp
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth(0.9f)
+            .height(headerHeight)
+            // Pozadí: 1px dlaždice opakovaná doprava na plnou šířku a výšku
+            .background(tiledBrushFromResource(R.drawable.logo_linka))
+    ) {
+        // Logo text – vlevo nahoře, 155×57, bez opakování
+        Image(
+            painter = painterResource(id = R.drawable.logo_text),
+            contentDescription = "Tank ONO",
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .size(width = logoTextWidth, height = headerHeight),
+            contentScale = ContentScale.Fit
+        )
+
+        // „Nastavení" – vpravo nahoře
+        Text(
+            text = "Nastavení",
+            color = OnoRed,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 16.dp, top = 4.dp)
+        )
+    }
+}
+
+
+// =============================================================================
+// SETTINGS SCREEN
 // =============================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -261,53 +359,11 @@ private fun SettingsScreen(
         ) {
 
             // ============ HLAVIČKA ============
-            fun OnoHeader(modifier: Modifier = Modifier) {
-                val context = LocalContext.current
-                val tileBitmap = remember {
-                    ContextCompat.getDrawable(context, R.drawable.logo_linka)!!
-                        .toBitmap() // mělo by vrátit 1x57
-                }
-                val headerHeight = 57.dp
-
-                Box(
-                    modifier = modifier
-                        .fillMaxWidth(0.9f)
-                        .height(headerHeight)
-                        .drawBehind {
-                            val shader = android.graphics.BitmapShader(
-                                tileBitmap,
-                                Shader.TileMode.REPEAT,
-                                Shader.TileMode.CLAMP
-                            )
-                            val paint = android.graphics.Paint().apply { this.shader = shader }
-                            drawIntoCanvas { canvas ->
-                                canvas.nativeCanvas.drawRect(
-                                    0f, 0f, size.width, size.height, paint
-                                )
-                            }
-                        }
-                ) {
-                    // Logo text – vlevo nahoře, 155x57, bez opakování
-                    Image(
-                        painter = painterResource(id = R.drawable.logo_text),
-                        contentDescription = "Tank ONO",
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .size(width = 155.dp, height = headerHeight),
-                        contentScale = ContentScale.Fit
-                    )
-
-                    // Nastavení – vpravo nahoře
-                    Text(
-                        text = "Nastavení",
-                        color = OnoRed,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 16.dp, top = 4.dp)
-                    )
-                }
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                OnoHeader()
             }
 
             // ============ SCROLLOVATELNÝ OBSAH ============
@@ -475,7 +531,7 @@ private fun SettingsScreen(
                             onMin = { state.value = s.copy(fontSizeSp = 10) },
                             onMax = { state.value = s.copy(fontSizeSp = 30) }
                         )
-                        Spacer(Modifier.width(10.dp))  // ← PŘIDAT
+                        Spacer(Modifier.width(10.dp))
                     }
                 }
 
@@ -528,7 +584,10 @@ private fun SettingsScreen(
     }
 }
 
-// ---- Společné komponenty ----
+
+// =============================================================================
+// SPOLEČNÉ KOMPONENTY
+// =============================================================================
 
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
