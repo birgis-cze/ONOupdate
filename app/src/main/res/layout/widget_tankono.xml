@@ -11,34 +11,34 @@
     <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
+        android:layout_height="57dp"
         android:background="@color/ono_yellow">
 
-        <!-- Linka 1 – y = 28,8 dp, výška 2,1 dp (od spodku: 9,1 dp) -->
+        <!-- Linka 1 – y = 41 dp, výška 3 dp (od spodku: 13 dp) -->
         <ImageView
             android:id="@+id/header_line_1"
             android:layout_width="match_parent"
-            android:layout_height="2.1dp"
+            android:layout_height="3dp"
             android:layout_alignParentBottom="true"
-            android:layout_marginBottom="9.1dp"
+            android:layout_marginBottom="13dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- Linka 2 – y = 32,3 dp, výška 2,1 dp (od spodku: 5,6 dp) -->
+        <!-- Linka 2 – y = 46 dp, výška 3 dp (od spodku: 8 dp) -->
         <ImageView
             android:id="@+id/header_line_2"
             android:layout_width="match_parent"
-            android:layout_height="2.1dp"
+            android:layout_height="3dp"
             android:layout_alignParentBottom="true"
-            android:layout_marginBottom="5.6dp"
+            android:layout_marginBottom="8dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- Logo_text – vlevo, výška 40dp, PŘES linky -->
+        <!-- Logo_text – vlevo, výška 57dp, PŘES linky -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="57dp"
             android:layout_alignParentBottom="true"
             android:layout_alignParentStart="true"
             android:scaleType="fitStart"
