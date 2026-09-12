@@ -36,6 +36,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="30dp"
                 android:src="@drawable/logo_text"
+                android:gravity="start"
                 android:contentDescription="@string/app_name"/>
         </LinearLayout>
 
