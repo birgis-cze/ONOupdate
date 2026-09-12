@@ -223,7 +223,7 @@ class MainActivity : ComponentActivity() {
 
 
 // =============================================================================
-// HLAVIČKA – jeden kombinovaný obrázek
+// HLAVIČKA – logo_text vlevo, logo_linka vedle (přes celou šířku)
 // =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
@@ -232,14 +232,28 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             .fillMaxWidth(0.9f)
             .height(HeaderHeight)
     ) {
+        // Linka – pozadí, přes celou šířku
         Image(
-            painter = painterResource(id = R.drawable.logo_trans),
+            painter = painterResource(id = R.drawable.logo_linka),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize(),
+            contentScale = ContentScale.FillBounds,
+            alignment = Alignment.CenterStart
+        )
+
+        // Logo_text – vlevo dole (přes linku)
+        Image(
+            painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
-            modifier = Modifier.matchParentSize(),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .height(HeaderHeight),
             contentScale = ContentScale.Fit,
             alignment = Alignment.CenterStart
         )
 
+        // Text "Nastavení" – vpravo nahoře
         Text(
             text = "Nastavení",
             color = OnoRed,
@@ -296,6 +310,7 @@ private fun SettingsScreen(
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
 
+            // ============ HLAVIČKA ============
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -305,6 +320,7 @@ private fun SettingsScreen(
                 OnoHeader()
             }
 
+            // ============ SCROLLOVATELNÝ OBSAH ============
             Column(
                 modifier = Modifier
                     .fillMaxSize()

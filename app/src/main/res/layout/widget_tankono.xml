@@ -41,20 +41,30 @@
                 android:singleLine="true"/>
         </LinearLayout>
 
-        <!-- Vrstva 1: kombinovaný obrázek (logo + linka) -->
+        <!-- Vrstva 1: logo_text + logo_linka -->
         <LinearLayout
             android:id="@+id/header_logos"
             android:layout_width="match_parent"
             android:layout_height="40dp"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:gravity="bottom">
 
             <ImageView
-                android:id="@+id/header_logo"
-                android:layout_width="match_parent"
+                android:id="@+id/header_logo_text"
+                android:layout_width="wrap_content"
                 android:layout_height="match_parent"
                 android:scaleType="fitStart"
-                android:src="@drawable/logo_trans"
+                android:src="@drawable/logo_text"
                 android:contentDescription="@string/app_name"/>
+
+            <ImageView
+                android:id="@+id/header_linka"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:scaleType="fitXY"
+                android:src="@drawable/logo_linka"
+                android:contentDescription="@null"/>
         </LinearLayout>
     </LinearLayout>
 
