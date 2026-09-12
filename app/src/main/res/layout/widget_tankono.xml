@@ -7,6 +7,7 @@
     android:padding="6dp"
     android:background="@color/ono_yellow">
 
+    <!-- ========== HLAVIČKA ========== -->
     <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
@@ -39,7 +40,6 @@
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
             android:layout_marginEnd="2dp"
-            android:layout_marginTop="1dp"
             android:orientation="vertical"
             android:gravity="end">
 
@@ -61,10 +61,98 @@
         </LinearLayout>
     </RelativeLayout>
 
-    <TextView
-        android:id="@+id/rows_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:textColor="@color/ono_red"/>
+    <!-- ========== ŘÁDKY PRODUKTŮ (11 připravených) ========== -->
+
+    <!-- 0 -->
+    <LinearLayout android:id="@+id/row_0" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_0_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_0_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_0_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_0_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 1 -->
+    <LinearLayout android:id="@+id/row_1" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_1_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_1_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_1_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_1_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 2 -->
+    <LinearLayout android:id="@+id/row_2" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_2_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_2_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_2_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_2_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 3 -->
+    <LinearLayout android:id="@+id/row_3" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_3_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_3_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_3_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_3_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 4 -->
+    <LinearLayout android:id="@+id/row_4" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_4_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_4_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_4_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_4_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 5 -->
+    <LinearLayout android:id="@+id/row_5" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_5_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_5_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_5_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_5_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 6 -->
+    <LinearLayout android:id="@+id/row_6" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_6_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_6_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_6_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_6_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 7 -->
+    <LinearLayout android:id="@+id/row_7" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_7_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_7_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_7_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_7_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 8 -->
+    <LinearLayout android:id="@+id/row_8" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_8_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_8_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_8_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_8_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 9 -->
+    <LinearLayout android:id="@+id/row_9" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_9_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_9_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_9_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_9_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- 10 -->
+    <LinearLayout android:id="@+id/row_10" style="@style/WidgetRow">
+        <TextView android:id="@+id/row_10_name"  style="@style/WidgetRowName"/>
+        <TextView android:id="@+id/row_10_old"   style="@style/WidgetRowOld"/>
+        <TextView android:id="@+id/row_10_price" style="@style/WidgetRowPrice"/>
+        <TextView android:id="@+id/row_10_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- Oddělovače (skryté defaultně) -->
+    <ImageView android:id="@+id/divider_0" style="@style/WidgetDivider"/>
+    <ImageView android:id="@+id/divider_1" style="@style/WidgetDivider"/>
+    <ImageView android:id="@+id/divider_2" style="@style/WidgetDivider"/>
 </LinearLayout>

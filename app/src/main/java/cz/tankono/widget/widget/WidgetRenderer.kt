@@ -6,11 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Typeface
-import android.text.SpannableStringBuilder
+import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.text.style.SuperscriptSpan
+import android.view.View
 import android.widget.RemoteViews
 import cz.tankono.widget.R
 import cz.tankono.widget.data.model.Currency
@@ -38,6 +39,35 @@ object WidgetRenderer {
     private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()
     private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
+
+    /** ID řádků v XML */
+    private val ROW_IDS = intArrayOf(
+        R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
+        R.id.row_5, R.id.row_6, R.id.row_7, R.id.row_8, R.id.row_9, R.id.row_10
+    )
+
+    /** ID jednotlivých TextView v každém řádku */
+    private val NAME_IDS = intArrayOf(
+        R.id.row_0_name, R.id.row_1_name, R.id.row_2_name, R.id.row_3_name, R.id.row_4_name,
+        R.id.row_5_name, R.id.row_6_name, R.id.row_7_name, R.id.row_8_name, R.id.row_9_name, R.id.row_10_name
+    )
+    private val OLD_IDS = intArrayOf(
+        R.id.row_0_old, R.id.row_1_old, R.id.row_2_old, R.id.row_3_old, R.id.row_4_old,
+        R.id.row_5_old, R.id.row_6_old, R.id.row_7_old, R.id.row_8_old, R.id.row_9_old, R.id.row_10_old
+    )
+    private val PRICE_IDS = intArrayOf(
+        R.id.row_0_price, R.id.row_1_price, R.id.row_2_price, R.id.row_3_price, R.id.row_4_price,
+        R.id.row_5_price, R.id.row_6_price, R.id.row_7_price, R.id.row_8_price, R.id.row_9_price, R.id.row_10_price
+    )
+    private val TREND_IDS = intArrayOf(
+        R.id.row_0_trend, R.id.row_1_trend, R.id.row_2_trend, R.id.row_3_trend, R.id.row_4_trend,
+        R.id.row_5_trend, R.id.row_6_trend, R.id.row_7_trend, R.id.row_8_trend, R.id.row_9_trend, R.id.row_10_trend
+    )
+
+    /** Oddělovače */
+    private val DIVIDER_IDS = intArrayOf(
+        R.id.divider_0, R.id.divider_1, R.id.divider_2
+    )
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -100,136 +130,107 @@ object WidgetRenderer {
         ).map { kind -> visible.filter { it.kind == kind } }
             .filter { it.isNotEmpty() }
 
-        val sb = SpannableStringBuilder()
+        // Plochý seznam produktů (bez oddělovačů)
+        val flat = mutableListOf<Product>()
+        for (g in groups) flat.addAll(g)
 
-        groups.forEachIndexed { gIndex, group ->
-            if (gIndex > 0) sb.append("\n")
-            group.forEachIndexed { pIndex, product ->
-                if (pIndex > 0) sb.append("\n")
-                appendProductRow(sb, product, state, settings)
+        // Naplnit řádky
+        ROW_IDS.forEachIndexed { index, rowId ->
+            if (index < flat.size) {
+                val product = flat[index]
+                views.setViewVisibility(rowId, View.VISIBLE)
+
+                val cur = state.current?.entries?.get(product)
+                val old = state.previous?.entries?.get(product)
+
+                // Název
+                views.setTextViewText(NAME_IDS[index], product.displayName)
+                views.setTextColor(NAME_IDS[index], fg)
+                views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+
+                // Stará cena – v závorce; fallback "( --,-- )"
+                val oldText = if (old != null)
+                    "(${PriceFormatter.format(old, settings.currency)})"
+                else
+                    "( --,-- )"
+                views.setTextViewText(OLD_IDS[index], oldText)
+                views.setTextColor(OLD_IDS[index], fg)
+                views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
+
+                // Aktuální cena – SpannableString s superscriptem
+                val priceSpannable = buildPriceSpannable(cur, product, settings)
+                views.setTextViewText(PRICE_IDS[index], priceSpannable)
+                views.setTextColor(PRICE_IDS[index], fg)
+                views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+
+                // Trend
+                val arrow = if (old != null && cur != null) {
+                    val oldVal = PriceFormatter.valueFor(old, settings.currency)
+                    val curVal = PriceFormatter.valueFor(cur, settings.currency)
+                    when {
+                        oldVal == null || curVal == null -> "="
+                        curVal > oldVal -> "▲"
+                        curVal < oldVal -> "▼"
+                        else -> "="
+                    }
+                } else "="
+                views.setTextViewText(TREND_IDS[index], arrow)
+                views.setTextColor(TREND_IDS[index], fg)
+                views.setFloat(TREND_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+            } else {
+                views.setViewVisibility(rowId, View.GONE)
             }
         }
 
-        views.setTextViewText(R.id.rows_text, sb)
-        views.setTextColor(R.id.rows_text, fg)
-        views.setFloat(R.id.rows_text, "setTextSize", settings.fontSizeSp.toFloat())
+        // Oddělovače – jen mezi skupinami (max 2, protože 3 skupiny)
+        val nonEmptyGroups = groups.size
+        DIVIDER_IDS.forEachIndexed { index, divId ->
+            if (index < nonEmptyGroups - 1) {
+                // Zjistit pozici, kam vložit oddělovač – mezi skupinami
+                // Jednoduše: pokud máme 3 skupiny, oddělovače 0 a 1
+                views.setViewVisibility(divId, View.VISIBLE)
+            } else {
+                views.setViewVisibility(divId, View.GONE)
+            }
+        }
 
         return views
     }
 
     /**
-     * Jeden řádek:
-     *   "Natural 95      (42,50)   42,90 ▲"
-     *
-     * - název: BOLD
-     * - stará cena: v závorce, ITALIC, menší
-     * - aktuální cena: BOLD, desetinná část superscript + menší
-     * - trend: ▲ / ▼ / =
+     * Vytvoří SpannableString pro aktuální cenu:
+     *   - celá část: BOLD
+     *   - desetinná část: BOLD + superscript + menší
      */
-    private fun appendProductRow(
-        sb: SpannableStringBuilder,
+    private fun buildPriceSpannable(
+        entry: cz.tankono.widget.data.model.PriceEntry?,
         product: Product,
-        state: PriceState,
         settings: WidgetSettings
-    ) {
-        val cur = state.current?.entries?.get(product)
-        val old = state.previous?.entries?.get(product)
+    ): CharSequence {
+        if (entry == null) return "--"
+        val value = PriceFormatter.valueFor(entry, settings.currency) ?: return "--"
 
-        // 1) Název – BOLD
-        val nameStart = sb.length
-        sb.append(product.displayName)
-        sb.setSpan(
-            StyleSpan(Typeface.BOLD),
-            nameStart, sb.length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
-
-        // Zarovnání názvu na pevnou šířku mezerami (standardní font = proměnná šířka)
-        val nameLen = product.displayName.length
-        val padTo = 16
-        repeat((padTo - nameLen).coerceAtLeast(2)) { sb.append(" ") }
-
-        // 2) Stará cena v závorce – ITALIC + menší
-        if (old != null) {
-            val oldStr = "(${PriceFormatter.format(old, settings.currency)})"
-            val oldStart = sb.length
-            sb.append(oldStr)
-            sb.setSpan(
-                StyleSpan(Typeface.ITALIC),
-                oldStart, sb.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            sb.setSpan(
-                RelativeSizeSpan(0.8f),
-                oldStart, sb.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            // Doplňkové mezery pro zarovnání
-            repeat((11 - oldStr.length).coerceAtLeast(1)) { sb.append(" ") }
+        val isCzk = (product.kind == Product.Kind.EXCHANGE || settings.currency == Currency.CZK)
+        val whole: String
+        val frac: String
+        if (isCzk) {
+            whole = (value / 100).toString()
+            frac = "%02d".format(value % 100)
         } else {
-            repeat(11) { sb.append(" ") }
+            whole = (value / 1000).toString()
+            frac = "%03d".format(value % 1000)
         }
 
-        // 3) Aktuální cena – BOLD, desetinná část superscript
-        if (cur != null) {
-            val curVal = PriceFormatter.valueFor(cur, settings.currency)
-            if (curVal == null) {
-                sb.append("--")
-            } else {
-                val whole: String
-                val frac: String
-                val isCzk = (product.kind == Product.Kind.EXCHANGE || settings.currency == Currency.CZK)
-                if (isCzk) {
-                    whole = (curVal / 100).toString()
-                    frac = "%02d".format(curVal % 100)
-                } else {
-                    whole = (curVal / 1000).toString()
-                    frac = "%03d".format(curVal % 1000)
-                }
+        val full = whole + frac
+        val sp = SpannableString(full)
+        val start = whole.length
+        val end = full.length
 
-                val wholeStart = sb.length
-                sb.append(whole)
-                sb.setSpan(
-                    StyleSpan(Typeface.BOLD),
-                    wholeStart, sb.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
+        sp.setSpan(StyleSpan(Typeface.BOLD), 0, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sp.setSpan(SuperscriptSpan(), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sp.setSpan(RelativeSizeSpan(0.7f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-                val fracStart = sb.length
-                sb.append(frac)
-                sb.setSpan(
-                    StyleSpan(Typeface.BOLD),
-                    fracStart, sb.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                sb.setSpan(
-                    SuperscriptSpan(),
-                    fracStart, sb.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                sb.setSpan(
-                    RelativeSizeSpan(0.7f),
-                    fracStart, sb.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-        } else {
-            sb.append("--")
-        }
-
-        // 4) Trend
-        sb.append(" ")
-        if (old != null && cur != null) {
-            val oldVal = PriceFormatter.valueFor(old, settings.currency)
-            val curVal = PriceFormatter.valueFor(cur, settings.currency)
-            val arrow = when {
-                oldVal == null || curVal == null -> ""
-                curVal > oldVal -> "▲"
-                curVal < oldVal -> "▼"
-                else -> "="
-            }
-            sb.append(arrow)
-        }
+        return sp
     }
 
     private fun buildRefreshPendingIntent(context: Context): PendingIntent {
