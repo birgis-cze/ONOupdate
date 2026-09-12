@@ -13,11 +13,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Decode debug keystore
+        run: |
+          mkdir -p .github
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > .github/debug.keystore
+          ls -la .github/
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/android/sdk
+            ~/.android
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle*') }}
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -37,17 +53,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Decode debug keystore
-        run: |
-          mkdir -p .github
-          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > .github/debug.keystore
-          ls -la .github/
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --daemon --parallel --build-cache --stacktrace
 
       - name: Rename APK
         run: |

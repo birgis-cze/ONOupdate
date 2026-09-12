@@ -11,8 +11,8 @@
     <FrameLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="57dp"
-        android:background="#008800">
+        android:layout_height="40dp"
+        android:background="@color/ono_yellow">
 
         <!-- VRSTVA 1: Linka 1 (horní, tenká) – y = 41 px, výška 3 px, od spodku 13 dp -->
         <ImageView
@@ -38,13 +38,13 @@
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="match_parent"
-            android:layout_height="57dp"
+            android:layout_height="match_parent"
             android:layout_gravity="bottom|start"
             android:scaleType="fitStart"
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- VRSTVA 3: Časy – vpravo nahoře, PŘES všechno
+        <!-- VRSTVA 3: Časy – vpravo nahoře, PŘES všechno-->
         <LinearLayout
             android:id="@+id/header_times"
             android:layout_width="wrap_content"
@@ -53,8 +53,8 @@
             android:layout_marginTop="4dp"
             android:layout_marginEnd="4dp"
             android:orientation="horizontal">
--->
-<!--            <TextView
+
+            <TextView
                 android:id="@+id/header_date_web"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -71,7 +71,6 @@
                 android:textStyle="bold"
                 android:singleLine="true"/>
         </LinearLayout>
--->
     </FrameLayout>
 
     <!-- ========== ŘÁDKY PRODUKTŮ ========== -->
