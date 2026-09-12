@@ -14,7 +14,7 @@
         android:layout_height="57dp"
         android:background="#008800">
 
-        <!-- VRSTVA 1: Linka 1 (horní, tenká) – y = 41 px, výška 3 px, od spodku 13 dp 
+        <!-- VRSTVA 1: Linka 1 (horní, tenká) – y = 41 px, výška 3 px, od spodku 13 dp -->
         <ImageView
             android:id="@+id/header_line_1"
             android:layout_width="match_parent"
@@ -23,8 +23,8 @@
             android:layout_marginBottom="13dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
--->
-        <!-- VRSTVA 1: Linka 2 (spodní, silná) – y = 46 px, výška 3 px, od spodku 8 dp 
+
+        <!-- VRSTVA 1: Linka 2 (spodní, silná) – y = 46 px, výška 3 px, od spodku 8 dp -->
         <ImageView
             android:id="@+id/header_line_2"
             android:layout_width="match_parent"
@@ -33,7 +33,7 @@
             android:layout_marginBottom="8dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
--->
+
         <!-- VRSTVA 2: ONO – PŘES linky, vlevo dole 
         <ImageView
             android:id="@+id/header_logo_text"
