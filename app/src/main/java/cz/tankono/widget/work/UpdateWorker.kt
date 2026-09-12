@@ -1,7 +1,6 @@
 package cz.tankono.widget.work
 
 import android.content.Context
-import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import cz.tankono.widget.data.repo.PriceRepository
@@ -15,25 +14,24 @@ class UpdateWorker(
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        AppLogger.d("=== UpdateWorker START ===")
+        AppLogger.i("=== UpdateWorker START (id=${id}) ===")
 
         return try {
             val repo = PriceRepository(applicationContext)
             val changed = repo.refresh()
 
             if (changed) {
-                AppLogger.i("Nový ceník – zobrazuji notifikaci")
+                AppLogger.i("Nový ceník – notifikace")
                 Notifier.notifyNewPrices(applicationContext)
             } else {
-                AppLogger.d("Ceník beze změny – jen překreslím widget")
+                AppLogger.d("Ceník beze změny")
             }
 
-            // VŽDY překreslit widget (i když se nic nezměnilo)
             TankOnoWidget.requestUpdate(applicationContext)
             AppLogger.d("Požadavek na překreslení widgetu odeslán")
 
-            // Přeplánovat periodickou práci
-            WorkScheduler.schedule(applicationContext)
+            // POZOR: schedule už nevoláme tady, aby se neresetoval časovač
+            // (periodická práce se automaticky znovu naplánuje)
 
             Result.success()
         } catch (t: Throwable) {

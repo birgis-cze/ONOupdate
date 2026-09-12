@@ -147,7 +147,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        WorkScheduler.schedule(this)
+        // WorkScheduler.schedule(this)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
