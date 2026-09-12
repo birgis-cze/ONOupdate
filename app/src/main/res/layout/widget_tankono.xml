@@ -34,16 +34,16 @@
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- VRSTVA 2: ONO – PŘES linky, vlevo dole 
+        <!-- VRSTVA 2: ONO – PŘES linky, vlevo dole -->
         <ImageView
             android:id="@+id/header_logo_text"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="57dp"
             android:layout_gravity="bottom|start"
             android:scaleType="fitStart"
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
--->
+
         <!-- VRSTVA 3: Časy – vpravo nahoře, PŘES všechno
         <LinearLayout
             android:id="@+id/header_times"
