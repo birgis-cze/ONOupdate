@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Typeface
+import android.os.Bundle
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
@@ -39,9 +40,12 @@ object WidgetRenderer {
     private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()
     private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
+    private const val HEADER_FG      = COLOR_LIGHT_FG
 
-    // Hlavička – vždy světlá
-    private const val HEADER_FG = COLOR_LIGHT_FG
+    // Prahy šířky (v dp) pro skrytí sloupců
+    private const val THRESHOLD_HIDE_OLD    = 212
+    private const val THRESHOLD_HIDE_TREND  = 180
+    private const val THRESHOLD_HIDE_PRICE  = 130
 
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
@@ -73,7 +77,7 @@ object WidgetRenderer {
             try {
                 val settings = SettingsStore(context).settings.first()
                 val state = PriceRepository(context).loadState()
-                val views = buildViews(context, settings, state)
+                val views = buildViews(context, mgr, widgetId, settings, state)
                 withContext(Dispatchers.Main) {
                     mgr.updateAppWidget(widgetId, views)
                 }
@@ -86,9 +90,24 @@ object WidgetRenderer {
 
     private fun buildViews(
         context: Context,
+        mgr: AppWidgetManager,
+        widgetId: Int,
         settings: WidgetSettings,
         state: PriceState
     ): RemoteViews {
+        // Zjistit šířku widgetu (v dp)
+        val options: Bundle = mgr.getAppWidgetOptions(widgetId)
+        val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+        val maxWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH)
+        val widthDp = if (maxWidthDp > 0) maxWidthDp else minWidthDp
+
+        // Podle šířky rozhodnout, které sloupce skrýt
+        val hideOld   = widthDp < THRESHOLD_HIDE_OLD
+        val hideTrend = widthDp < THRESHOLD_HIDE_TREND
+        val hidePrice = widthDp < THRESHOLD_HIDE_PRICE
+
+        AppLogger.d("Šířka widgetu: $widthDp dp (hideOld=$hideOld, hideTrend=$hideTrend, hidePrice=$hidePrice)")
+
         val night = isNight(context)
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
@@ -100,7 +119,7 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
-        // ---------- HLAVIČKA (vždy světlá) ----------
+        // ---------- HLAVIČKA ----------
         val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetchedTime = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
@@ -137,41 +156,56 @@ object WidgetRenderer {
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
 
-                // Název – krátký nebo dlouhý
+                // Název – vždy viditelný
                 val name = if (settings.useShortNames) product.shortName else product.displayName
                 views.setTextViewText(NAME_IDS[index], name)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Stará cena
-                val oldText = if (old != null)
-                    "(${PriceFormatter.format(old, settings.currency)})"
-                else
-                    "( --,-- )"
-                views.setTextViewText(OLD_IDS[index], oldText)
-                views.setTextColor(OLD_IDS[index], fg)
-                views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
+                // Stará cena – skrýt, pokud je widget úzký
+                if (hideOld) {
+                    views.setViewVisibility(OLD_IDS[index], View.GONE)
+                } else {
+                    views.setViewVisibility(OLD_IDS[index], View.VISIBLE)
+                    val oldText = if (old != null)
+                        "(${PriceFormatter.format(old, settings.currency)})"
+                    else
+                        "( --,-- )"
+                    views.setTextViewText(OLD_IDS[index], oldText)
+                    views.setTextColor(OLD_IDS[index], fg)
+                    views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
+                }
 
-                // Aktuální cena
-                val priceSpannable = buildPriceSpannable(cur, product, settings)
-                views.setTextViewText(PRICE_IDS[index], priceSpannable)
-                views.setTextColor(PRICE_IDS[index], fg)
-                views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+                // Aktuální cena – skrýt jen v extrému
+                if (hidePrice) {
+                    views.setViewVisibility(PRICE_IDS[index], View.GONE)
+                } else {
+                    views.setViewVisibility(PRICE_IDS[index], View.VISIBLE)
+                    val priceSpannable = buildPriceSpannable(cur, product, settings)
+                    views.setTextViewText(PRICE_IDS[index], priceSpannable)
+                    views.setTextColor(PRICE_IDS[index], fg)
+                    views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+                }
 
-                // Trend
-                val arrow = if (old != null && cur != null) {
-                    val oldVal = PriceFormatter.valueFor(old, settings.currency)
-                    val curVal = PriceFormatter.valueFor(cur, settings.currency)
-                    when {
-                        oldVal == null || curVal == null -> "="
-                        curVal > oldVal -> "▲"
-                        curVal < oldVal -> "▼"
-                        else -> "="
-                    }
-                } else "="
-                views.setTextViewText(TREND_IDS[index], arrow)
-                views.setTextColor(TREND_IDS[index], fg)
-                views.setFloat(TREND_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+                // Trend – skrýt, pokud je widget úzký
+                if (hideTrend) {
+                    views.setViewVisibility(TREND_IDS[index], View.GONE)
+                } else {
+                    views.setViewVisibility(TREND_IDS[index], View.VISIBLE)
+                    val arrow = if (old != null && cur != null) {
+                        val oldVal = PriceFormatter.valueFor(old, settings.currency)
+                        val curVal = PriceFormatter.valueFor(cur, settings.currency)
+                        when {
+                            oldVal == null || curVal == null -> "="
+                            curVal > oldVal -> "▲"
+                            curVal < oldVal -> "▼"
+                            else -> "="
+                        }
+                    } else "="
+                    views.setTextViewText(TREND_IDS[index], arrow)
+                    views.setTextColor(TREND_IDS[index], fg)
+                    views.setFloat(TREND_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
+                }
             } else {
                 views.setViewVisibility(rowId, View.GONE)
             }

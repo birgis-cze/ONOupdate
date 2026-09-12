@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.work.WorkScheduler
 
@@ -19,6 +20,20 @@ class TankOnoWidget : AppWidgetProvider() {
         for (id in appWidgetIds) {
             WidgetRenderer.render(context, appWidgetManager, id)
         }
+    }
+
+    /**
+     * Volá se, když se změní velikost widgetu (uživatel ho zvětší/zmenší).
+     */
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        AppLogger.d("onAppWidgetOptionsChanged: widgetId=$appWidgetId, options=$newOptions")
+        WidgetRenderer.render(context, appWidgetManager, appWidgetId)
     }
 
     override fun onReceive(context: Context, intent: Intent) {

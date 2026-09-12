@@ -21,6 +21,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -225,6 +226,9 @@ class MainActivity : ComponentActivity() {
 }
 
 
+// =============================================================================
+// HLAVIČKA
+// =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
     Box(
@@ -268,6 +272,10 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
     }
 }
 
+
+// =============================================================================
+// SETTINGS SCREEN
+// =============================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -429,37 +437,41 @@ private fun SettingsScreen(
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        NumberStepper(
-                            value = formatTime(s.peakStartMinutes),
-                            onMinus = {
-                                val newVal = (s.peakStartMinutes - 15).coerceAtLeast(0)
-                                state.value = s.copy(peakStartMinutes = newVal)
-                            },
-                            onPlus = {
-                                val newVal = (s.peakStartMinutes + 15).coerceAtMost(1440)
-                                state.value = s.copy(peakStartMinutes = newVal)
-                            },
-                            canMinus = s.peakStartMinutes > 0,
-                            canPlus = s.peakStartMinutes < 1440,
-                            onMin = { state.value = s.copy(peakStartMinutes = 0) },
-                            onMax = { state.value = s.copy(peakStartMinutes = 1440) }
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        NumberStepper(
-                            value = formatTime(s.peakEndMinutes),
-                            onMinus = {
-                                val newVal = (s.peakEndMinutes - 15).coerceAtLeast(0)
-                                state.value = s.copy(peakEndMinutes = newVal)
-                            },
-                            onPlus = {
-                                val newVal = (s.peakEndMinutes + 15).coerceAtMost(1440)
-                                state.value = s.copy(peakEndMinutes = newVal)
-                            },
-                            canMinus = s.peakEndMinutes > 0,
-                            canPlus = s.peakEndMinutes < 1440,
-                            onMin = { state.value = s.copy(peakEndMinutes = 0) },
-                            onMax = { state.value = s.copy(peakEndMinutes = 1440) }
-                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            NumberStepper(
+                                value = formatTime(s.peakStartMinutes),
+                                onMinus = {
+                                    val newVal = (s.peakStartMinutes - 15).coerceAtLeast(0)
+                                    state.value = s.copy(peakStartMinutes = newVal)
+                                },
+                                onPlus = {
+                                    val newVal = (s.peakStartMinutes + 15).coerceAtMost(1440)
+                                    state.value = s.copy(peakStartMinutes = newVal)
+                                },
+                                canMinus = s.peakStartMinutes > 0,
+                                canPlus = s.peakStartMinutes < 1440,
+                                onMin = { state.value = s.copy(peakStartMinutes = 0) },
+                                onMax = { state.value = s.copy(peakStartMinutes = 1440) }
+                            )
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            NumberStepper(
+                                value = formatTime(s.peakEndMinutes),
+                                onMinus = {
+                                    val newVal = (s.peakEndMinutes - 15).coerceAtLeast(0)
+                                    state.value = s.copy(peakEndMinutes = newVal)
+                                },
+                                onPlus = {
+                                    val newVal = (s.peakEndMinutes + 15).coerceAtMost(1440)
+                                    state.value = s.copy(peakEndMinutes = newVal)
+                                },
+                                canMinus = s.peakEndMinutes > 0,
+                                canPlus = s.peakEndMinutes < 1440,
+                                onMin = { state.value = s.copy(peakEndMinutes = 0) },
+                                onMax = { state.value = s.copy(peakEndMinutes = 1440) }
+                            )
+                        }
                     }
                 }
 
@@ -471,37 +483,41 @@ private fun SettingsScreen(
                         horizontalArrangement = Arrangement.Start,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        NumberStepper(
-                            value = s.intervalPeakMin.toString(),
-                            onMinus = {
-                                val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
-                                state.value = s.copy(intervalPeakMin = newVal)
-                            },
-                            onPlus = {
-                                val newVal = (s.intervalPeakMin + 5).coerceAtMost(360)
-                                state.value = s.copy(intervalPeakMin = newVal)
-                            },
-                            canMinus = s.intervalPeakMin > 15,
-                            canPlus = s.intervalPeakMin < 360,
-                            onMin = { state.value = s.copy(intervalPeakMin = 15) },
-                            onMax = { state.value = s.copy(intervalPeakMin = 360) }
-                        )
-                        Spacer(Modifier.width(16.dp))
-                        NumberStepper(
-                            value = s.intervalOffPeakMin.toString(),
-                            onMinus = {
-                                val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
-                                state.value = s.copy(intervalOffPeakMin = newVal)
-                            },
-                            onPlus = {
-                                val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(360)
-                                state.value = s.copy(intervalOffPeakMin = newVal)
-                            },
-                            canMinus = s.intervalOffPeakMin > 15,
-                            canPlus = s.intervalOffPeakMin < 360,
-                            onMin = { state.value = s.copy(intervalOffPeakMin = 15) },
-                            onMax = { state.value = s.copy(intervalOffPeakMin = 360) }
-                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            NumberStepper(
+                                value = s.intervalPeakMin.toString(),
+                                onMinus = {
+                                    val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
+                                    state.value = s.copy(intervalPeakMin = newVal)
+                                },
+                                onPlus = {
+                                    val newVal = (s.intervalPeakMin + 5).coerceAtMost(360)
+                                    state.value = s.copy(intervalPeakMin = newVal)
+                                },
+                                canMinus = s.intervalPeakMin > 15,
+                                canPlus = s.intervalPeakMin < 360,
+                                onMin = { state.value = s.copy(intervalPeakMin = 15) },
+                                onMax = { state.value = s.copy(intervalPeakMin = 360) }
+                            )
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            NumberStepper(
+                                value = s.intervalOffPeakMin.toString(),
+                                onMinus = {
+                                    val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
+                                    state.value = s.copy(intervalOffPeakMin = newVal)
+                                },
+                                onPlus = {
+                                    val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(360)
+                                    state.value = s.copy(intervalOffPeakMin = newVal)
+                                },
+                                canMinus = s.intervalOffPeakMin > 15,
+                                canPlus = s.intervalOffPeakMin < 360,
+                                onMin = { state.value = s.copy(intervalOffPeakMin = 15) },
+                                onMax = { state.value = s.copy(intervalOffPeakMin = 360) }
+                            )
+                        }
                     }
                 }
 
@@ -518,22 +534,23 @@ private fun SettingsScreen(
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
-                        NumberStepper(
-                            value = s.fontSizeSp.toString(),
-                            onMinus = {
-                                val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
-                                state.value = s.copy(fontSizeSp = newVal)
-                            },
-                            onPlus = {
-                                val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
-                                state.value = s.copy(fontSizeSp = newVal)
-                            },
-                            canMinus = s.fontSizeSp > 10,
-                            canPlus = s.fontSizeSp < 30,
-                            onMin = { state.value = s.copy(fontSizeSp = 10) },
-                            onMax = { state.value = s.copy(fontSizeSp = 30) }
-                        )
-                        Spacer(Modifier.width(10.dp))
+                        Box(modifier = Modifier.width(160.dp)) {
+                            NumberStepper(
+                                value = s.fontSizeSp.toString(),
+                                onMinus = {
+                                    val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
+                                    state.value = s.copy(fontSizeSp = newVal)
+                                },
+                                onPlus = {
+                                    val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
+                                    state.value = s.copy(fontSizeSp = newVal)
+                                },
+                                canMinus = s.fontSizeSp > 10,
+                                canPlus = s.fontSizeSp < 30,
+                                onMin = { state.value = s.copy(fontSizeSp = 10) },
+                                onMax = { state.value = s.copy(fontSizeSp = 30) }
+                            )
+                        }
                     }
                 }
 
@@ -593,6 +610,10 @@ private fun SettingsScreen(
 }
 
 
+// =============================================================================
+// SPOLEČNÉ KOMPONENTY
+// =============================================================================
+
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
@@ -614,6 +635,12 @@ private fun SectionTitle(text: String) {
     Text(text = text, color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
 }
 
+/**
+ * Responzivní NumberStepper:
+ * - Tlačítka − a + mají PEVNOU velikost (44dp) – nikdy se nezmenšují
+ * - Mezery mezi tlačítky a hodnotou se zkracují podle dostupného místa
+ * - Písmo hodnoty se zmenšuje podle šířky
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NumberStepper(
@@ -625,50 +652,96 @@ private fun NumberStepper(
     onMin: (() -> Unit)? = null,
     onMax: (() -> Unit)? = null
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .then(
-                    if (canMinus && onMin != null) {
-                        Modifier.combinedClickable(onClick = onMinus, onLongClick = onMin)
-                    } else if (canMinus) {
-                        Modifier.clickable { onMinus() }
-                    } else Modifier
-                ),
-            contentAlignment = Alignment.Center
+    val buttonSize = 44.dp
+
+    BoxWithConstraints {
+        val availableWidth = maxWidth
+        val buttonsWidth = buttonSize * 2
+        val remaining = availableWidth - buttonsWidth
+
+        // Mezera – čím méně místa, tím menší mezera
+        val gap = when {
+            remaining >= 130.dp -> 4.dp
+            remaining >= 110.dp -> 3.dp
+            remaining >= 90.dp  -> 2.dp
+            else                -> 1.dp
+        }
+
+        // Šířka hodnoty
+        val valueWidth = (remaining - (gap * 2)).coerceAtLeast(20.dp)
+
+        // Font hodnoty
+        val valueFontSize = when {
+            valueWidth >= 70.dp -> 18.sp
+            valueWidth >= 60.dp -> 16.sp
+            valueWidth >= 50.dp -> 14.sp
+            else                -> 12.sp
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(gap)
         ) {
-            if (canMinus) {
-                Text("−", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            // Tlačítko −
+            Box(
+                modifier = Modifier
+                    .size(buttonSize)
+                    .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                    .then(
+                        if (canMinus && onMin != null) {
+                            Modifier.combinedClickable(
+                                onClick = onMinus,
+                                onLongClick = onMin
+                            )
+                        } else if (canMinus) {
+                            Modifier.clickable { onMinus() }
+                        } else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (canMinus) {
+                    Text("−", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                }
             }
-        }
 
-        Box(
-            modifier = Modifier.width(80.dp).height(44.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(value, color = OnoRed, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-        }
+            // Hodnota
+            Box(
+                modifier = Modifier
+                    .width(valueWidth)
+                    .height(buttonSize),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = value,
+                    color = OnoRed,
+                    fontSize = valueFontSize,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
 
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .then(
-                    if (canPlus && onMax != null) {
-                        Modifier.combinedClickable(onClick = onPlus, onLongClick = onMax)
-                    } else if (canPlus) {
-                        Modifier.clickable { onPlus() }
-                    } else Modifier
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (canPlus) {
-                Text("+", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            // Tlačítko +
+            Box(
+                modifier = Modifier
+                    .size(buttonSize)
+                    .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                    .then(
+                        if (canPlus && onMax != null) {
+                            Modifier.combinedClickable(
+                                onClick = onPlus,
+                                onLongClick = onMax
+                            )
+                        } else if (canPlus) {
+                            Modifier.clickable { onPlus() }
+                        } else Modifier
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (canPlus) {
+                    Text("+", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
