@@ -4,8 +4,10 @@ import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -69,27 +72,19 @@ import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.WidgetSettings
+import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 
-// =============================================================================
-// BARVY
-// =============================================================================
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
 
 
-// =============================================================================
-// HLAVIČKA – konstanta
-// =============================================================================
-private val HeaderHeight = 60.dp
-
-
-// =============================================================================
-// MAIN ACTIVITY
-// =============================================================================
 class MainActivity : ComponentActivity() {
 
     private var configWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
@@ -131,6 +126,7 @@ class MainActivity : ComponentActivity() {
                     onSave = { settings -> saveSettings(settings) },
                     onRefresh = { refreshNow() },
                     onExportLog = { exportLog() },
+                    onOpenBatterySettings = { openBatterySettings() },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
             }
@@ -150,10 +146,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun openBatterySettings() {
+        try {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            startActivity(intent)
+            Toast.makeText(this, "Najdi Baterie → Neomezené", Toast.LENGTH_LONG).show()
+        } catch (t: Throwable) {
+            AppLogger.e("Nelze otevřít nastavení baterie", t)
+        }
+    }
+
     private fun saveSettings(settings: WidgetSettings) {
         lifecycleScope.launch {
             AppLogger.i("Ukládám nastavení: visible=${settings.visibleProducts.size}, " +
-                    "currency=${settings.currency}")
+                    "currency=${settings.currency}, short=${settings.useShortNames}")
             SettingsStore(this@MainActivity).save(settings)
             WorkScheduler.schedule(this@MainActivity)
             cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this@MainActivity)
@@ -166,11 +174,7 @@ class MainActivity : ComponentActivity() {
                 WorkScheduler.runNow(this@MainActivity)
             }
 
-            Toast.makeText(
-                this@MainActivity,
-                getString(R.string.saved_toast),
-                Toast.LENGTH_SHORT
-            ).show()
+            Toast.makeText(this@MainActivity, getString(R.string.saved_toast), Toast.LENGTH_SHORT).show()
 
             if (configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 finish()
@@ -203,9 +207,7 @@ class MainActivity : ComponentActivity() {
             logFile.copyTo(cacheFile, overwrite = true)
 
             val uri = androidx.core.content.FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                cacheFile
+                this, "$packageName.fileprovider", cacheFile
             )
 
             val intent = Intent(Intent.ACTION_SEND).apply {
@@ -217,15 +219,11 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent.createChooser(intent, "Sdílet log"))
         } catch (t: Throwable) {
             AppLogger.e("Chyba při exportu logu", t)
-            Toast.makeText(this, "Chyba: ${t.message}", Toast.LENGTH_LONG).show()
         }
     }
 }
 
 
-// =============================================================================
-// HLAVIČKA – stejný princip jako widget (Box s vrstvami)
-// =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
     Box(
@@ -234,7 +232,6 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             .height(40.dp)
             .background(OnoYellow)
     ) {
-        // Linka 1 (horní, tenká) – dole, 8 dp od spodku
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -243,8 +240,6 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
                 .offset(y = (-8).dp)
                 .background(OnoRed)
         )
-
-        // Linka 2 (spodní, silná) – dole, 5 dp od spodku
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -253,8 +248,6 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
                 .offset(y = (-5).dp)
                 .background(OnoRed)
         )
-
-        // Logo – PŘES linky, vlevo, plná velikost
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
@@ -262,8 +255,6 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Fit,
             alignment = Alignment.CenterStart
         )
-
-        // Text "Nastavení" – vpravo nahoře
         Text(
             text = "Nastavení",
             color = OnoRed,
@@ -277,16 +268,13 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
 }
 
 
-// =============================================================================
-// SETTINGS SCREEN
-// =============================================================================
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SettingsScreen(
     onSave: (WidgetSettings) -> Unit,
     onRefresh: () -> Unit,
     onExportLog: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
     isConfiguring: Boolean
 ) {
     val context = LocalContext.current
@@ -296,18 +284,26 @@ private fun SettingsScreen(
 
     val state = remember { mutableStateOf<WidgetSettings?>(null) }
 
+    // Info o posledních aktualizacích
+    var lastPublished by remember { mutableStateOf<String?>(null) }
+    var lastFetched by remember { mutableStateOf<Long?>(null) }
+
     LaunchedEffect(loaded) {
         if (loaded != null && state.value == null) {
             state.value = loaded
         }
+        // Načíst info o posledních aktualizacích
+        try {
+            val repo = cz.tankono.widget.data.repo.PriceRepository(context)
+            val s = repo.loadState()
+            lastPublished = s.current?.publishedAt
+            lastFetched = s.current?.fetchedAt
+        } catch (_: Throwable) {}
     }
 
     val s = state.value
     if (s == null) {
-        Box(
-            Modifier.fillMaxSize().background(OnoYellow),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(Modifier.fillMaxSize().background(OnoYellow), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = OnoRed)
         }
         return
@@ -318,9 +314,9 @@ private fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
-
-            // ============ HLAVIČKA ============
+            // HLAVIČKA
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -330,7 +326,7 @@ private fun SettingsScreen(
                 OnoHeader()
             }
 
-            // ============ SCROLLOVATELNÝ OBSAH ============
+            // SCROLLOVATELNÝ OBSAH
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -339,6 +335,23 @@ private fun SettingsScreen(
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+
+                // ---- Info o posledních aktualizacích ----
+                SettingsCard {
+                    SectionTitle("Poslední aktualizace")
+                    Text(
+                        "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(lastPublished) ?: "--"),
+                        color = OnoRed,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        "Widget aktualizován: " + (lastFetched?.let {
+                            SimpleDateFormat("d.M.yyyy H:mm", Locale("cs", "CZ")).format(Date(it))
+                        } ?: "--"),
+                        color = OnoRed,
+                        fontSize = 13.sp
+                    )
+                }
 
                 // ---- Produkty ----
                 SettingsCard {
@@ -350,10 +363,36 @@ private fun SettingsScreen(
                     ProductGroup("Směnárna",
                         Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
                     if (s.visibleProducts.isEmpty()) {
+                        Text("Musíte vybrat alespoň jeden produkt.", color = OnoRed, fontSize = 12.sp)
+                    }
+                }
+
+                // ---- Krátké názvy ----
+                SettingsCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            "Musíte vybrat alespoň jeden produkt.",
+                            "Krátké názvy produktů:",
                             color = OnoRed,
-                            fontSize = 12.sp
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = s.useShortNames,
+                            onCheckedChange = { checked ->
+                                state.value = s.copy(useShortNames = checked)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = OnoYellow,
+                                checkedTrackColor = OnoRed,
+                                checkedBorderColor = OnoRed,
+                                uncheckedThumbColor = OnoRed,
+                                uncheckedTrackColor = Color.White,
+                                uncheckedBorderColor = OnoRed
+                            )
                         )
                     }
                 }
@@ -523,6 +562,14 @@ private fun SettingsScreen(
                 }
 
                 OutlinedButton(
+                    onClick = onOpenBatterySettings,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Nastavení baterie")
+                }
+
+                OutlinedButton(
                     onClick = onExportLog,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
@@ -547,10 +594,6 @@ private fun SettingsScreen(
 }
 
 
-// =============================================================================
-// SPOLEČNÉ KOMPONENTY
-// =============================================================================
-
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
@@ -569,12 +612,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        color = OnoRed,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold
-    )
+    Text(text = text, color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -598,10 +636,7 @@ private fun NumberStepper(
                 .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
                 .then(
                     if (canMinus && onMin != null) {
-                        Modifier.combinedClickable(
-                            onClick = onMinus,
-                            onLongClick = onMin
-                        )
+                        Modifier.combinedClickable(onClick = onMinus, onLongClick = onMin)
                     } else if (canMinus) {
                         Modifier.clickable { onMinus() }
                     } else Modifier
@@ -609,28 +644,15 @@ private fun NumberStepper(
             contentAlignment = Alignment.Center
         ) {
             if (canMinus) {
-                Text(
-                    text = "−",
-                    color = OnoRed,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("−", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             }
         }
 
         Box(
-            modifier = Modifier
-                .width(80.dp)
-                .height(44.dp),
+            modifier = Modifier.width(80.dp).height(44.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = value,
-                color = OnoRed,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
+            Text(value, color = OnoRed, fontSize = 18.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
         }
 
         Box(
@@ -639,10 +661,7 @@ private fun NumberStepper(
                 .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
                 .then(
                     if (canPlus && onMax != null) {
-                        Modifier.combinedClickable(
-                            onClick = onPlus,
-                            onLongClick = onMax
-                        )
+                        Modifier.combinedClickable(onClick = onPlus, onLongClick = onMax)
                     } else if (canPlus) {
                         Modifier.clickable { onPlus() }
                     } else Modifier
@@ -650,12 +669,7 @@ private fun NumberStepper(
             contentAlignment = Alignment.Center
         ) {
             if (canPlus) {
-                Text(
-                    text = "+",
-                    color = OnoRed,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("+", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -670,7 +684,6 @@ private fun ProductGroup(
 ) {
     Column {
         Text(title, color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-
         Box(
             modifier = Modifier
                 .padding(top = 2.dp, bottom = 6.dp)
@@ -678,28 +691,18 @@ private fun ProductGroup(
                 .height(1.dp)
                 .background(OnoRed)
         )
-
         products.forEach { product ->
             val checked = product in settings.visibleProducts
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 2.dp)
+                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
             ) {
-                Text(
-                    product.displayName,
-                    color = OnoRed,
-                    fontSize = 14.sp,
-                    modifier = Modifier.weight(1f)
-                )
+                Text(product.displayName, color = OnoRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
                 Switch(
                     checked = checked,
                     onCheckedChange = { isChecked ->
-                        val newSet = if (isChecked)
-                            settings.visibleProducts + product
-                        else
-                            settings.visibleProducts - product
+                        val newSet = if (isChecked) settings.visibleProducts + product
+                                     else settings.visibleProducts - product
                         state.value = settings.copy(visibleProducts = newSet)
                     },
                     colors = SwitchDefaults.colors(
