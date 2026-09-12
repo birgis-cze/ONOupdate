@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,15 +41,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -244,9 +238,6 @@ class MainActivity : ComponentActivity() {
 // TOP-LEVEL HELPERY
 // =============================================================================
 
-/**
- * Převede [Drawable] na [Bitmap]. Pokud je to už [BitmapDrawable], vrátí rovnou jeho bitmapu.
- */
 private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = intrinsicHeight): Bitmap {
     if (this is BitmapDrawable) return bitmap
     val w = width.coerceAtLeast(1)
@@ -258,11 +249,6 @@ private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = int
     return bmp
 }
 
-/**
- * Vytvoří [ShaderBrush] z drawable – obrázek se PŘEDROZTÁHNE proporcionálně
- * na [targetHeight] (zachová poměr stran), pak se opakuje doprava (REPEAT)
- * a svisle se nechá být (CLAMP).
- */
 @Composable
 private fun tiledBrushFromResource(
     @DrawableRes id: Int,
@@ -278,7 +264,6 @@ private fun tiledBrushFromResource(
 
         val targetHeightPx = with(density) { targetHeight.toPx() }.toInt().coerceAtLeast(1)
 
-        // Proporcionální roztah – ZACHOVÁ POMĚR STRAN
         val scale = targetHeightPx.toFloat() / src.height
         val targetWidthPx = (src.width * scale).toInt().coerceAtLeast(1)
 
@@ -289,8 +274,8 @@ private fun tiledBrushFromResource(
     return remember(scaledBitmap) {
         val shader = BitmapShader(
             scaledBitmap.asAndroidBitmap(),
-            Shader.TileMode.REPEAT,   // horizontálně: opakuje se doprava
-            Shader.TileMode.CLAMP     // vertikálně: nic (už je správná výška)
+            Shader.TileMode.REPEAT,
+            Shader.TileMode.CLAMP
         )
         ShaderBrush(shader)
     }
@@ -307,30 +292,21 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             .fillMaxWidth(0.9f)
             .height(HeaderHeight)
     ) {
-        // ═══════════════════════════════════════════════════════════════
-        // VRSTVA 1: logo_linka – pozadí, přesně velká jako Box
-        // ═══════════════════════════════════════════════════════════════
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .background(tiledBrushFromResource(R.drawable.logo_linka, HeaderHeight))
         )
 
-        // ═══════════════════════════════════════════════════════════════
-        // VRSTVA 2: logo_text – popředí, přesně velká jako Box
-        // ═══════════════════════════════════════════════════════════════
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
             modifier = Modifier
                 .matchParentSize(),
-            contentScale = ContentScale.Fit, 
+            contentScale = ContentScale.Fit,
             alignment = Alignment.CenterStart
         )
 
-        // ═══════════════════════════════════════════════════════════════
-        // Nastavení – vpravo nahoře
-        // ═══════════════════════════════════════════════════════════════
         Text(
             text = "Nastavení",
             color = OnoRed,
@@ -442,7 +418,7 @@ private fun SettingsScreen(
                             CurrencyButton("Kč", s.currency == Currency.CZK) {
                                 state.value = s.copy(currency = Currency.CZK)
                             }
-                            CurrencyButton("€", s.currency == Currency.EUR) {
+                            CurrencyButton("€ur", s.currency == Currency.EUR) {
                                 state.value = s.copy(currency = Currency.EUR)
                             }
                         }
@@ -586,9 +562,7 @@ private fun SettingsScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Aktualizovat data")
+                    Text("↻  Aktualizovat data")
                 }
 
                 OutlinedButton(
@@ -678,11 +652,11 @@ private fun NumberStepper(
             contentAlignment = Alignment.Center
         ) {
             if (canMinus) {
-                Icon(
-                    Icons.Default.Remove,
-                    contentDescription = "Mínus",
-                    tint = OnoRed,
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = "−",
+                    color = OnoRed,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -719,11 +693,11 @@ private fun NumberStepper(
             contentAlignment = Alignment.Center
         ) {
             if (canPlus) {
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Plus",
-                    tint = OnoRed,
-                    modifier = Modifier.size(20.dp)
+                Text(
+                    text = "+",
+                    color = OnoRed,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
