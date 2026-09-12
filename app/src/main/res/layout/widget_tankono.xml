@@ -12,10 +12,19 @@
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="40dp"
-        android:background="@drawable/logo_linka"
-        android:backgroundTint="@null">
+        android:background="@color/ono_yellow">
 
-        <!-- Logo_text – vlevo, výška 40dp, přes linku -->
+        <!-- Vrstva 1: logo_linka – DOLE, 100% šířka, výška 40dp -->
+        <ImageView
+            android:id="@+id/header_linka"
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_alignParentBottom="true"
+            android:scaleType="fitXY"
+            android:src="@drawable/logo_linka"
+            android:contentDescription="@null"/>
+
+        <!-- Vrstva 2 vlevo: logo_text – výška 40dp, vlevo, plné zobrazení -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
@@ -26,7 +35,7 @@
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- Časy – vpravo, nadsazené -->
+        <!-- Vrstva 2 vpravo: časy -->
         <LinearLayout
             android:id="@+id/header_times"
             android:layout_width="wrap_content"
