@@ -34,7 +34,7 @@
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- Logo_text – vlevo, výška 57dp, PŘES linky -->
+        <!-- Logo – PŘES linky, vlevo dole -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
