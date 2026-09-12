@@ -15,22 +15,24 @@
         android:background="@color/ono_yellow">
 
         <!-- Linka 1 – y = 28,8 dp, výška 2,1 dp (od spodku: 9,1 dp) -->
-        <View
+        <ImageView
             android:id="@+id/header_line_1"
             android:layout_width="match_parent"
             android:layout_height="2.1dp"
             android:layout_alignParentBottom="true"
             android:layout_marginBottom="9.1dp"
-            android:background="@color/ono_red"/>
+            android:background="@color/ono_red"
+            android:contentDescription="@null"/>
 
         <!-- Linka 2 – y = 32,3 dp, výška 2,1 dp (od spodku: 5,6 dp) -->
-        <View
+        <ImageView
             android:id="@+id/header_line_2"
             android:layout_width="match_parent"
             android:layout_height="2.1dp"
             android:layout_alignParentBottom="true"
             android:layout_marginBottom="5.6dp"
-            android:background="@color/ono_red"/>
+            android:background="@color/ono_red"
+            android:contentDescription="@null"/>
 
         <!-- Logo_text – vlevo, výška 40dp, PŘES linky -->
         <ImageView
