@@ -55,6 +55,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -284,7 +285,6 @@ private fun SettingsScreen(
 
     val state = remember { mutableStateOf<WidgetSettings?>(null) }
 
-    // Info o posledních aktualizacích
     var lastPublished by remember { mutableStateOf<String?>(null) }
     var lastFetched by remember { mutableStateOf<Long?>(null) }
 
@@ -292,7 +292,6 @@ private fun SettingsScreen(
         if (loaded != null && state.value == null) {
             state.value = loaded
         }
-        // Načíst info o posledních aktualizacích
         try {
             val repo = cz.tankono.widget.data.repo.PriceRepository(context)
             val s = repo.loadState()
