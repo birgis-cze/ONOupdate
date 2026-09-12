@@ -35,10 +35,15 @@ import java.util.Locale
 
 object WidgetRenderer {
 
-    private const val COLOR_LIGHT_BG = 0xFFFFD600.toInt()
-    private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()
-    private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
-    private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
+    // Barvy pro světlý režim
+    private const val COLOR_LIGHT_BG = 0xFFFFD600.toInt()   // žlutá
+    private const val COLOR_LIGHT_FG = 0xFFC92200.toInt()   // červená
+    // Barvy pro tmavý režim
+    private const val COLOR_DARK_BG  = 0xFFC92200.toInt()   // červená
+    private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()   // žlutá
+
+    // Barvy HLAVIČKY – VŽDY světlé (žlutá/červená)
+    private const val HEADER_FG = COLOR_LIGHT_FG  // červená
 
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
@@ -87,6 +92,8 @@ object WidgetRenderer {
         state: PriceState
     ): RemoteViews {
         val night = isNight(context)
+
+        // Barvy widgetu jako celku – mění se dle režimu
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
@@ -97,7 +104,7 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
-        // ---------- HLAVIČKA ----------
+        // ---------- HLAVIČKA (VŽDY žlutá/červená) ----------
         val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetchedTime = state.current?.fetchedAt?.let { ts ->
             if (ts > 0L) SimpleDateFormat("H:mm", Locale("cs", "CZ")).format(Date(ts))
@@ -107,14 +114,14 @@ object WidgetRenderer {
         val headerFontSize = (settings.fontSizeSp - 4).coerceAtLeast(8).toFloat()
 
         views.setTextViewText(R.id.header_date_web, publishedFormatted)
-        views.setTextColor(R.id.header_date_web, fg)
+        views.setTextColor(R.id.header_date_web, HEADER_FG)
         views.setFloat(R.id.header_date_web, "setTextSize", headerFontSize)
 
         views.setTextViewText(R.id.header_date_update, "($fetchedTime)")
-        views.setTextColor(R.id.header_date_update, fg)
+        views.setTextColor(R.id.header_date_update, HEADER_FG)
         views.setFloat(R.id.header_date_update, "setTextSize", headerFontSize)
 
-        // ---------- PRODUKTY ----------
+        // ---------- PRODUKTY (mění se dle režimu) ----------
         val visible = Product.entries.filter { it in settings.visibleProducts }
         val groups = listOf(
             Product.Kind.FUEL,
@@ -134,10 +141,12 @@ object WidgetRenderer {
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
 
+                // Název
                 views.setTextViewText(NAME_IDS[index], product.displayName)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
+                // Stará cena
                 val oldText = if (old != null)
                     "(${PriceFormatter.format(old, settings.currency)})"
                 else
@@ -146,11 +155,13 @@ object WidgetRenderer {
                 views.setTextColor(OLD_IDS[index], fg)
                 views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
 
+                // Aktuální cena
                 val priceSpannable = buildPriceSpannable(cur, product, settings)
                 views.setTextViewText(PRICE_IDS[index], priceSpannable)
                 views.setTextColor(PRICE_IDS[index], fg)
                 views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
+                // Trend
                 val arrow = if (old != null && cur != null) {
                     val oldVal = PriceFormatter.valueFor(old, settings.currency)
                     val curVal = PriceFormatter.valueFor(cur, settings.currency)
