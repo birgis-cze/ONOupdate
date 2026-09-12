@@ -11,12 +11,12 @@
     <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="40dp">
+        android:layout_height="35dp">
 
         <ImageView
             android:id="@+id/header_linka"
             android:layout_width="match_parent"
-            android:layout_height="35dp"
+            android:layout_height="40dp"
             android:layout_alignParentBottom="true"
             android:scaleType="fitXY"
             android:src="@drawable/logo_linka"
@@ -27,7 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:layout_alignParentBottom="true"
-            android:scaleType="fitStart"
+            android:scaleType="centerCrop"
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
@@ -47,6 +47,7 @@
                 android:layout_height="wrap_content"
                 android:textColor="@color/ono_red"
                 android:textStyle="bold"
+                android:paddingEnd="5dp"
                 android:singleLine="true"/>
 
             <TextView
