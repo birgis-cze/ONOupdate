@@ -28,14 +28,17 @@ object Notifier {
         }
     }
 
-    /** Kanál pro tichou notifikaci (bez zvuku, bez vibrací). */
+    /**
+     * Kanál pro tichou notifikaci během update.
+     * IMPORTANCE_LOW = bez zvuku, ale viditelná v horní liště.
+     */
     private fun ensureSilentChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         if (mgr.getNotificationChannel(CHANNEL_SILENT_ID) == null) {
             val channel = NotificationChannel(
                 CHANNEL_SILENT_ID,
                 "Aktualizace na pozadí",
-                NotificationManager.IMPORTANCE_MIN
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Tiché upozornění na probíhající aktualizaci"
                 setSound(null, null)
@@ -73,7 +76,7 @@ object Notifier {
             .setContentText("Aktualizuji data…")
             .setOngoing(true)
             .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .build()
 

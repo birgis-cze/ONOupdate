@@ -19,6 +19,7 @@ class UpdateWorker(
         // Zobrazit tichou notifikaci
         try {
             Notifier.showUpdateInProgress(applicationContext)
+            AppLogger.d("Notifikace 'Aktualizuji…' zobrazena")
         } catch (t: Throwable) {
             AppLogger.w("Nelze zobrazit notifikaci: ${t.message}")
         }
@@ -40,6 +41,7 @@ class UpdateWorker(
             // Skrýt tichou notifikaci
             try {
                 Notifier.hideUpdateInProgress(applicationContext)
+                AppLogger.d("Notifikace 'Aktualizuji…' skryta")
             } catch (t: Throwable) {
                 AppLogger.w("Nelze skrýt notifikaci: ${t.message}")
             }
