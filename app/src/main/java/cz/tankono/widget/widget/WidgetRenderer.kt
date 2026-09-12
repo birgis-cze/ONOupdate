@@ -64,11 +64,6 @@ object WidgetRenderer {
         R.id.row_5_trend, R.id.row_6_trend, R.id.row_7_trend, R.id.row_8_trend, R.id.row_9_trend, R.id.row_10_trend
     )
 
-    /** Oddělovače */
-    private val DIVIDER_IDS = intArrayOf(
-        R.id.divider_0, R.id.divider_1, R.id.divider_2
-    )
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun render(context: Context, mgr: AppWidgetManager, widgetId: Int) {
@@ -181,19 +176,6 @@ object WidgetRenderer {
                 views.setViewVisibility(rowId, View.GONE)
             }
         }
-
-        // Oddělovače – jen mezi skupinami (max 2, protože 3 skupiny)
-        val nonEmptyGroups = groups.size
-        DIVIDER_IDS.forEachIndexed { index, divId ->
-            if (index < nonEmptyGroups - 1) {
-                // Zjistit pozici, kam vložit oddělovač – mezi skupinami
-                // Jednoduše: pokud máme 3 skupiny, oddělovače 0 a 1
-                views.setViewVisibility(divId, View.VISIBLE)
-            } else {
-                views.setViewVisibility(divId, View.GONE)
-            }
-        }
-
         return views
     }
 
