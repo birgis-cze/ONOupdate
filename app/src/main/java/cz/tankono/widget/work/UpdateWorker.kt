@@ -16,6 +16,13 @@ class UpdateWorker(
     override suspend fun doWork(): Result {
         AppLogger.i("=== UpdateWorker START (id=${id}) ===")
 
+        // Zobrazit tichou notifikaci
+        try {
+            Notifier.showUpdateInProgress(applicationContext)
+        } catch (t: Throwable) {
+            AppLogger.w("Nelze zobrazit notifikaci: ${t.message}")
+        }
+
         return try {
             val repo = PriceRepository(applicationContext)
             val changed = repo.refresh()
@@ -30,12 +37,22 @@ class UpdateWorker(
             TankOnoWidget.requestUpdate(applicationContext)
             AppLogger.d("Požadavek na překreslení widgetu odeslán")
 
-            // POZOR: schedule už nevoláme tady, aby se neresetoval časovač
-            // (periodická práce se automaticky znovu naplánuje)
+            // Skrýt tichou notifikaci
+            try {
+                Notifier.hideUpdateInProgress(applicationContext)
+            } catch (t: Throwable) {
+                AppLogger.w("Nelze skrýt notifikaci: ${t.message}")
+            }
 
             Result.success()
         } catch (t: Throwable) {
             AppLogger.e("Chyba v UpdateWorker", t)
+
+            // Skrýt notifikaci i při chybě
+            try {
+                Notifier.hideUpdateInProgress(applicationContext)
+            } catch (_: Throwable) {}
+
             Result.retry()
         }
     }
