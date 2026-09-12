@@ -8,22 +8,14 @@
     android:background="@color/ono_yellow">
 
     <!-- ========== HLAVIČKA ========== -->
-   <RelativeLayout
+    <RelativeLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="40dp">
+        android:layout_height="40dp"
+        android:background="@drawable/logo_linka"
+        android:backgroundTint="@null">
 
-        <!-- Linka – přes celou šířku, dole (1. vrstva) -->
-        <ImageView
-            android:id="@+id/header_linka"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:layout_alignParentBottom="true"
-            android:scaleType="fitXY"
-            android:src="@drawable/logo_linka"
-            android:contentDescription="@null"/>
-
-        <!-- Logo – vlevo, dole, NAD linkou (2. vrstva) -->
+        <!-- Logo_text – vlevo, výška 40dp, přes linku -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
@@ -34,7 +26,7 @@
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- Časy – prozatím nad linkou (3. vrstva) -->
+        <!-- Časy – vpravo, nadsazené -->
         <LinearLayout
             android:id="@+id/header_times"
             android:layout_width="wrap_content"
