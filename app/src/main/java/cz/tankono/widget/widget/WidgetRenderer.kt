@@ -40,13 +40,11 @@ object WidgetRenderer {
     private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
 
-    /** ID řádků v XML */
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
         R.id.row_5, R.id.row_6, R.id.row_7, R.id.row_8, R.id.row_9, R.id.row_10
     )
 
-    /** ID jednotlivých TextView v každém řádku */
     private val NAME_IDS = intArrayOf(
         R.id.row_0_name, R.id.row_1_name, R.id.row_2_name, R.id.row_3_name, R.id.row_4_name,
         R.id.row_5_name, R.id.row_6_name, R.id.row_7_name, R.id.row_8_name, R.id.row_9_name, R.id.row_10_name
@@ -125,11 +123,9 @@ object WidgetRenderer {
         ).map { kind -> visible.filter { it.kind == kind } }
             .filter { it.isNotEmpty() }
 
-        // Plochý seznam produktů (bez oddělovačů)
         val flat = mutableListOf<Product>()
         for (g in groups) flat.addAll(g)
 
-        // Naplnit řádky
         ROW_IDS.forEachIndexed { index, rowId ->
             if (index < flat.size) {
                 val product = flat[index]
@@ -138,12 +134,10 @@ object WidgetRenderer {
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
 
-                // Název
                 views.setTextViewText(NAME_IDS[index], product.displayName)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Stará cena – v závorce; fallback "( --,-- )"
                 val oldText = if (old != null)
                     "(${PriceFormatter.format(old, settings.currency)})"
                 else
@@ -152,13 +146,11 @@ object WidgetRenderer {
                 views.setTextColor(OLD_IDS[index], fg)
                 views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
 
-                // Aktuální cena – SpannableString s superscriptem
                 val priceSpannable = buildPriceSpannable(cur, product, settings)
                 views.setTextViewText(PRICE_IDS[index], priceSpannable)
                 views.setTextColor(PRICE_IDS[index], fg)
                 views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Trend
                 val arrow = if (old != null && cur != null) {
                     val oldVal = PriceFormatter.valueFor(old, settings.currency)
                     val curVal = PriceFormatter.valueFor(cur, settings.currency)
@@ -176,14 +168,10 @@ object WidgetRenderer {
                 views.setViewVisibility(rowId, View.GONE)
             }
         }
+
         return views
     }
 
-    /**
-     * Vytvoří SpannableString pro aktuální cenu:
-     *   - celá část: BOLD
-     *   - desetinná část: BOLD + superscript + menší
-     */
     private fun buildPriceSpannable(
         entry: cz.tankono.widget.data.model.PriceEntry?,
         product: Product,

@@ -4,18 +4,12 @@ import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
-import android.graphics.Shader
-import android.graphics.drawable.BitmapDrawable
-import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -60,17 +54,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -147,7 +135,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // WorkScheduler.schedule(this)
+        WorkScheduler.schedule(this)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -235,55 +223,7 @@ class MainActivity : ComponentActivity() {
 
 
 // =============================================================================
-// TOP-LEVEL HELPERY
-// =============================================================================
-
-private fun Drawable.toBitmapSafe(width: Int = intrinsicWidth, height: Int = intrinsicHeight): Bitmap {
-    if (this is BitmapDrawable) return bitmap
-    val w = width.coerceAtLeast(1)
-    val h = height.coerceAtLeast(1)
-    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-    val canvas = android.graphics.Canvas(bmp)
-    setBounds(0, 0, canvas.width, canvas.height)
-    draw(canvas)
-    return bmp
-}
-
-@Composable
-private fun tiledBrushFromResource(
-    @DrawableRes id: Int,
-    targetHeight: Dp
-): ShaderBrush {
-    val context = LocalContext.current
-    val density = LocalDensity.current
-
-    val scaledBitmap: ImageBitmap = remember(id, targetHeight, density) {
-        val drawable = ContextCompat.getDrawable(context, id)
-            ?: error("Drawable s id=$id nebyl nalezen")
-        val src = drawable.toBitmapSafe().asImageBitmap().asAndroidBitmap()
-
-        val targetHeightPx = with(density) { targetHeight.toPx() }.toInt().coerceAtLeast(1)
-
-        val scale = targetHeightPx.toFloat() / src.height
-        val targetWidthPx = (src.width * scale).toInt().coerceAtLeast(1)
-
-        val scaled = Bitmap.createScaledBitmap(src, targetWidthPx, targetHeightPx, true)
-        scaled.asImageBitmap()
-    }
-
-    return remember(scaledBitmap) {
-        val shader = BitmapShader(
-            scaledBitmap.asAndroidBitmap(),
-            Shader.TileMode.REPEAT,
-            Shader.TileMode.CLAMP
-        )
-        ShaderBrush(shader)
-    }
-}
-
-
-// =============================================================================
-// HLAVIČKA – dvě vrstvy přesně přes sebe
+// HLAVIČKA – jeden kombinovaný obrázek
 // =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
@@ -292,17 +232,10 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
             .fillMaxWidth(0.9f)
             .height(HeaderHeight)
     ) {
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(tiledBrushFromResource(R.drawable.logo_linka, HeaderHeight))
-        )
-
         Image(
-            painter = painterResource(id = R.drawable.logo_text),
+            painter = painterResource(id = R.drawable.logo_trans),
             contentDescription = "Tank ONO",
-            modifier = Modifier
-                .matchParentSize(),
+            modifier = Modifier.matchParentSize(),
             contentScale = ContentScale.Fit,
             alignment = Alignment.CenterStart
         )
@@ -363,7 +296,6 @@ private fun SettingsScreen(
                 .windowInsetsPadding(WindowInsets.statusBars)
         ) {
 
-            // ============ HLAVIČKA ============
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -373,7 +305,6 @@ private fun SettingsScreen(
                 OnoHeader()
             }
 
-            // ============ SCROLLOVATELNÝ OBSAH ============
             Column(
                 modifier = Modifier
                     .fillMaxSize()
