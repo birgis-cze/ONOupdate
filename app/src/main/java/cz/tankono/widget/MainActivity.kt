@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -223,32 +224,41 @@ class MainActivity : ComponentActivity() {
 
 
 // =============================================================================
-// HLAVIČKA – logo_text vlevo, logo_linka vedle (přes celou šířku)
+// HLAVIČKA – stejný princip jako widget (Box s vrstvami)
 // =============================================================================
 @Composable
 private fun OnoHeader(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth(0.9f)
-            .height(HeaderHeight)
+            .height(40.dp)
+            .background(OnoYellow)
     ) {
-        // Linka – pozadí, přes celou šířku
-        Image(
-            painter = painterResource(id = R.drawable.logo_linka),
-            contentDescription = null,
+        // Linka 1 (horní, tenká) – dole, 8 dp od spodku
+        Box(
             modifier = Modifier
-                .fillMaxSize(),
-            contentScale = ContentScale.FillBounds,
-            alignment = Alignment.CenterStart
+                .fillMaxWidth()
+                .height(2.dp)
+                .align(Alignment.BottomStart)
+                .offset(y = (-8).dp)
+                .background(OnoRed)
         )
 
-        // Logo_text – vlevo dole (přes linku)
+        // Linka 2 (spodní, silná) – dole, 5 dp od spodku
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .align(Alignment.BottomStart)
+                .offset(y = (-5).dp)
+                .background(OnoRed)
+        )
+
+        // Logo – PŘES linky, vlevo, plná velikost
         Image(
             painter = painterResource(id = R.drawable.logo_text),
             contentDescription = "Tank ONO",
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .height(HeaderHeight),
+            modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Fit,
             alignment = Alignment.CenterStart
         )
