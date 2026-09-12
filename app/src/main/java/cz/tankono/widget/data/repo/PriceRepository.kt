@@ -43,7 +43,10 @@ class PriceRepository(private val context: Context) {
         AppLogger.d("Uložené datum: $stored")
 
         if (stored != null && news == stored) {
-            AppLogger.d("Datum je stejné – ceník se nezměnil")
+            AppLogger.d("Datum je stejné – jen aktualizuji fetchedAt")
+            context.priceDataStore.edit { p ->
+                p[Keys.FETCHED_NEW] = System.currentTimeMillis()
+            }
             return false
         }
 
