@@ -5,15 +5,15 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.text.SpannableString
+import android.graphics.Typeface
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.text.style.SuperscriptSpan
-import android.graphics.Typeface
 import android.widget.RemoteViews
 import cz.tankono.widget.R
+import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.PriceFormatter
 import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
@@ -100,14 +100,13 @@ object WidgetRenderer {
         ).map { kind -> visible.filter { it.kind == kind } }
             .filter { it.isNotEmpty() }
 
-        // Sestavíme SpannableString pro celý blok
         val sb = SpannableStringBuilder()
 
         groups.forEachIndexed { gIndex, group ->
             if (gIndex > 0) sb.append("\n")
             group.forEachIndexed { pIndex, product ->
                 if (pIndex > 0) sb.append("\n")
-                appendProductRow(sb, product, state, settings, settings.fontSizeSp)
+                appendProductRow(sb, product, state, settings)
             }
         }
 
@@ -119,35 +118,38 @@ object WidgetRenderer {
     }
 
     /**
-     * Připojí jeden řádek produktu do SpannableStringBuilder:
+     * Jeden řádek:
      *   "Natural 95      (42,50)   42,90 ▲"
-     *   - název: BOLD, normální velikost
-     *   - stará cena: ITALIC, menší, v závorce
-     *   - aktuální cena: BOLD, s nadsazenou desetinnou částí
-     *   - trend: ▲ / ▼ / =
+     *
+     * - název: BOLD
+     * - stará cena: v závorce, ITALIC, menší
+     * - aktuální cena: BOLD, desetinná část superscript + menší
+     * - trend: ▲ / ▼ / =
      */
     private fun appendProductRow(
         sb: SpannableStringBuilder,
         product: Product,
         state: PriceState,
-        settings: WidgetSettings,
-        fontSizeSp: Int
+        settings: WidgetSettings
     ) {
         val cur = state.current?.entries?.get(product)
         val old = state.previous?.entries?.get(product)
 
-        // 1) Název – tučně
-        val name = product.displayName
+        // 1) Název – BOLD
         val nameStart = sb.length
-        sb.append(name)
+        sb.append(product.displayName)
         sb.setSpan(
             StyleSpan(Typeface.BOLD),
             nameStart, sb.length,
             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
         )
 
-        // 2) Mezera + stará cena v závorce (italic, menší)
-        sb.append("   ")
+        // Zarovnání názvu na pevnou šířku mezerami (standardní font = proměnná šířka)
+        val nameLen = product.displayName.length
+        val padTo = 16
+        repeat((padTo - nameLen).coerceAtLeast(2)) { sb.append(" ") }
+
+        // 2) Stará cena v závorce – ITALIC + menší
         if (old != null) {
             val oldStr = "(${PriceFormatter.format(old, settings.currency)})"
             val oldStart = sb.length
@@ -162,26 +164,25 @@ object WidgetRenderer {
                 oldStart, sb.length,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
+            // Doplňkové mezery pro zarovnání
+            repeat((11 - oldStr.length).coerceAtLeast(1)) { sb.append(" ") }
         } else {
-            sb.append("     ")
+            repeat(11) { sb.append(" ") }
         }
 
-        // 3) Mezera + aktuální cena (bold, desetinná část nadsazená)
-        sb.append("   ")
+        // 3) Aktuální cena – BOLD, desetinná část superscript
         if (cur != null) {
             val curVal = PriceFormatter.valueFor(cur, settings.currency)
             if (curVal == null) {
                 sb.append("--")
             } else {
-                // Celá část (bold)
                 val whole: String
                 val frac: String
-                if (product.kind == Product.Kind.EXCHANGE || settings.currency == cz.tankono.widget.data.model.Currency.CZK) {
-                    // CZK: 2 desetinná místa
+                val isCzk = (product.kind == Product.Kind.EXCHANGE || settings.currency == Currency.CZK)
+                if (isCzk) {
                     whole = (curVal / 100).toString()
                     frac = "%02d".format(curVal % 100)
                 } else {
-                    // EUR: 3 desetinná místa
                     whole = (curVal / 1000).toString()
                     frac = "%03d".format(curVal % 1000)
                 }
@@ -194,7 +195,6 @@ object WidgetRenderer {
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
 
-                // Desetinná část (bold + superscript + menší)
                 val fracStart = sb.length
                 sb.append(frac)
                 sb.setSpan(
