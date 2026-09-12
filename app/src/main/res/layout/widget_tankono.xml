@@ -8,20 +8,44 @@
     android:background="@color/ono_yellow">
 
     <!-- ========== HLAVIČKA ========== -->
-    <LinearLayout
+    <FrameLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="40dp">
 
-        <!-- Vrstva 2: texty časů (nahoře VPRAVO) -->
+        <!-- VRSTVA 0: logo_text + logo_linka (pozadí) -->
+        <LinearLayout
+            android:id="@+id/header_logos"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/header_logo_text"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:scaleType="fitStart"
+                android:src="@drawable/logo_text"
+                android:contentDescription="@string/app_name"/>
+
+            <ImageView
+                android:id="@+id/header_linka"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:scaleType="fitXY"
+                android:src="@drawable/logo_linka"
+                android:contentDescription="@null"/>
+        </LinearLayout>
+
+        <!-- VRSTVA 1: texty časů (popředí, VPRAVO) -->
         <LinearLayout
             android:id="@+id/header_times"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
+            android:layout_gravity="end|center_vertical"
             android:orientation="horizontal"
-            android:paddingEnd="2dp">
+            android:paddingEnd="4dp">
 
             <TextView
                 android:id="@+id/header_date_web"
@@ -40,34 +64,7 @@
                 android:textStyle="bold"
                 android:singleLine="true"/>
         </LinearLayout>
-
-        <!-- Vrstva 1: logo_text + logo_linka (dole) -->
-        <LinearLayout
-            android:id="@+id/header_logos"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:orientation="horizontal"
-            android:gravity="bottom">
-
-            <ImageView
-                android:id="@+id/header_logo_text"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:scaleType="fitStart"
-                android:adjustViewBounds="true"
-                android:src="@drawable/logo_text"
-                android:contentDescription="@string/app_name"/>
-
-            <ImageView
-                android:id="@+id/header_linka"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:scaleType="fitXY"
-                android:src="@drawable/logo_linka"
-                android:contentDescription="@null"/>
-        </LinearLayout>
-    </LinearLayout>
+    </FrameLayout>
 
     <!-- ========== ŘÁDKY PRODUKTŮ (11 připravených) ========== -->
 
