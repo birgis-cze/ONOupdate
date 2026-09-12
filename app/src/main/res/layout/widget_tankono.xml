@@ -8,52 +8,50 @@
     android:background="@color/ono_yellow">
 
     <!-- ========== HLAVIČKA ========== -->
-    <RelativeLayout
+    <FrameLayout
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="57dp"
         android:background="@color/ono_yellow">
 
-        <!-- Linka 1 – y = 41 dp, výška 3 dp (od spodku: 13 dp) -->
+        <!-- VRSTVA 1: Linka 1 (horní, tenká) – y = 41 px, výška 3 px, od spodku 13 dp -->
         <ImageView
             android:id="@+id/header_line_1"
             android:layout_width="match_parent"
             android:layout_height="3dp"
-            android:layout_alignParentBottom="true"
+            android:layout_gravity="bottom"
             android:layout_marginBottom="13dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- Linka 2 – y = 46 dp, výška 3 dp (od spodku: 8 dp) -->
+        <!-- VRSTVA 1: Linka 2 (spodní, silná) – y = 46 px, výška 3 px, od spodku 8 dp -->
         <ImageView
             android:id="@+id/header_line_2"
             android:layout_width="match_parent"
             android:layout_height="3dp"
-            android:layout_alignParentBottom="true"
+            android:layout_gravity="bottom"
             android:layout_marginBottom="8dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- Logo – PŘES linky, vlevo dole -->
+        <!-- VRSTVA 2: ONO – PŘES linky, vlevo dole -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="wrap_content"
             android:layout_height="57dp"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentStart="true"
+            android:layout_gravity="bottom|start"
             android:scaleType="fitStart"
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- Časy – vpravo nahoře -->
+        <!-- VRSTVA 3: Časy – vpravo nahoře, PŘES všechno -->
         <LinearLayout
             android:id="@+id/header_times"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentEnd="true"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="4dp"
             android:layout_marginEnd="4dp"
-            android:layout_marginTop="2dp"
             android:orientation="horizontal">
 
             <TextView
@@ -73,7 +71,7 @@
                 android:textStyle="bold"
                 android:singleLine="true"/>
         </LinearLayout>
-    </RelativeLayout>
+    </FrameLayout>
 
     <!-- ========== ŘÁDKY PRODUKTŮ ========== -->
 
