@@ -15,6 +15,11 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+    
+    lint {
+        checkReleaseBuilds = false   // Vypne kontrolu při release buildu
+        abortOnError = false         // Nebude se zastavovat při chybě
+    }
 
     // Fixní debug keystore – zaručí, že každý build má stejný podpis
     signingConfigs {

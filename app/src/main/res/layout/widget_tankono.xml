@@ -18,9 +18,9 @@
         <ImageView
             android:id="@+id/header_line_1"
             android:layout_width="match_parent"
-            android:layout_height="3dp"
+            android:layout_height="2dp"
             android:layout_gravity="bottom"
-            android:layout_marginBottom="13dp"
+            android:layout_marginBottom="8dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
@@ -28,9 +28,9 @@
         <ImageView
             android:id="@+id/header_line_2"
             android:layout_width="match_parent"
-            android:layout_height="3dp"
+            android:layout_height="2dp"
             android:layout_gravity="bottom"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="5dp"
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
@@ -59,7 +59,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/ono_red"
-                android:textStyle="bold"
                 android:paddingEnd="5dp"
                 android:singleLine="true"/>
 
@@ -68,7 +67,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@color/ono_red"
-                android:textStyle="bold"
                 android:singleLine="true"/>
         </LinearLayout>
     </FrameLayout>
