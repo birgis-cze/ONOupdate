@@ -24,7 +24,7 @@
 
         <LinearLayout
             android:id="@+id/header_logo_wrapper"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="30dp"
             android:layout_alignParentBottom="true"
             android:layout_alignParentStart="true"
