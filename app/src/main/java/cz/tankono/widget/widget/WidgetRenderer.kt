@@ -113,13 +113,13 @@ object WidgetRenderer {
 
         val headerFontSize = (settings.fontSizeSp - 4).coerceAtLeast(8).toFloat()
 
-        views.setTextViewText(R.id.header_date_web, publishedFormatted)
-        views.setTextColor(R.id.header_date_web, HEADER_FG)
-        views.setFloat(R.id.header_date_web, "setTextSize", headerFontSize)
+        //views.setTextViewText(R.id.header_date_web, publishedFormatted)
+        //views.setTextColor(R.id.header_date_web, HEADER_FG)
+        //views.setFloat(R.id.header_date_web, "setTextSize", headerFontSize)
 
-        views.setTextViewText(R.id.header_date_update, "($fetchedTime)")
-        views.setTextColor(R.id.header_date_update, HEADER_FG)
-        views.setFloat(R.id.header_date_update, "setTextSize", headerFontSize)
+        //views.setTextViewText(R.id.header_date_update, "($fetchedTime)")
+        //views.setTextColor(R.id.header_date_update, HEADER_FG)
+        //views.setFloat(R.id.header_date_update, "setTextSize", headerFontSize)
 
         // ---------- PRODUKTY (mění se dle režimu) ----------
         val visible = Product.entries.filter { it in settings.visibleProducts }
