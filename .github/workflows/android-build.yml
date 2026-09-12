@@ -27,6 +27,12 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Decode debug keystore
+        run: |
+          mkdir -p .github
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > .github/debug.keystore
+          ls -la .github/
+
       - name: Generate Gradle wrapper if missing
         run: |
           if [ ! -f gradlew ] || [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then

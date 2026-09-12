@@ -16,13 +16,23 @@ android {
         versionName = "1.0"
     }
 
+    // Fixní debug keystore – zaručí, že každý build má stejný podpis
+    signingConfigs {
+        create("debugFixed") {
+            storeFile = file("../.github/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         getByName("debug") {
+            signingConfig = signingConfigs.getByName("debugFixed")
             isMinifyEnabled = false
         }
         getByName("release") {
-            // Používáme debug signing, abychom nepotřebovali keystore
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("debugFixed")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -64,5 +74,4 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("androidx.core:core-ktx:1.13.1")
-    // appcompat odebrán (nepoužíváme)
 }
