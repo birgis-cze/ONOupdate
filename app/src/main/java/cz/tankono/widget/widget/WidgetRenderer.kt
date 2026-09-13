@@ -42,9 +42,9 @@ object WidgetRenderer {
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
     private const val HEADER_FG      = COLOR_LIGHT_FG
 
-    // Fixní šířky sloupců (musí odpovídat styles.xml)
-    private const val WIDTH_OLD_PRICE_DP = 70
+    // Pevné šířky sloupců (musí odpovídat styles.xml)
     private const val WIDTH_PRICE_DP     = 60
+    private const val WIDTH_OLD_PRICE_DP = 70
     private const val WIDTH_TREND_DP     = 18
     private const val PADDING_DP         = 8
 
@@ -127,8 +127,14 @@ object WidgetRenderer {
         // ---------- Rozhodnutí o zobrazení ----------
         val layoutDecision = decideLayout(widthDp, settings.fontSizeSp, flat)
 
+        // Uživatel má vždy prioritu:
+        // - Pokud uživatel zvolil krátké názvy → VŽDY krátké
+        // - Pokud uživatel zvolil dlouhé názvy → dlouhé, dokud se vejdou
+        val useShortNames = settings.useShortNames || layoutDecision.useShortNames
+
         AppLogger.d(
-            "Widget: widthDp=$widthDp, useShort=${layoutDecision.useShortNames}, " +
+            "Widget: widthDp=$widthDp, userShort=${settings.useShortNames}, " +
+            "autoShort=${layoutDecision.useShortNames}, finalShort=$useShortNames, " +
             "hideTrend=${layoutDecision.hideTrend}, hideOld=${layoutDecision.hideOld}"
         )
 
@@ -159,7 +165,8 @@ object WidgetRenderer {
                 val old = state.previous?.entries?.get(product)
 
                 // Název – VŽDY viditelný
-                val name = if (layoutDecision.useShortNames) product.shortName else product.displayName
+                views.setViewVisibility(NAME_IDS[index], View.VISIBLE)
+                val name = if (useShortNames) product.shortName else product.displayName
                 views.setTextViewText(NAME_IDS[index], name)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
@@ -224,35 +231,30 @@ object WidgetRenderer {
 
     /**
      * Rozhodne, co zobrazit, podle šířky widgetu a velikosti písma.
+     * Toto je AUTOMATICKÉ rozhodnutí – uživatel ho může přebít.
      *
      * Priority (od nejnižší):
      *  1. Název – VŽDY
      *  2. Cena – VŽDY
      *  3. Stará cena – skrýt, pokud se nevejde
      *  4. Trend – skrýt jako první
-     *
-     * Název se automaticky přepne na krátký, pokud se dlouhý nevejde.
      */
     private fun decideLayout(
         widthDp: Int,
         fontSizeSp: Int,
         products: List<Product>
     ): LayoutDecision {
-        // Šířka znaku pro standard font (odhad)
         val charWidth = fontSizeSp * 0.55f
 
-        // Maximální délky textů
         val maxNameLong = products.maxOfOrNull { it.displayName.length } ?: 10
         val maxNameShort = products.maxOfOrNull { it.shortName.length } ?: 2
 
-        // Minimální šířky sloupců (v dp)
         val nameLongWidth = (maxNameLong * charWidth).toInt() + PADDING_DP
         val nameShortWidth = (maxNameShort * charWidth).toInt() + PADDING_DP
         val priceWidth = WIDTH_PRICE_DP
         val oldPriceWidth = WIDTH_OLD_PRICE_DP
         val trendWidth = WIDTH_TREND_DP
 
-        // Celkové šířky pro jednotlivé kombinace
         val totalLong = nameLongWidth + priceWidth + oldPriceWidth + trendWidth
         val totalShort = nameShortWidth + priceWidth + oldPriceWidth + trendWidth
         val noTrendLong = nameLongWidth + priceWidth + oldPriceWidth
@@ -261,31 +263,24 @@ object WidgetRenderer {
         val minShort = nameShortWidth + priceWidth
 
         return when {
-            // 1. Vše dlouhé
             widthDp >= totalLong -> LayoutDecision(
                 useShortNames = false, hideTrend = false, hideOld = false
             )
-            // 2. Vše krátké
             widthDp >= totalShort -> LayoutDecision(
                 useShortNames = true, hideTrend = false, hideOld = false
             )
-            // 3. Dlouhé bez trendu
             widthDp >= noTrendLong -> LayoutDecision(
                 useShortNames = false, hideTrend = true, hideOld = false
             )
-            // 4. Krátké bez trendu
             widthDp >= noTrendShort -> LayoutDecision(
                 useShortNames = true, hideTrend = true, hideOld = false
             )
-            // 5. Dlouhé bez trendu a staré ceny
             widthDp >= minLong -> LayoutDecision(
                 useShortNames = false, hideTrend = true, hideOld = true
             )
-            // 6. Krátké bez trendu a staré ceny
             widthDp >= minShort -> LayoutDecision(
                 useShortNames = true, hideTrend = true, hideOld = true
             )
-            // 7. Extrém – jen krátký název + cena (může se useknout)
             else -> LayoutDecision(
                 useShortNames = true, hideTrend = true, hideOld = true
             )

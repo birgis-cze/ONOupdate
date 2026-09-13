@@ -13,7 +13,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 2                         // ################### zde zvýšit pro nový release  
-        versionName = "2.6"                     // ################### zde zvýšit pro nový release 
+        versionName = "2.7"                     // ################### zde zvýšit pro nový release 
 
         // GitHub token z prostředí (v CI) nebo prázdný (lokálně)
         val ghToken = System.getenv("GH_TOKEN") ?: ""
