@@ -43,9 +43,10 @@ object WidgetRenderer {
     private const val HEADER_FG      = COLOR_LIGHT_FG
 
     // Prahy šířky (v dp) pro skrytí sloupců
-    private const val THRESHOLD_HIDE_OLD    = 212
-    private const val THRESHOLD_HIDE_TREND  = 180
-    private const val THRESHOLD_HIDE_PRICE  = 130
+    // Priorita: Název > Aktuální cena > Stará cena > Trend
+    private const val THRESHOLD_HIDE_TREND = 250   // skryje trend (nejnižší priorita)
+    private const val THRESHOLD_HIDE_OLD   = 200   // skryje starou cenu
+    private const val THRESHOLD_HIDE_PRICE = 100   // skryje aktuální cenu (extrém)
 
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
@@ -102,11 +103,12 @@ object WidgetRenderer {
         val widthDp = if (maxWidthDp > 0) maxWidthDp else minWidthDp
 
         // Podle šířky rozhodnout, které sloupce skrýt
-        val hideOld   = widthDp < THRESHOLD_HIDE_OLD
         val hideTrend = widthDp < THRESHOLD_HIDE_TREND
+        val hideOld   = widthDp < THRESHOLD_HIDE_OLD
         val hidePrice = widthDp < THRESHOLD_HIDE_PRICE
+        // Název se NIKDY neskrývá
 
-        AppLogger.d("Šířka widgetu: $widthDp dp (hideOld=$hideOld, hideTrend=$hideTrend, hidePrice=$hidePrice)")
+        AppLogger.d("Šířka widgetu: $widthDp dp (hideTrend=$hideTrend, hideOld=$hideOld, hidePrice=$hidePrice)")
 
         val night = isNight(context)
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
@@ -156,13 +158,13 @@ object WidgetRenderer {
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
 
-                // Název – vždy viditelný
+                // Název – VŽDY viditelný (priorita 1)
                 val name = if (settings.useShortNames) product.shortName else product.displayName
                 views.setTextViewText(NAME_IDS[index], name)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Stará cena – skrýt, pokud je widget úzký
+                // Stará cena – skrýt, pokud je widget úzký (priorita 3)
                 if (hideOld) {
                     views.setViewVisibility(OLD_IDS[index], View.GONE)
                 } else {
@@ -176,7 +178,7 @@ object WidgetRenderer {
                     views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
                 }
 
-                // Aktuální cena – skrýt jen v extrému
+                // Aktuální cena – skrýt jen v extrému (priorita 2)
                 if (hidePrice) {
                     views.setViewVisibility(PRICE_IDS[index], View.GONE)
                 } else {
@@ -187,7 +189,7 @@ object WidgetRenderer {
                     views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
                 }
 
-                // Trend – skrýt, pokud je widget úzký
+                // Trend – skrýt jako první (priorita 4)
                 if (hideTrend) {
                     views.setViewVisibility(TREND_IDS[index], View.GONE)
                 } else {
