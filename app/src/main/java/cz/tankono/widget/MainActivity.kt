@@ -381,14 +381,14 @@ private fun SettingsScreen(
                     Text(
                         "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(lastPublished) ?: "--"),
                         color = OnoRed,
-                        fontSize = 13.sp
+                        fontSize = 12.sp
                     )
                     Text(
                         "Widget aktualizován: " + (lastFetched?.let {
                             SimpleDateFormat("d.M.yyyy H:mm", Locale("cs", "CZ")).format(Date(it))
                         } ?: "--"),
                         color = OnoRed,
-                        fontSize = 13.sp
+                        fontSize = 12.sp
                     )
                 }
 
@@ -402,7 +402,7 @@ private fun SettingsScreen(
                     ProductGroup("Směnárna",
                         Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
                     if (s.visibleProducts.isEmpty()) {
-                        Text("Musíte vybrat alespoň jeden produkt.", color = OnoRed, fontSize = 12.sp)
+                        Text("Musíte vybrat alespoň jeden produkt.", color = OnoRed, fontSize = 14.sp)
                     }
                 }
 
@@ -415,7 +415,7 @@ private fun SettingsScreen(
                         Text(
                             "Krátké názvy produktů:",
                             color = OnoRed,
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
@@ -445,7 +445,7 @@ private fun SettingsScreen(
                         Text(
                             "Zobrazování ceny:",
                             color = OnoRed,
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
@@ -463,7 +463,7 @@ private fun SettingsScreen(
 
                 // ---- Špička ----
                 SettingsCard {
-                    SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
+                    SectionTitle("Špička (pravděpodobný čas změny cen)")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Start,
@@ -509,7 +509,7 @@ private fun SettingsScreen(
 
                 // ---- Interval ----
                 SettingsCard {
-                    SectionTitle("Interval aktualizací špička / mimo špičku (min)")
+                    SectionTitle("Interval aktualizací špička/mimo")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Start,
@@ -562,7 +562,7 @@ private fun SettingsScreen(
                         Text(
                             "Velikost textu widgetu:",
                             color = OnoRed,
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
@@ -607,7 +607,7 @@ private fun SettingsScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("↻  Aktualizovat data")
+                    Text("Aktualizovat data cen")
                 }
 
                 // ---- Kontrola aktualizací ----
