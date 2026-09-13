@@ -2,6 +2,7 @@ package cz.tankono.widget
 
 import android.Manifest
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -69,6 +70,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import cz.tankono.widget.data.model.Currency
@@ -80,6 +82,7 @@ import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.UpdateChecker
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -131,7 +134,7 @@ class MainActivity : ComponentActivity() {
                     onRefresh = { refreshNow() },
                     onExportLog = { exportLog() },
                     onOpenBatterySettings = { openBatterySettings() },
-                    onOpenUrl = { url -> openUrl(url) },
+                    onInstallApk = { file -> installApk(file) },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
             }
@@ -163,17 +166,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Otevře URL v prohlížeči. */
-    private fun openUrl(url: String) {
+    /** Otevře systémový instalátor APK. */
+    private fun installApk(file: File) {
         try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            val uri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                file
+            )
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             startActivity(intent)
-            AppLogger.i("Otevřeno URL: $url")
+            AppLogger.i("installApk: instalátor otevřen")
         } catch (t: Throwable) {
-            AppLogger.e("Nelze otevřít URL: $url", t)
-            Toast.makeText(this, "Nelze otevřít odkaz", Toast.LENGTH_SHORT).show()
+            AppLogger.e("installApk: chyba", t)
+            Toast.makeText(this, "Nelze otevřít instalátor: ${t.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -222,10 +233,10 @@ class MainActivity : ComponentActivity() {
                 Toast.makeText(this, "Log je prázdný", Toast.LENGTH_SHORT).show()
                 return
             }
-            val cacheFile = java.io.File(cacheDir, "tankono_log.txt")
+            val cacheFile = File(cacheDir, "tankono_log.txt")
             logFile.copyTo(cacheFile, overwrite = true)
 
-            val uri = androidx.core.content.FileProvider.getUriForFile(
+            val uri = FileProvider.getUriForFile(
                 this, "$packageName.fileprovider", cacheFile
             )
 
@@ -301,7 +312,7 @@ private fun SettingsScreen(
     onRefresh: () -> Unit,
     onExportLog: () -> Unit,
     onOpenBatterySettings: () -> Unit,
-    onOpenUrl: (String) -> Unit,
+    onInstallApk: (File) -> Unit,
     isConfiguring: Boolean
 ) {
     val context = LocalContext.current
@@ -315,9 +326,9 @@ private fun SettingsScreen(
     var lastPublished by remember { mutableStateOf<String?>(null) }
     var lastFetched by remember { mutableStateOf<Long?>(null) }
 
-    // Update stav
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var isChecking by remember { mutableStateOf(false) }
+    var isDownloading by remember { mutableStateOf(false) }
 
     LaunchedEffect(loaded) {
         if (loaded != null && state.value == null) {
@@ -619,7 +630,7 @@ private fun SettingsScreen(
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isChecking
+                    enabled = !isChecking && !isDownloading
                 ) {
                     Text(if (isChecking) "Kontroluji…" else "Zkontrolovat aktualizace")
                 }
@@ -627,14 +638,28 @@ private fun SettingsScreen(
                 // ---- Stáhnout novou verzi ----
                 updateInfo?.let { info ->
                     Button(
-                        onClick = { onOpenUrl(info.downloadUrl) },
+                        onClick = {
+                            isDownloading = true
+                            scope.launch {
+                                Toast.makeText(context, "Stahuji…", Toast.LENGTH_SHORT).show()
+                                val file = UpdateChecker.downloadApk(context, info.downloadApiUrl)
+                                isDownloading = false
+                                if (file != null) {
+                                    Toast.makeText(context, "Staženo, otevírám instalátor…", Toast.LENGTH_SHORT).show()
+                                    onInstallApk(file)
+                                } else {
+                                    Toast.makeText(context, "Stahování selhalo", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = OnoRed,
                             contentColor = OnoYellow
                         ),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isDownloading
                     ) {
-                        Text("Stáhnout ${info.version}")
+                        Text(if (isDownloading) "Stahuji…" else "Stáhnout ${info.version}")
                     }
                 }
 
@@ -659,7 +684,7 @@ private fun SettingsScreen(
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    "Tank ONO widget v1.0 · autor: birgis",
+                    "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: birgis",
                     color = OnoRed.copy(alpha = 0.7f),
                     fontSize = 11.sp,
                     modifier = Modifier.fillMaxWidth(),
