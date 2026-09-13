@@ -1,4 +1,4 @@
-name: Build APK
+name: Build and Release APK
 
 on:
   push:
@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # Pro vytvoření release
 
     steps:
       - name: Checkout
@@ -24,6 +26,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+
+      - name: Cache Android SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            /usr/local/lib/android/sdk
+            ~/.android
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle*') }}
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -48,8 +60,18 @@ jobs:
 
       - name: Build Release APK
         env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: ./gradlew assembleRelease --daemon --parallel --build-cache --stacktrace
+
+      - name: Get version name
+        id: get_version
+        run: |
+          VERSION="${{ github.run_number }}"
+          MAJOR="1"
+          FULL_VERSION="$MAJOR.$VERSION"
+          echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "Verze: $FULL_VERSION"
 
       - name: Rename APK
         run: |
@@ -61,7 +83,25 @@ jobs:
           fi
           ls -la output/
 
-      - name: Upload APK
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Verze ${{ steps.get_version.outputs.version }}
+          body: |
+            **Automatický build #${{ github.run_number }}**
+            
+            Datum: ${{ github.event.head_commit.timestamp }}
+            Autor: ${{ github.event.head_commit.author.name }}
+            
+            Zpráva: ${{ github.event.head_commit.message }}
+          files: output/TankONO_widget.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: TankONO_widget

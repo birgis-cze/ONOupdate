@@ -12,20 +12,21 @@ android {
         applicationId = "cz.tankono.widget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2                         // ################### zde zvýšit pro nový release  
-        versionName = "2.7"                     // ################### zde zvýšit pro nový release 
+
+        // === AUTOMATICKÉ VERZOVÁNÍ ===
+        // versionCode roste s každým buildem (z GitHub Run Number)
+        // versionName = "major.run_number" (např. "1.42")
+        val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        val majorVersion = 1
+
+        versionCode = runNumber
+        versionName = "$majorVersion.$runNumber"
 
         // GitHub token z prostředí (v CI) nebo prázdný (lokálně)
         val ghToken = System.getenv("GH_TOKEN") ?: ""
         buildConfigField("String", "GH_TOKEN", "\"$ghToken\"")
     }
-    
-    lint {
-        checkReleaseBuilds = false   // Vypne kontrolu při release buildu
-        abortOnError = false         // Nebude se zastavovat při chybě
-    }
 
-    // Fixní debug keystore – zaručí, že každý build má stejný podpis
     signingConfigs {
         create("debugFixed") {
             storeFile = file("../.github/debug.keystore")
@@ -61,6 +62,11 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
 
     compileOptions {
