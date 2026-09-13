@@ -12,8 +12,12 @@ android {
         applicationId = "cz.tankono.widget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2                         // ################### zde zvýšit pro nový release 
-        versionName = "2.0"                     // ################### zde zvýšit pro nový release 
+        versionCode = 1                         // ################### zde zvýšit pro nový release 
+        versionName = "1.0"                     // ################### zde zvýšit pro nový release 
+
+        // GitHub token z prostředí (v CI) nebo prázdný (lokálně)
+        val ghToken = System.getenv("GH_TOKEN") ?: ""
+        buildConfigField("String", "GH_TOKEN", "\"$ghToken\"")
     }
     
     lint {

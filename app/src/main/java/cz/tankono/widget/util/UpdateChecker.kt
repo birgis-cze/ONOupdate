@@ -1,6 +1,5 @@
 package cz.tankono.widget.util
 
-import android.content.Context
 import cz.tankono.widget.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,21 +18,38 @@ object UpdateChecker {
         val releaseNotes: String?
     )
 
-    /**
-     * Zkontroluje GitHub Releases a vrátí info o novější verzi, nebo null.
-     */
     suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
         try {
             val url = URL("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
             val connection = url.openConnection() as HttpURLConnection
+
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
+            connection.setRequestProperty("User-Agent", "TankONO-Widget")
+
+            // Token z BuildConfig (z GitHub Secrets)
+            val token = BuildConfig.GH_TOKEN
+            if (token.isNotEmpty()) {
+                connection.setRequestProperty("Authorization", "Bearer $token")
+                AppLogger.d("UpdateChecker: token použit")
+            } else {
+                AppLogger.w("UpdateChecker: token NENÍ k dispozici")
+            }
+
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 15_000
+
+            val responseCode = connection.responseCode
+            AppLogger.d("UpdateChecker: HTTP $responseCode")
+
+            if (responseCode != 200) {
+                AppLogger.w("UpdateChecker: neočekávaný kód $responseCode")
+                return@withContext null
+            }
 
             val response = connection.inputStream.bufferedReader().readText()
             val json = JSONObject(response)
 
-            val latestVersion = json.getString("tag_name")   // např. "v1.1"
+            val latestVersion = json.getString("tag_name")
             val releaseNotes = json.optString("body", null)
 
             // Najít APK asset
@@ -49,12 +65,11 @@ object UpdateChecker {
             }
 
             if (downloadUrl == null) {
-                AppLogger.w("UpdateChecker: APK asset nenalezen v release")
+                AppLogger.w("UpdateChecker: APK asset nenalezen")
                 return@withContext null
             }
 
-            // Porovnat verze
-            val currentVersion = BuildConfig.VERSION_NAME   // např. "1.0"
+            val currentVersion = BuildConfig.VERSION_NAME
             val isNewer = isNewerVersion(latestVersion, currentVersion)
 
             AppLogger.d("UpdateChecker: latest=$latestVersion, current=$currentVersion, isNewer=$isNewer")
@@ -70,7 +85,6 @@ object UpdateChecker {
         }
     }
 
-    /** Porovná verze – "v1.1" vs "1.0" → true. */
     private fun isNewerVersion(latest: String, current: String): Boolean {
         val l = latest.removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }
         val c = current.removePrefix("v").split(".").mapNotNull { it.toIntOrNull() }

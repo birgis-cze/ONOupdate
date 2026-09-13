@@ -47,6 +47,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Release APK
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: ./gradlew assembleRelease --daemon --parallel --build-cache --stacktrace
 
       - name: Rename APK
