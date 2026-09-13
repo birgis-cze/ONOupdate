@@ -12,7 +12,7 @@ android {
         applicationId = "cz.tankono.widget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2                         // ################### zde zvýšit pro nový release 
+        versionCode = 2                         // ################### zde zvýšit pro nový release  
         versionName = "2.5"                     // ################### zde zvýšit pro nový release 
 
         // GitHub token z prostředí (v CI) nebo prázdný (lokálně)
