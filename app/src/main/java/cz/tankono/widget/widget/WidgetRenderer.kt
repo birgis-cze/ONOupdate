@@ -42,11 +42,11 @@ object WidgetRenderer {
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
     private const val HEADER_FG      = COLOR_LIGHT_FG
 
-    // Prahy šířky (v dp) pro skrytí sloupců
-    // Priorita: Název > Aktuální cena > Stará cena > Trend
-    private const val THRESHOLD_HIDE_TREND = 250   // skryje trend (nejnižší priorita)
-    private const val THRESHOLD_HIDE_OLD   = 200   // skryje starou cenu
-    private const val THRESHOLD_HIDE_PRICE = 100   // skryje aktuální cenu (extrém)
+    // Fixní šířky sloupců (musí odpovídat styles.xml)
+    private const val WIDTH_OLD_PRICE_DP = 70
+    private const val WIDTH_PRICE_DP     = 60
+    private const val WIDTH_TREND_DP     = 18
+    private const val PADDING_DP         = 8
 
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
@@ -96,30 +96,41 @@ object WidgetRenderer {
         settings: WidgetSettings,
         state: PriceState
     ): RemoteViews {
-        // Zjistit šířku widgetu (v dp)
-        val options: Bundle = mgr.getAppWidgetOptions(widgetId)
-        val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
-        val maxWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH)
-        val widthDp = if (maxWidthDp > 0) maxWidthDp else minWidthDp
-
-        // Podle šířky rozhodnout, které sloupce skrýt
-        val hideTrend = widthDp < THRESHOLD_HIDE_TREND
-        val hideOld   = widthDp < THRESHOLD_HIDE_OLD
-        val hidePrice = widthDp < THRESHOLD_HIDE_PRICE
-        // Název se NIKDY neskrývá
-
-        AppLogger.d("Šířka widgetu: $widthDp dp (hideTrend=$hideTrend, hideOld=$hideOld, hidePrice=$hidePrice)")
-
         val night = isNight(context)
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
         val views = RemoteViews(context.packageName, R.layout.widget_tankono)
-
         views.setInt(R.id.widget_root, "setBackgroundColor", bg)
 
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
+
+        // ---------- Zjistit šířku widgetu ----------
+        val options: Bundle = mgr.getAppWidgetOptions(widgetId)
+        val minWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+        val maxWidthDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH)
+        val widthDp = if (maxWidthDp > 0) maxWidthDp else minWidthDp
+
+        // ---------- Produkty ----------
+        val visible = Product.entries.filter { it in settings.visibleProducts }
+        val groups = listOf(
+            Product.Kind.FUEL,
+            Product.Kind.OTHER,
+            Product.Kind.EXCHANGE
+        ).map { kind -> visible.filter { it.kind == kind } }
+            .filter { it.isNotEmpty() }
+
+        val flat = mutableListOf<Product>()
+        for (g in groups) flat.addAll(g)
+
+        // ---------- Rozhodnutí o zobrazení ----------
+        val layoutDecision = decideLayout(widthDp, settings.fontSizeSp, flat)
+
+        AppLogger.d(
+            "Widget: widthDp=$widthDp, useShort=${layoutDecision.useShortNames}, " +
+            "hideTrend=${layoutDecision.hideTrend}, hideOld=${layoutDecision.hideOld}"
+        )
 
         // ---------- HLAVIČKA ----------
         val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
@@ -138,18 +149,7 @@ object WidgetRenderer {
         views.setTextColor(R.id.header_date_update, HEADER_FG)
         views.setFloat(R.id.header_date_update, "setTextSize", headerFontSize)
 
-        // ---------- PRODUKTY ----------
-        val visible = Product.entries.filter { it in settings.visibleProducts }
-        val groups = listOf(
-            Product.Kind.FUEL,
-            Product.Kind.OTHER,
-            Product.Kind.EXCHANGE
-        ).map { kind -> visible.filter { it.kind == kind } }
-            .filter { it.isNotEmpty() }
-
-        val flat = mutableListOf<Product>()
-        for (g in groups) flat.addAll(g)
-
+        // ---------- ŘÁDKY ----------
         ROW_IDS.forEachIndexed { index, rowId ->
             if (index < flat.size) {
                 val product = flat[index]
@@ -158,14 +158,14 @@ object WidgetRenderer {
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
 
-                // Název – VŽDY viditelný (priorita 1)
-                val name = if (settings.useShortNames) product.shortName else product.displayName
+                // Název – VŽDY viditelný
+                val name = if (layoutDecision.useShortNames) product.shortName else product.displayName
                 views.setTextViewText(NAME_IDS[index], name)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Stará cena – skrýt, pokud je widget úzký (priorita 3)
-                if (hideOld) {
+                // Stará cena – skrýt, pokud je potřeba
+                if (layoutDecision.hideOld) {
                     views.setViewVisibility(OLD_IDS[index], View.GONE)
                 } else {
                     views.setViewVisibility(OLD_IDS[index], View.VISIBLE)
@@ -178,19 +178,15 @@ object WidgetRenderer {
                     views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
                 }
 
-                // Aktuální cena – skrýt jen v extrému (priorita 2)
-                if (hidePrice) {
-                    views.setViewVisibility(PRICE_IDS[index], View.GONE)
-                } else {
-                    views.setViewVisibility(PRICE_IDS[index], View.VISIBLE)
-                    val priceSpannable = buildPriceSpannable(cur, product, settings)
-                    views.setTextViewText(PRICE_IDS[index], priceSpannable)
-                    views.setTextColor(PRICE_IDS[index], fg)
-                    views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
-                }
+                // Aktuální cena – VŽDY viditelná
+                views.setViewVisibility(PRICE_IDS[index], View.VISIBLE)
+                val priceSpannable = buildPriceSpannable(cur, product, settings)
+                views.setTextViewText(PRICE_IDS[index], priceSpannable)
+                views.setTextColor(PRICE_IDS[index], fg)
+                views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Trend – skrýt jako první (priorita 4)
-                if (hideTrend) {
+                // Trend – skrýt, pokud je potřeba
+                if (layoutDecision.hideTrend) {
                     views.setViewVisibility(TREND_IDS[index], View.GONE)
                 } else {
                     views.setViewVisibility(TREND_IDS[index], View.VISIBLE)
@@ -214,6 +210,86 @@ object WidgetRenderer {
         }
 
         return views
+    }
+
+    // ========================================================================
+    // ROZHODNUTÍ O ZOBRAZENÍ
+    // ========================================================================
+
+    private data class LayoutDecision(
+        val useShortNames: Boolean,
+        val hideTrend: Boolean,
+        val hideOld: Boolean
+    )
+
+    /**
+     * Rozhodne, co zobrazit, podle šířky widgetu a velikosti písma.
+     *
+     * Priority (od nejnižší):
+     *  1. Název – VŽDY
+     *  2. Cena – VŽDY
+     *  3. Stará cena – skrýt, pokud se nevejde
+     *  4. Trend – skrýt jako první
+     *
+     * Název se automaticky přepne na krátký, pokud se dlouhý nevejde.
+     */
+    private fun decideLayout(
+        widthDp: Int,
+        fontSizeSp: Int,
+        products: List<Product>
+    ): LayoutDecision {
+        // Šířka znaku pro standard font (odhad)
+        val charWidth = fontSizeSp * 0.55f
+
+        // Maximální délky textů
+        val maxNameLong = products.maxOfOrNull { it.displayName.length } ?: 10
+        val maxNameShort = products.maxOfOrNull { it.shortName.length } ?: 2
+
+        // Minimální šířky sloupců (v dp)
+        val nameLongWidth = (maxNameLong * charWidth).toInt() + PADDING_DP
+        val nameShortWidth = (maxNameShort * charWidth).toInt() + PADDING_DP
+        val priceWidth = WIDTH_PRICE_DP
+        val oldPriceWidth = WIDTH_OLD_PRICE_DP
+        val trendWidth = WIDTH_TREND_DP
+
+        // Celkové šířky pro jednotlivé kombinace
+        val totalLong = nameLongWidth + priceWidth + oldPriceWidth + trendWidth
+        val totalShort = nameShortWidth + priceWidth + oldPriceWidth + trendWidth
+        val noTrendLong = nameLongWidth + priceWidth + oldPriceWidth
+        val noTrendShort = nameShortWidth + priceWidth + oldPriceWidth
+        val minLong = nameLongWidth + priceWidth
+        val minShort = nameShortWidth + priceWidth
+
+        return when {
+            // 1. Vše dlouhé
+            widthDp >= totalLong -> LayoutDecision(
+                useShortNames = false, hideTrend = false, hideOld = false
+            )
+            // 2. Vše krátké
+            widthDp >= totalShort -> LayoutDecision(
+                useShortNames = true, hideTrend = false, hideOld = false
+            )
+            // 3. Dlouhé bez trendu
+            widthDp >= noTrendLong -> LayoutDecision(
+                useShortNames = false, hideTrend = true, hideOld = false
+            )
+            // 4. Krátké bez trendu
+            widthDp >= noTrendShort -> LayoutDecision(
+                useShortNames = true, hideTrend = true, hideOld = false
+            )
+            // 5. Dlouhé bez trendu a staré ceny
+            widthDp >= minLong -> LayoutDecision(
+                useShortNames = false, hideTrend = true, hideOld = true
+            )
+            // 6. Krátké bez trendu a staré ceny
+            widthDp >= minShort -> LayoutDecision(
+                useShortNames = true, hideTrend = true, hideOld = true
+            )
+            // 7. Extrém – jen krátký název + cena (může se useknout)
+            else -> LayoutDecision(
+                useShortNames = true, hideTrend = true, hideOld = true
+            )
+        }
     }
 
     private fun buildPriceSpannable(
