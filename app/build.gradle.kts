@@ -12,8 +12,8 @@ android {
         applicationId = "cz.tankono.widget"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2                         // ################### zde zvýšit pro nový release 
+        versionName = "2.0"                     // ################### zde zvýšit pro nový release 
     }
     
     lint {
