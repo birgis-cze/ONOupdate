@@ -9,7 +9,7 @@ import cz.tankono.widget.R
 object Notifier {
 
     private const val CHANNEL_ID = "tankono_prices"
-    private const val CHANNEL_SILENT_ID = "tankono_silent"
+    private const val CHANNEL_SILENT_ID = "tankono_silent_v2"
     private const val NOTIF_ID_NEW = 1001
     private const val NOTIF_ID_PROGRESS = 1002
 
@@ -30,7 +30,8 @@ object Notifier {
 
     /**
      * Kanál pro tichou notifikaci během update.
-     * IMPORTANCE_LOW = bez zvuku, ale viditelná v horní liště.
+     * IMPORTANCE_DEFAULT = viditelná v horní liště (ikona).
+     * setSound(null) = ticho.
      */
     private fun ensureSilentChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
@@ -38,10 +39,10 @@ object Notifier {
             val channel = NotificationChannel(
                 CHANNEL_SILENT_ID,
                 "Aktualizace na pozadí",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_DEFAULT   // ← DEFAULT (ikona v liště)
             ).apply {
                 description = "Tiché upozornění na probíhající aktualizaci"
-                setSound(null, null)
+                setSound(null, null)                     // ← TICHO
                 enableVibration(false)
                 enableLights(false)
                 setShowBadge(false)
@@ -50,12 +51,12 @@ object Notifier {
         }
     }
 
-    /** Notifikace o novém ceníku (normální, se zvukem). */
+    /** Notifikace o novém ceníku. */
     fun notifyNewPrices(ctx: Context) {
         ensureChannel(ctx)
 
         val notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notif)
+            .setSmallIcon(R.drawable.ic_notif_station)   // ← NOVÁ IKONA
             .setContentTitle("Tank ONO")
             .setContentText("Byl zveřejněn nový ceník.")
             .setAutoCancel(true)
@@ -71,7 +72,7 @@ object Notifier {
         ensureSilentChannel(ctx)
 
         val notification = NotificationCompat.Builder(ctx, CHANNEL_SILENT_ID)
-            .setSmallIcon(R.drawable.ic_notif)
+            .setSmallIcon(R.drawable.ic_notif_station)   // ← NOVÁ IKONA
             .setContentTitle("Tank ONO")
             .setContentText("Aktualizuji data…")
             .setOngoing(true)

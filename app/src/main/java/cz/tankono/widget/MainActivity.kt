@@ -56,6 +56,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.util.AppLogger
+import cz.tankono.widget.util.UpdateChecker
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -129,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     onRefresh = { refreshNow() },
                     onExportLog = { exportLog() },
                     onOpenBatterySettings = { openBatterySettings() },
+                    onOpenUrl = { url -> openUrl(url) },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
             }
@@ -157,6 +160,20 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Najdi Baterie → Neomezené", Toast.LENGTH_LONG).show()
         } catch (t: Throwable) {
             AppLogger.e("Nelze otevřít nastavení baterie", t)
+        }
+    }
+
+    /** Otevře URL v prohlížeči. */
+    private fun openUrl(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            AppLogger.i("Otevřeno URL: $url")
+        } catch (t: Throwable) {
+            AppLogger.e("Nelze otevřít URL: $url", t)
+            Toast.makeText(this, "Nelze otevřít odkaz", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -284,9 +301,11 @@ private fun SettingsScreen(
     onRefresh: () -> Unit,
     onExportLog: () -> Unit,
     onOpenBatterySettings: () -> Unit,
+    onOpenUrl: (String) -> Unit,
     isConfiguring: Boolean
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val settingsFlow = remember { SettingsStore(context).settings }
     val loaded by settingsFlow.collectAsStateWithLifecycle(initialValue = null)
@@ -295,6 +314,10 @@ private fun SettingsScreen(
 
     var lastPublished by remember { mutableStateOf<String?>(null) }
     var lastFetched by remember { mutableStateOf<Long?>(null) }
+
+    // Update stav
+    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var isChecking by remember { mutableStateOf(false) }
 
     LaunchedEffect(loaded) {
         if (loaded != null && state.value == null) {
@@ -323,7 +346,6 @@ private fun SettingsScreen(
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
-            // HLAVIČKA
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -333,7 +355,6 @@ private fun SettingsScreen(
                 OnoHeader()
             }
 
-            // SCROLLOVATELNÝ OBSAH
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -556,7 +577,7 @@ private fun SettingsScreen(
 
                 Spacer(Modifier.height(4.dp))
 
-                // ---- Tlačítka ----
+                // ---- Uložit ----
                 Button(
                     onClick = { onSave(s) },
                     enabled = s.visibleProducts.isNotEmpty(),
@@ -569,6 +590,7 @@ private fun SettingsScreen(
                     Text(if (isConfiguring) "Přidat widget" else "Uložit nastavení widgetu")
                 }
 
+                // ---- Aktualizovat data ----
                 OutlinedButton(
                     onClick = onRefresh,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -577,6 +599,46 @@ private fun SettingsScreen(
                     Text("↻  Aktualizovat data")
                 }
 
+                // ---- Kontrola aktualizací ----
+                OutlinedButton(
+                    onClick = {
+                        isChecking = true
+                        updateInfo = null
+                        scope.launch {
+                            val info = UpdateChecker.checkForUpdate()
+                            updateInfo = info
+                            isChecking = false
+                            if (info == null) {
+                                Toast.makeText(
+                                    context,
+                                    "Máš nejnovější verzi",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isChecking
+                ) {
+                    Text(if (isChecking) "Kontroluji…" else "Zkontrolovat aktualizace")
+                }
+
+                // ---- Stáhnout novou verzi ----
+                updateInfo?.let { info ->
+                    Button(
+                        onClick = { onOpenUrl(info.downloadUrl) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = OnoRed,
+                            contentColor = OnoYellow
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Stáhnout ${info.version}")
+                    }
+                }
+
+                // ---- Nastavení baterie ----
                 OutlinedButton(
                     onClick = onOpenBatterySettings,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -585,6 +647,7 @@ private fun SettingsScreen(
                     Text("Nastavení baterie")
                 }
 
+                // ---- Export logu ----
                 OutlinedButton(
                     onClick = onExportLog,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -635,12 +698,6 @@ private fun SectionTitle(text: String) {
     Text(text = text, color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
 }
 
-/**
- * Responzivní NumberStepper:
- * - Tlačítka − a + mají PEVNOU velikost (44dp) – nikdy se nezmenšují
- * - Mezery mezi tlačítky a hodnotou se zkracují podle dostupného místa
- * - Písmo hodnoty se zmenšuje podle šířky
- */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NumberStepper(
@@ -659,7 +716,6 @@ private fun NumberStepper(
         val buttonsWidth = buttonSize * 2
         val remaining = availableWidth - buttonsWidth
 
-        // Mezera – čím méně místa, tím menší mezera
         val gap = when {
             remaining >= 130.dp -> 4.dp
             remaining >= 110.dp -> 3.dp
@@ -667,10 +723,8 @@ private fun NumberStepper(
             else                -> 1.dp
         }
 
-        // Šířka hodnoty
         val valueWidth = (remaining - (gap * 2)).coerceAtLeast(20.dp)
 
-        // Font hodnoty
         val valueFontSize = when {
             valueWidth >= 70.dp -> 18.sp
             valueWidth >= 60.dp -> 16.sp
@@ -682,17 +736,13 @@ private fun NumberStepper(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(gap)
         ) {
-            // Tlačítko −
             Box(
                 modifier = Modifier
                     .size(buttonSize)
                     .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
                     .then(
                         if (canMinus && onMin != null) {
-                            Modifier.combinedClickable(
-                                onClick = onMinus,
-                                onLongClick = onMin
-                            )
+                            Modifier.combinedClickable(onClick = onMinus, onLongClick = onMin)
                         } else if (canMinus) {
                             Modifier.clickable { onMinus() }
                         } else Modifier
@@ -704,11 +754,8 @@ private fun NumberStepper(
                 }
             }
 
-            // Hodnota
             Box(
-                modifier = Modifier
-                    .width(valueWidth)
-                    .height(buttonSize),
+                modifier = Modifier.width(valueWidth).height(buttonSize),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -722,17 +769,13 @@ private fun NumberStepper(
                 )
             }
 
-            // Tlačítko +
             Box(
                 modifier = Modifier
                     .size(buttonSize)
                     .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
                     .then(
                         if (canPlus && onMax != null) {
-                            Modifier.combinedClickable(
-                                onClick = onPlus,
-                                onLongClick = onMax
-                            )
+                            Modifier.combinedClickable(onClick = onPlus, onLongClick = onMax)
                         } else if (canPlus) {
                             Modifier.clickable { onPlus() }
                         } else Modifier
