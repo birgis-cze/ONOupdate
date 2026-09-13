@@ -17,7 +17,7 @@ android {
         // versionCode roste s každým buildem (z GitHub Run Number)
         // versionName = "major.run_number" (např. "1.42")
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        val majorVersion = 1
+        val majorVersion = 3
 
         versionCode = runNumber
         versionName = "$majorVersion.$runNumber"
