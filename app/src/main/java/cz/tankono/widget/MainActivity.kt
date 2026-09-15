@@ -397,20 +397,23 @@ private fun SettingsScreen(
 
     // Načtení uloženého stavu
     LaunchedEffect(loaded) {
-        if (loaded != null && state.value == null) {
-            state.value = loaded
+        val loadedLocal = loaded ?: return@LaunchedEffect
+
+        if (state.value == null) {
+            state.value = loadedLocal
 
             // Pokud je nainstalovaná jen jedna navigační appka, auto-nastav ji
             if (installedNavApps.size == 1 &&
-                loaded.preferredNavigation == NavigationApp.SYSTEM
+                loadedLocal.preferredNavigation == NavigationApp.SYSTEM
             ) {
                 val autoNav = installedNavApps.first()
                 AppLogger.i("Auto-nastavuji navigaci na $autoNav")
-                state.value = loaded.copy(preferredNavigation = autoNav)
+                state.value = loadedLocal.copy(preferredNavigation = autoNav)
                 // Uložit na pozadí
-                SettingsStore(context).save(loaded.copy(preferredNavigation = autoNav))
+                SettingsStore(context).save(loadedLocal.copy(preferredNavigation = autoNav))
             }
         }
+
         try {
             val repo = cz.tankono.widget.data.repo.PriceRepository(context)
             val s = repo.loadState()
