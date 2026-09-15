@@ -3,28 +3,51 @@ package cz.tankono.widget.data.remote
 import cz.tankono.widget.data.db.PumpEntity
 import cz.tankono.widget.util.AppLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import org.jsoup.HttpStatusException
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.random.Random
 
 object PumpScraper {
 
     private const val URL_PUMPS = "https://www.tank-ono.cz/cz/index.php?page=pumpy"
     private const val BASE_URL = "https://www.tank-ono.cz/cz/"
-    private const val USER_AGENT = "Mozilla/5.0 (Android) TankOnoWidget/1.0"
     private const val TIMEOUT_MS = 15_000
     private const val REDIRECT_TIMEOUT_MS = 10_000
 
     /**
+     * Randomizované user-agenty pro ochranu proti blokaci.
+     */
+    private val USER_AGENTS = listOf(
+        "Mozilla/5.0 (Android 14; Mobile) TankOnoWidget/1.0",
+        "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 TankOnoWidget/1.0",
+        "Mozilla/5.0 (Android) TankOnoWidget/1.0"
+    )
+
+    private fun randomUserAgent(): String = USER_AGENTS.random()
+
+    /**
+     * Randomizovaný delay 500–800 ms mezi requesty.
+     * Chrání proti zahlcení serveru a blokaci.
+     */
+    private suspend fun safeDelay() {
+        val ms = 500L + Random.nextLong(0, 300)
+        delay(ms)
+    }
+
+    /**
      * Stáhne stránku pump a vrátí seznam všech čerpacích stanic.
+     * Při HTTP 429/503 vrátí prázdný seznam (workManager zkusí za 24 h).
      */
     suspend fun fetchPumpList(): List<PumpEntity> = withContext(Dispatchers.IO) {
         try {
             AppLogger.d("PumpScraper: stahuji seznam pump…")
 
             val doc = Jsoup.connect(URL_PUMPS)
-                .userAgent(USER_AGENT)
+                .userAgent(randomUserAgent())
                 .timeout(TIMEOUT_MS)
                 .get()
 
@@ -58,6 +81,14 @@ object PumpScraper {
 
             AppLogger.i("PumpScraper: nalezeno ${pumps.size} pump")
             pumps.values.sortedBy { it.id }
+        } catch (e: HttpStatusException) {
+            // HTTP 4xx/5xx – server blokuje / chyba
+            if (e.statusCode == 429 || e.statusCode == 503) {
+                AppLogger.w("PumpScraper: server vrátil ${e.statusCode} – přeskočeno (zkusí se za 24 h)")
+            } else {
+                AppLogger.e("PumpScraper: HTTP chyba ${e.statusCode}", e)
+            }
+            emptyList()
         } catch (t: Throwable) {
             AppLogger.e("PumpScraper: chyba při stahování seznamu", t)
             emptyList()
@@ -82,11 +113,11 @@ object PumpScraper {
 
                 // 1. Stáhnout detail pumpy
                 val doc = Jsoup.connect(pump.detailUrl)
-                    .userAgent(USER_AGENT)
+                    .userAgent(randomUserAgent())
                     .timeout(TIMEOUT_MS)
                     .get()
 
-                // 2. Najít odkaz na Google Maps (goo.gl nebo maps.google)
+                // 2. Najít odkaz na Google Maps
                 val mapsLink = doc.select("a[href*=goo.gl/maps], a[href*=maps.google], a[href*=google.com/maps]")
                     .firstOrNull()
                     ?.attr("href")
@@ -117,6 +148,13 @@ object PumpScraper {
 
                 AppLogger.i("PumpScraper: ${pump.name} → ${gps.first}, ${gps.second}")
                 gps
+            } catch (e: HttpStatusException) {
+                if (e.statusCode == 429 || e.statusCode == 503) {
+                    AppLogger.w("PumpScraper: GPS ${pump.name} – HTTP ${e.statusCode}, přeskočeno")
+                } else {
+                    AppLogger.e("PumpScraper: GPS ${pump.name} – HTTP ${e.statusCode}", e)
+                }
+                null
             } catch (t: Throwable) {
                 AppLogger.e("PumpScraper: chyba GPS pro ${pump.name}", t)
                 null
@@ -136,7 +174,7 @@ object PumpScraper {
                 val conn = URL(current).openConnection() as HttpURLConnection
                 conn.instanceFollowRedirects = false
                 conn.requestMethod = "HEAD"
-                conn.setRequestProperty("User-Agent", USER_AGENT)
+                conn.setRequestProperty("User-Agent", randomUserAgent())
                 conn.connectTimeout = REDIRECT_TIMEOUT_MS
                 conn.readTimeout = REDIRECT_TIMEOUT_MS
                 conn.connect()
@@ -149,7 +187,6 @@ object PumpScraper {
                     current = if (location.startsWith("http")) {
                         location
                     } else {
-                        // Relativní přesměrování
                         val base = URL(current)
                         URL(base, location).toString()
                     }
@@ -157,7 +194,6 @@ object PumpScraper {
                     continue
                 }
 
-                // Konec – ne přesměrování
                 return current
             } catch (t: Throwable) {
                 AppLogger.w("PumpScraper: chyba při následování přesměrování: ${t.message}")
@@ -169,15 +205,8 @@ object PumpScraper {
 
     /**
      * Extrahuje GPS z Google Maps URL.
-     *
-     * Podporované formáty:
-     *   .../@49.6789,18.1234,17z/...
-     *   ...?q=49.6789,18.1234
-     *   ...?ll=49.6789,18.1234
-     *   ...?query=49.6789,18.1234
      */
     private fun extractGpsFromUrl(url: String): Pair<Double, Double>? {
-        // Formát 1: @lat,lng
         val regex1 = Regex("""@(-?\d+\.\d+),(-?\d+\.\d+)""")
         regex1.find(url)?.let { m ->
             val lat = m.groupValues[1].toDoubleOrNull()
@@ -185,7 +214,6 @@ object PumpScraper {
             if (lat != null && lng != null) return lat to lng
         }
 
-        // Formát 2: q= / ll= / query= / daddr=
         val regex2 = Regex("""[?&](?:q|ll|query|daddr)=(-?\d+\.\d+),(-?\d+\.\d+)""")
         regex2.find(url)?.let { m ->
             val lat = m.groupValues[1].toDoubleOrNull()
@@ -194,5 +222,12 @@ object PumpScraper {
         }
 
         return null
+    }
+
+    /**
+     * Veřejná metoda pro použití v PumpRepository (mezi GPS requesty).
+     */
+    suspend fun delayBetweenRequests() {
+        safeDelay()
     }
 }

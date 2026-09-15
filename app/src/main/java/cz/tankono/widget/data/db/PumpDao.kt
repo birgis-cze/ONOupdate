@@ -20,6 +20,10 @@ interface PumpDao {
     @Query("SELECT * FROM pumps WHERE lat IS NULL OR lng IS NULL")
     suspend fun getPumpsWithoutGps(): List<PumpEntity>
 
+    /** Vrátí pumpy s GPS starším než cutoff (timestamp ms). */
+    @Query("SELECT * FROM pumps WHERE lat IS NOT NULL AND lng IS NOT NULL AND lastUpdated < :cutoff")
+    suspend fun getPumpsWithStaleGps(cutoff: Long): List<PumpEntity>
+
     /** Vloží nebo přepíše pumpy. */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(pumps: List<PumpEntity>)

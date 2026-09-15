@@ -19,7 +19,7 @@ android {
         // - versionName = "major.counter" (např. "4.124", "5.1")
         // - Při velké změně změň POUZE majorVersion (např. 4 → 5)
         //   → counter se automaticky resetuje na 1
-        val majorVersion = 4
+        val majorVersion = 5
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
 
         versionCode = runNumber
