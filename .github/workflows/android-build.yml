@@ -100,7 +100,7 @@ jobs:
           else
             # Nový major → reset na 1
             echo "NOVÝ MAJOR → resetuji counter na 1"
-            COUNTER=1
+            COUNTER=0
           fi
           
           VERSION_NAME="$MAJOR.$COUNTER"
