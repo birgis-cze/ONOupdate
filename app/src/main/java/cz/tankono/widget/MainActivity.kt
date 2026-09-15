@@ -1016,9 +1016,9 @@ private fun NearestPumpSection(
                     }
 
                     // Pravý sloupec – tlačítka M/S svisle
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         SquareButton("M") { onNavigate(nearestPump) }
                         SquareButton("S") { onShowAll() }
