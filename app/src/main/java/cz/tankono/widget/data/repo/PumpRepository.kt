@@ -16,25 +16,25 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Stav průběhu aktualizace pump.
- * Používá se pro progress bar v MainActivity.
+ * Stav průběhu aktualizace pump pro progress bar v UI.
  */
 sealed interface PumpRefreshProgress {
-    /** Nic neběží. */
     data object Idle : PumpRefreshProgress
-
-    /** Stahuji seznam pump z webu. */
     data object FetchingList : PumpRefreshProgress
-
-    /** Stahuji GPS pro pumpy bez GPS. */
     data class FetchingGps(val done: Int, val total: Int) : PumpRefreshProgress
-
-    /** Vše hotovo. */
     data object Done : PumpRefreshProgress
-
-    /** Chyba při stahování. */
     data class Error(val message: String) : PumpRefreshProgress
 }
+
+/**
+ * Výsledek synchronizace se serverem.
+ */
+data class SyncResult(
+    val added: Int,
+    val removed: Int,
+    val updated: Int,
+    val failed: Boolean = false
+)
 
 class PumpRepository(private val context: Context) {
 
@@ -45,54 +45,73 @@ class PumpRepository(private val context: Context) {
     val progress: StateFlow<PumpRefreshProgress> = _progress.asStateFlow()
 
     /**
-     * Aktualizuje seznam pump:
-     * 1. Stáhne aktuální seznam z webu
-     * 2. Uloží do DB (zachová GPS z existujících záznamů)
+     * Stáhne seznam pump z webu (BEZ GPS) a vrátí entity.
+     * Slouží jako základ pro syncWithWeb().
      */
-    suspend fun refreshPumpList(): Int {
+    private suspend fun fetchWebList(): List<PumpEntity>? {
         _progress.value = PumpRefreshProgress.FetchingList
-        AppLogger.i("PumpRepository: aktualizuji seznam pump…")
-
-        val newPumps = try {
-            PumpScraper.fetchPumpList()
+        AppLogger.i("PumpRepository: stahuji seznam pump z webu…")
+        return try {
+            val pumps = PumpScraper.fetchPumpList()
+            if (pumps.isEmpty()) {
+                AppLogger.w("PumpRepository: web vrátil 0 pump")
+                null
+            } else pumps
         } catch (t: Throwable) {
             AppLogger.e("PumpRepository: chyba při stahování seznamu", t)
-            _progress.value = PumpRefreshProgress.Error(t.message ?: "Chyba stahování seznamu")
-            return 0
+            null
+        }
+    }
+
+    /**
+     * Synchronizuje DB se seznamem z webu.
+     * - Nové pumpy PŘIDÁ (bez GPS, GPS se došti později)
+     * - Zmizelé pumpy SMAŽE
+     * - Stávající pumpy AKTUALIZUJE (název, URL), ale GPS zachová
+     *
+     * @return SyncResult s počty změn, nebo SyncResult(0,0,0,failed=true) při chybě.
+     */
+    suspend fun syncWithWeb(): SyncResult {
+        val webPumps = fetchWebList()
+            ?: return SyncResult(0, 0, 0, failed = true)
+
+        val webIds = webPumps.map { it.id }.toSet()
+        val dbPumps = dao.getAll()
+        val dbIds = dbPumps.map { it.id }.toSet()
+
+        // 1. SMAZAT pumpy, které už na webu nejsou
+        val toDelete = dbPumps.filter { it.id !in webIds }
+        toDelete.forEach { dao.deleteById(it.id) }
+        if (toDelete.isNotEmpty()) {
+            AppLogger.i("PumpRepository: smazáno ${toDelete.size} pump (už nejsou na webu)")
         }
 
-        if (newPumps.isEmpty()) {
-            AppLogger.w("PumpRepository: staženo 0 pump – neukládám")
-            _progress.value = PumpRefreshProgress.Error("Staženo 0 pump")
-            return 0
-        }
-
-        // Zachovat GPS z existujících záznamů
-        val existing = dao.getAll().associateBy { it.id }
-
-        val merged = newPumps.map { newPump ->
-            val oldPump = existing[newPump.id]
-            if (oldPump != null && oldPump.lat != null && oldPump.lng != null) {
-                newPump.copy(
-                    lat = oldPump.lat,
-                    lng = oldPump.lng,
-                    lastUpdated = oldPump.lastUpdated
+        // 2. PŘIDAT nové + AKTUALIZOVAT existující (zachovat GPS)
+        val existingById = dbPumps.associateBy { it.id }
+        val merged = webPumps.map { webPump ->
+            val existing = existingById[webPump.id]
+            if (existing != null) {
+                webPump.copy(
+                    lat = existing.lat,
+                    lng = existing.lng,
+                    lastUpdated = existing.lastUpdated
                 )
             } else {
-                newPump
+                webPump // nová pumpa bez GPS
             }
         }
-
         dao.insertAll(merged)
-        AppLogger.i("PumpRepository: uloženo ${merged.size} pump")
 
-        return merged.size
+        val added = merged.count { it.id !in dbIds }
+        val updated = merged.size - added
+        AppLogger.i("PumpRepository: sync hotov – přidáno=$added, smazáno=${toDelete.size}, aktualizováno=$updated")
+
+        return SyncResult(added = added, removed = toDelete.size, updated = updated)
     }
 
     /**
      * Stáhne GPS pro všechny pumpy, které ho ještě nemají.
-     * Vrací počet úspěšně stažených GPS.
-     * Průběh hlásí přes [progress].
+     * @return počet úspěšně stažených GPS
      */
     suspend fun refreshGpsForAllPumps(): Int {
         val pumpsWithoutGps = dao.getPumpsWithoutGps()
@@ -107,7 +126,6 @@ class PumpRepository(private val context: Context) {
         _progress.value = PumpRefreshProgress.FetchingGps(0, total)
 
         var successCount = 0
-
         for ((index, pump) in pumpsWithoutGps.withIndex()) {
             val gps = PumpScraper.fetchGpsForPump(pump)
             if (gps != null) {
@@ -120,30 +138,24 @@ class PumpRepository(private val context: Context) {
                 successCount++
             }
             _progress.value = PumpRefreshProgress.FetchingGps(index + 1, total)
-            // Krátká pauza mezi requesty (aby web nezablokoval)
-            delay(300)
+            delay(300) // pauza mezi requesty
         }
 
         AppLogger.i("PumpRepository: GPS stažena pro $successCount / $total pump")
         return successCount
     }
 
-    /**
-     * Nastaví progress na Idle (volat po dokončení celého refresh flow).
-     */
+    /** Resetuje progress na Idle (volat po dokončení celého flow). */
     fun resetProgress() {
         _progress.value = PumpRefreshProgress.Idle
     }
 
     suspend fun getAll(): List<PumpEntity> = dao.getAll()
-
     suspend fun count(): Int = dao.count()
-
     suspend fun getPumpsWithoutGps(): List<PumpEntity> = dao.getPumpsWithoutGps()
 
     /**
-     * Najde nejbližší pumpu k zadané GPS pozici.
-     * Vrací null, pokud v DB nejsou žádné pumpy s GPS.
+     * Najde nejbližší pumpu k zadané pozici.
      */
     suspend fun findNearestPump(userLat: Double, userLng: Double): PumpEntity? {
         val pumps = dao.getAllWithGps()
@@ -155,25 +167,20 @@ class PumpRepository(private val context: Context) {
     }
 
     /**
-     * Vrátí všechny pumpy s GPS seřazené podle vzdálenosti od zadané pozice.
-     * Vrací List<Pair<pumpa, vzdálenost v km>>.
+     * Vrátí všechny pumpy s GPS seřazené podle vzdálenosti.
      */
     suspend fun getAllSortedByDistance(
         userLat: Double,
         userLng: Double
     ): List<Pair<PumpEntity, Double>> {
-        val pumps = dao.getAllWithGps()
-        return pumps
+        return dao.getAllWithGps()
             .map { it to haversineKm(userLat, userLng, it.lat!!, it.lng!!) }
             .sortedBy { it.second }
     }
 
-    /**
-     * Vypočítá vzdálenost mezi dvěma GPS body pomocí Haversine.
-     * @return vzdálenost v km
-     */
+    /** Haversine – vzdálenost v km. */
     private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-        val r = 6371.0 // poloměr Země v km
+        val r = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
         val a = sin(dLat / 2).pow(2.0) +

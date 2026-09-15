@@ -28,6 +28,10 @@ interface PumpDao {
     @Query("UPDATE pumps SET lat = :lat, lng = :lng, lastUpdated = :time WHERE id = :id")
     suspend fun updateGps(id: Int, lat: Double, lng: Double, time: Long)
 
+    /** Smaže pumpu podle ID. */
+    @Query("DELETE FROM pumps WHERE id = :id")
+    suspend fun deleteById(id: Int)
+
     /** Smaže všechny pumpy. */
     @Query("DELETE FROM pumps")
     suspend fun deleteAll()

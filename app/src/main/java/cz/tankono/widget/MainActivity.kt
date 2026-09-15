@@ -169,6 +169,7 @@ class MainActivity : ComponentActivity() {
         }
 
         WorkScheduler.schedule(this)
+        WorkScheduler.schedulePumpSync(this)   // ← denní sync pump
     }
 
     private fun requestNotificationPermissionIfNeeded() {
@@ -256,7 +257,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun refreshNow() {
-        AppLogger.i("Manuální refresh – forceRefresh")
+        AppLogger.i("Manuální refresh – ceník + pumpy")
         Toast.makeText(this, getString(R.string.refreshing_toast), Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             try {
@@ -264,9 +265,11 @@ class MainActivity : ComponentActivity() {
                 repo.forceRefresh()
                 cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this@MainActivity)
             } catch (t: Throwable) {
-                AppLogger.e("Chyba při forceRefresh", t)
+                AppLogger.e("Chyba při forceRefresh ceníku", t)
             }
         }
+        // Spustit i sync pump (běží na pozadí)
+        WorkScheduler.runPumpSyncNow(this)
     }
 
     private fun exportLog() {
@@ -367,7 +370,7 @@ private fun SettingsScreen(
     var isChecking by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
 
-    // ---- Pumpy / poloha / progress ----
+    // Pumpy / poloha / progress
     val pumpRepo = remember { PumpRepository(context) }
     val progress by pumpRepo.progress.collectAsStateWithLifecycle()
 
@@ -391,7 +394,7 @@ private fun SettingsScreen(
         } catch (_: Throwable) {}
     }
 
-    // Automatická kontrola aktualizací při otevření aplikace
+    // Auto-check aktualizací
     LaunchedEffect(Unit) {
         try {
             AppLogger.d("Auto-check: kontroluji aktualizace…")
@@ -407,18 +410,31 @@ private fun SettingsScreen(
         }
     }
 
-    // ---- Načtení pump, GPS a polohy ----
+    // Načtení pump + polohy
     LaunchedEffect(Unit) {
         try {
-            // 1. Seznam pump
-            AppLogger.i("SETTINGS: Stahuji seznam pump…")
-            val count = pumpRepo.refreshPumpList()
-            AppLogger.i("SETTINGS: Staženo a uloženo $count pump")
+            val settingsStore = SettingsStore(context)
 
-            // 2. GPS pro všechny pumpy (jen pokud chybí)
-            AppLogger.i("SETTINGS: Kontrola GPS…")
+            // 1. Sync seznamu pump jen pokud uplynulo > 24 h
+            val now = System.currentTimeMillis()
+            val lastSync = settingsStore.getLastPumpSync()
+            val dayMs = 24 * 60 * 60 * 1000L
+
+            if (now - lastSync > dayMs) {
+                AppLogger.i("SETTINGS: Sync pump (naposledy ${(now - lastSync) / 1000 / 60} min)")
+                val sync = pumpRepo.syncWithWeb()
+                if (!sync.failed) {
+                    settingsStore.saveLastPumpSync(now)
+                }
+            } else {
+                AppLogger.d("SETTINGS: Sync přeskočen (proběhl nedávno)")
+            }
+
+            // 2. GPS pro pumpy bez GPS
             val gpsCount = pumpRepo.refreshGpsForAllPumps()
-            AppLogger.i("SETTINGS: GPS stažena pro $gpsCount pump")
+            if (gpsCount > 0) {
+                AppLogger.i("SETTINGS: Došti GPS pro $gpsCount pump")
+            }
 
             // 3. Poloha uživatele
             val fine = ContextCompat.checkSelfPermission(
@@ -435,7 +451,6 @@ private fun SettingsScreen(
                     userLocation = loc
                     AppLogger.i("SETTINGS: Poloha = ${loc.first}, ${loc.second}")
 
-                    // 4. Nejbližší pumpa + seznam
                     val sorted = pumpRepo.getAllSortedByDistance(loc.first, loc.second)
                     allPumpsSorted = sorted
                     if (sorted.isNotEmpty()) {
@@ -492,7 +507,7 @@ private fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                // ---- Info o posledních aktualizacích + nejbližší stanice ----
+                // ---- Poslední aktualizace + nejbližší ----
                 SettingsCard {
                     SectionTitle("Poslední aktualizace")
                     Text(
@@ -508,7 +523,7 @@ private fun SettingsScreen(
                         fontSize = 13.sp
                     )
 
-                    // Progress bar (jen pokud něco běží)
+                    // Progress bar
                     if (progress !is PumpRefreshProgress.Idle) {
                         val progressText = when (val p = progress) {
                             is PumpRefreshProgress.FetchingList -> "Stahuji seznam stanic…"
@@ -545,7 +560,6 @@ private fun SettingsScreen(
                         }
                     }
 
-                    // Oddělovač
                     Spacer(Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
@@ -746,7 +760,6 @@ private fun SettingsScreen(
 
                 Spacer(Modifier.height(4.dp))
 
-                // ---- Uložit ----
                 Button(
                     onClick = { onSave(s) },
                     enabled = s.visibleProducts.isNotEmpty(),
@@ -759,7 +772,6 @@ private fun SettingsScreen(
                     Text(if (isConfiguring) "Přidat widget" else "Uložit nastavení widgetu")
                 }
 
-                // ---- Aktualizovat data ----
                 OutlinedButton(
                     onClick = onRefresh,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -768,7 +780,6 @@ private fun SettingsScreen(
                     Text("↻  Aktualizovat data")
                 }
 
-                // ---- Kontrola aktualizací (ruční) ----
                 OutlinedButton(
                     onClick = {
                         isChecking = true
@@ -789,7 +800,6 @@ private fun SettingsScreen(
                     Text(if (isChecking) "Kontroluji…" else "Zkontrolovat aktualizace")
                 }
 
-                // ---- Stáhnout novou verzi ----
                 updateInfo?.let { info ->
                     Button(
                         onClick = {
@@ -817,7 +827,6 @@ private fun SettingsScreen(
                     }
                 }
 
-                // ---- Nastavení baterie ----
                 OutlinedButton(
                     onClick = onOpenBatterySettings,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -826,7 +835,6 @@ private fun SettingsScreen(
                     Text("Nastavení baterie")
                 }
 
-                // ---- Export logu ----
                 OutlinedButton(
                     onClick = onExportLog,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -850,7 +858,6 @@ private fun SettingsScreen(
         }
     }
 
-    // ---- Bottom sheet se všemi pumpami ----
     if (showAllPumpsSheet) {
         AllPumpsSheet(
             pumps = allPumpsSorted,
@@ -862,7 +869,6 @@ private fun SettingsScreen(
         )
     }
 
-    // ---- Dialog pro navigaci ----
     navTargetPump?.let { pump ->
         NavigationPickerDialog(
             pump = pump,
@@ -873,7 +879,7 @@ private fun SettingsScreen(
 
 
 // =============================================================================
-// NEJBLIŽŠÍ STANICE – sekce v kartě "Poslední aktualizace"
+// NEJBLIŽŠÍ STANICE
 // =============================================================================
 @Composable
 private fun NearestPumpSection(
@@ -941,9 +947,6 @@ private fun NearestPumpSection(
 }
 
 
-// =============================================================================
-// ČTVERCOVÉ TLAČÍTKO (stejný styl jako NumberStepper)
-// =============================================================================
 @Composable
 private fun SquareButton(label: String, onClick: () -> Unit) {
     Box(
@@ -964,7 +967,7 @@ private fun SquareButton(label: String, onClick: () -> Unit) {
 
 
 // =============================================================================
-// BOTTOM SHEET se všemi pumpami
+// BOTTOM SHEET
 // =============================================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1051,7 +1054,7 @@ private fun AllPumpsSheet(
 
 
 // =============================================================================
-// DIALOG pro výběr navigace
+// DIALOG
 // =============================================================================
 @Composable
 private fun NavigationPickerDialog(
@@ -1066,11 +1069,7 @@ private fun NavigationPickerDialog(
         titleContentColor = OnoRed,
         textContentColor = OnoRed,
         title = {
-            Text(
-                "Navigovat do:",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Navigovat do:", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         },
         text = {
             Text(pump.name, fontSize = 14.sp)
@@ -1093,18 +1092,12 @@ private fun NavigationPickerDialog(
 
 
 // =============================================================================
-// POMOCNÉ FUNKCE
+// POMOCNÉ
 // =============================================================================
-
-/**
- * Otevře systémový chooser navigačních aplikací s geo: URI.
- * Android sám nabídne nainstalované mapové aplikace (Google Maps, Mapy.cz, Waze…).
- */
 private fun openNavigation(context: Context, pump: PumpEntity) {
     val lat = pump.lat ?: return
     val lng = pump.lng ?: return
 
-    // geo:lat,lng?q=lat,lng(název) – funguje ve většině mapových aplikací
     val label = Uri.encode(pump.name)
     val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng($label)")
 
@@ -1117,11 +1110,6 @@ private fun openNavigation(context: Context, pump: PumpEntity) {
     }
 }
 
-/**
- * Formátuje vzdálenost v km s českou desetinnou čárkou.
- * Pod 10 km: 1 desetinné místo ("2,3 km")
- * Nad 10 km: bez desetinných míst ("23 km")
- */
 private fun formatDistanceKm(km: Double): String {
     return if (km < 10.0) {
         "%.1f km".format(km).replace('.', ',')
@@ -1132,9 +1120,8 @@ private fun formatDistanceKm(km: Double): String {
 
 
 // =============================================================================
-// SPOLEČNÉ KOMPONENTY (beze změny)
+// SPOLEČNÉ KOMPONENTY
 // =============================================================================
-
 @Composable
 private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
@@ -1354,8 +1341,7 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     val bg = if (selected) OnoRed else Color.White
     val fg = if (selected) OnoYellow else OnoRed
     Box(
-        modifier = Modifier
-            .width(70.dp)
+        modifier = Modifier            .width(70.dp)
             .height(44.dp)
             .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
             .background(bg, RoundedCornerShape(8.dp))

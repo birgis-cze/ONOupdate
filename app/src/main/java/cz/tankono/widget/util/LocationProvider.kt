@@ -17,12 +17,8 @@ object LocationProvider {
 
     /**
      * Získá aktuální polohu.
-     *
-     * Postup:
-     * 1. Zkusí poslední známou polohu (rychlé, může být starší).
+     * 1. Zkusí poslední známou polohu (rychlé).
      * 2. Pokud null, vyžádá fresh fix (pomalejší, přesnější).
-     *
-     * @return Pair(lat, lng) nebo null při selhání / chybějícím oprávnění.
      */
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(context: Context): Pair<Double, Double>? =
@@ -36,8 +32,7 @@ object LocationProvider {
                             AppLogger.d("LocationProvider: lastLocation = ${loc.latitude}, ${loc.longitude}")
                             if (cont.isActive) cont.resume(loc.latitude to loc.longitude)
                         } else {
-                            // Fallback: vyžádat fresh fix
-                            AppLogger.d("LocationProvider: lastLocation null, zkouším getCurrentLocation")
+                            AppLogger.d("LocationProvider: lastLocation null, zkouším fresh fix")
                             client.getCurrentLocation(
                                 Priority.PRIORITY_BALANCED_POWER_ACCURACY,
                                 null
