@@ -75,22 +75,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: ./gradlew assembleRelease --daemon --parallel --build-cache --stacktrace
 
-      - name: Get version name (z Gradle)
+      - name: Get version name
         id: get_version
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
-          # Zavolat gradle task, který vypíše verzi
-          OUTPUT=$(./gradlew -q printVersionName 2>/dev/null)
-          echo "Gradle output:"
-          echo "$OUTPUT"
+          # Přečíst major z build.gradle.kts
+          MAJOR=$(grep -oP 'val majorVersion = \K\d+' app/build.gradle.kts | head -1)
+          if [ -z "$MAJOR" ]; then
+            echo "VAROVÁNÍ: majorVersion nenalezen v build.gradle.kts, používám 1"
+            MAJOR="1"
+          fi
           
-          VERSION_NAME=$(echo "$OUTPUT" | grep "VERSION_NAME=" | cut -d= -f2)
-          VERSION_CODE=$(echo "$OUTPUT" | grep "VERSION_CODE=" | cut -d= -f2)
+          RUN_NUMBER="${{ github.run_number }}"
+          VERSION_NAME="$MAJOR.$RUN_NUMBER"
           
           echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
-          echo "Verze z Gradle: $VERSION_NAME (code: $VERSION_CODE)"
+          echo "Verze: $VERSION_NAME"
 
       - name: Rename APK
         run: |
@@ -111,7 +110,6 @@ jobs:
             **Automatický build #${{ github.run_number }}**
             
             Verze: ${{ steps.get_version.outputs.version }}
-            Verze code: ${{ steps.get_version.outputs.versionCode }}
             
             Datum: ${{ github.event.head_commit.timestamp }}
             Autor: ${{ github.event.head_commit.author.name }}
