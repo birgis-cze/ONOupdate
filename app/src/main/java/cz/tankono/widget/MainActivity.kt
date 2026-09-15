@@ -45,13 +45,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -103,11 +103,19 @@ private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
 
 
+/**
+ * Ořeže "ČS " prefix z názvu stanice pro zobrazení.
+ * V DB zůstává plný název.
+ */
+private fun pumpDisplayName(fullName: String): String =
+    fullName.removePrefix("ČS ").trim()
+
+
 class MainActivity : ComponentActivity() {
 
     private var configWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
 
-    // Stav oprávnění k poloze – mění se, když uživatel povolí
+    // Stav oprávnění k poloze
     private var locationGrantedState by androidx.compose.runtime.mutableStateOf(false)
 
     private val notifPermissionLauncher = registerForActivityResult(
@@ -155,7 +163,6 @@ class MainActivity : ComponentActivity() {
             })
         }
 
-        // Zjistit aktuální stav oprávnění
         locationGrantedState = hasLocationPermission()
 
         requestNotificationPermissionIfNeeded()
@@ -390,7 +397,7 @@ private fun SettingsScreen(
     var showAllPumpsSheet by remember { mutableStateOf(false) }
     var navTargetPump by remember { mutableStateOf<PumpEntity?>(null) }
 
-    // Nainstalované navigační appky (jen pro UI)
+    // Nainstalované navigační appky
     val installedNavApps = remember {
         NavigationApp.installed(context)
     }
@@ -402,14 +409,12 @@ private fun SettingsScreen(
         if (state.value == null) {
             state.value = loadedLocal
 
-            // Pokud je nainstalovaná jen jedna navigační appka, auto-nastav ji
             if (installedNavApps.size == 1 &&
                 loadedLocal.preferredNavigation == NavigationApp.SYSTEM
             ) {
                 val autoNav = installedNavApps.first()
                 AppLogger.i("Auto-nastavuji navigaci na $autoNav")
                 state.value = loadedLocal.copy(preferredNavigation = autoNav)
-                // Uložit na pozadí
                 SettingsStore(context).save(loadedLocal.copy(preferredNavigation = autoNav))
             }
         }
@@ -438,7 +443,7 @@ private fun SettingsScreen(
         }
     }
 
-    // Načtení pump + polohy – přepočítá se, když se změní stav oprávnění
+    // Načtení pump + polohy
     LaunchedEffect(locationGranted) {
         try {
             val settingsStore = SettingsStore(context)
@@ -464,7 +469,7 @@ private fun SettingsScreen(
                 AppLogger.i("SETTINGS: Došti GPS pro $gpsCount pump")
             }
 
-            // 3. Poloha uživatele (jen pokud máme oprávnění)
+            // 3. Poloha uživatele
             if (locationGranted) {
                 AppLogger.i("SETTINGS: Zjišťuji polohu…")
                 val loc = LocationProvider.getCurrentLocation(context)
@@ -544,7 +549,6 @@ private fun SettingsScreen(
                         fontSize = 13.sp
                     )
 
-                    // Progress bar
                     if (progress !is PumpRefreshProgress.Idle) {
                         val progressText = when (val p = progress) {
                             is PumpRefreshProgress.FetchingList -> "Stahuji seznam stanic…"
@@ -588,7 +592,7 @@ private fun SettingsScreen(
                             .height(1.dp)
                             .background(OnoRed.copy(alpha = 0.3f))
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(8.dp))
 
                     NearestPumpSection(
                         nearestPump = nearestPump,
@@ -602,28 +606,13 @@ private fun SettingsScreen(
                 // ---- Navigace (jen pokud 2+ nainstalované) ----
                 if (installedNavApps.size >= 2) {
                     SettingsCard {
-                        SectionTitle("Navigace")
-                        Text(
-                            "Preferovaná aplikace:",
-                            color = OnoRed,
-                            fontSize = 13.sp
-                        )
-                        NavigationRadioRow(
-                            label = "Systém (vždy hlavní pro geo)",
-                            selected = s.preferredNavigation == NavigationApp.SYSTEM,
-                            onClick = {
-                                state.value = s.copy(preferredNavigation = NavigationApp.SYSTEM)
+                        NavigationRow(
+                            current = s.preferredNavigation,
+                            installedApps = installedNavApps,
+                            onSelect = { nav ->
+                                state.value = s.copy(preferredNavigation = nav)
                             }
                         )
-                        installedNavApps.forEach { app ->
-                            NavigationRadioRow(
-                                label = app.displayName,
-                                selected = s.preferredNavigation == app,
-                                onClick = {
-                                    state.value = s.copy(preferredNavigation = app)
-                                }
-                            )
-                        }
                     }
                 }
 
@@ -918,7 +907,7 @@ private fun SettingsScreen(
         )
     }
 
-    // Rovnou navigovat (bez dialogu) – pokud je vybraná appka
+    // Rovnou navigovat (bez dialogu)
     navTargetPump?.let { pump ->
         LaunchedEffect(pump) {
             val lat = pump.lat
@@ -933,36 +922,99 @@ private fun SettingsScreen(
 
 
 // =============================================================================
-// NAVIGACE – radio řádek
+// NAVIGACE – jednořádková s dropdown tlačítkem
 // =============================================================================
 @Composable
-private fun NavigationRadioRow(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
+private fun NavigationRow(
+    current: NavigationApp,
+    installedApps: List<NavigationApp>,
+    onSelect: (NavigationApp) -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = OnoRed,
-                unselectedColor = OnoRed
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Levý text: "Navigace: Waze"
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Navigace: ",
+                    color = OnoRed,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    current.displayName,
+                    color = OnoRed,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal
+                )
+            }
+
+            // Tlačítko ▼ (stejný styl jako steppery)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                    .clickable { expanded = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "▼",
+                    color = OnoRed,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // Dropdown menu – přes celou šířku karty
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(OnoYellow)
+                .border(2.dp, OnoRed)
+        ) {
+            // Systém (vždy)
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        "Systém (vždy hlavní pro geo)",
+                        color = OnoRed,
+                        fontSize = 14.sp,
+                        fontWeight = if (current == NavigationApp.SYSTEM) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                onClick = {
+                    onSelect(NavigationApp.SYSTEM)
+                    expanded = false
+                }
             )
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            label,
-            color = OnoRed,
-            fontSize = 14.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-        )
+
+            // Nainstalované appky
+            installedApps.forEach { app ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            app.displayName,
+                            color = OnoRed,
+                            fontSize = 14.sp,
+                            fontWeight = if (current == app) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = {
+                        onSelect(app)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -981,41 +1033,30 @@ private fun NearestPumpSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         when {
             nearestPump != null && distanceKm != null -> {
-                // Layout podle zadání:
-                // Row 1: Nejbližší:  |  Adresa           | [M]
-                // Row 2:             |  2,4 km            | [S]
+                // Řádek 1: label "Nejbližší:" (samostatně)
+                Text(
+                    "Nejbližší:",
+                    color = OnoRed,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+
+                // Řádek 2: odsazená adresa + tlačítka M/S
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Top
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Levý sloupec – labely ("Nejbližší:")
                     Text(
-                        "Nejbližší:",
+                        pumpDisplayName(nearestPump.name),
                         color = OnoRed,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(90.dp)
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
                     )
-
-                    // Prostřední sloupec – hodnoty (adresa, vzdálenost)
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Text(
-                            nearestPump.name,
-                            color = OnoRed,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            formatDistanceKm(distanceKm),
-                            color = OnoRed,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    // Pravý sloupec – tlačítka M/S svisle
+                    Spacer(Modifier.width(8.dp))
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -1024,44 +1065,42 @@ private fun NearestPumpSection(
                         SquareButton("S") { onShowAll() }
                     }
                 }
+
+                // Řádek 3: odsazená vzdálenost
+                Text(
+                    formatDistanceKm(distanceKm),
+                    color = OnoRed,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                )
             }
             !hasLocation -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Nejbližší:",
-                        color = OnoRed,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Text(
-                        "Poloha není dostupná – povol přístup k poloze.",
-                        color = OnoRed,
-                        fontSize = 12.sp
-                    )
-                }
+                Text(
+                    "Nejbližší:",
+                    color = OnoRed,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "   Poloha není dostupná – povol přístup k poloze.",
+                    color = OnoRed,
+                    fontSize = 12.sp
+                )
             }
             else -> {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "Nejbližší:",
-                        color = OnoRed,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.width(90.dp)
-                    )
-                    Text(
-                        "Zjišťuji…",
-                        color = OnoRed,
-                        fontSize = 12.sp
-                    )
-                }
+                Text(
+                    "Nejbližší:",
+                    color = OnoRed,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "   Zjišťuji…",
+                    color = OnoRed,
+                    fontSize = 12.sp
+                )
             }
         }
     }
@@ -1152,7 +1191,7 @@ private fun AllPumpsSheet(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    pump.name,
+                                    pumpDisplayName(pump.name),
                                     color = OnoRed,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
