@@ -6,11 +6,13 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Typeface
+import android.os.Build
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.text.style.SuperscriptSpan
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import cz.tankono.widget.R
@@ -97,6 +99,9 @@ object WidgetRenderer {
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
 
+        // ---------- DYNAMICKÉ ŠÍŘKY SLOUPCŮ (API 31+) ----------
+        applyDynamicColumnWidths(context, views, settings)
+
         // ---------- HLAVIČKA ----------
         val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
         val fetchedTime = state.current?.fetchedAt?.let { ts ->
@@ -179,6 +184,50 @@ object WidgetRenderer {
         }
 
         return views
+    }
+
+    /**
+     * Dynamicky nastaví šířky sloupců podle fontSizeSp.
+     * Funguje pouze na API 31+ (setViewLayoutWidth).
+     * Na starších API zůstávají hodnoty z XML (wrap_content + minWidth).
+     */
+    private fun applyDynamicColumnWidths(
+        context: Context,
+        views: RemoteViews,
+        settings: WidgetSettings
+    ) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            // API < 31 – RemoteViews.setViewLayoutWidth není dostupné
+            return
+        }
+
+        val density = context.resources.displayMetrics.density
+        val fontSize = settings.fontSizeSp.toFloat()
+
+        // Trend: šířka znaku ▲/▼/= je cca 0.9× fontSize, přidáme rezervu
+        // Min 22dp, max 40dp
+        val trendWidthDp = (fontSize * 1.5f).coerceIn(22f, 40f)
+        val trendWidthPx = (trendWidthDp * density).toInt()
+
+        // Stará cena: 5 znaků v závorce "( 33,50 )" nebo "( --,-- )"
+        // Cca 5.5× fontSize/2, protože stará cena má fontSize - 2
+        val oldFontSize = (fontSize - 2).coerceAtLeast(8f)
+        val oldWidthDp = (oldFontSize * 3.5f).coerceIn(55f, 90f)
+        val oldWidthPx = (oldWidthDp * density).toInt()
+
+        // Aktuální cena: 4-5 znaků "33,90" nebo "1,234"
+        val priceWidthDp = (fontSize * 3.2f).coerceIn(50f, 85f)
+        val priceWidthPx = (priceWidthDp * density).toInt()
+
+        TREND_IDS.forEach { id ->
+            views.setViewLayoutWidth(id, trendWidthPx, TypedValue.COMPLEX_UNIT_PX)
+        }
+        OLD_IDS.forEach { id ->
+            views.setViewLayoutWidth(id, oldWidthPx, TypedValue.COMPLEX_UNIT_PX)
+        }
+        PRICE_IDS.forEach { id ->
+            views.setViewLayoutWidth(id, priceWidthPx, TypedValue.COMPLEX_UNIT_PX)
+        }
     }
 
     private fun buildPriceSpannable(

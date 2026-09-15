@@ -24,9 +24,10 @@
         <item name="android:ellipsize">end</item>
     </style>
 
-    <!-- Stará cena (v závorce) – 70dp -->
+    <!-- Stará cena (v závorce) – min 55dp, roztáhne se podle potřeby -->
     <style name="WidgetRowOld">
-        <item name="android:layout_width">70dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:minWidth">55dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">@color/ono_red</item>
         <item name="android:textStyle">italic</item>
@@ -35,9 +36,10 @@
         <item name="android:gravity">end</item>
     </style>
 
-    <!-- Aktuální cena – 60dp -->
+    <!-- Aktuální cena – min 50dp, roztáhne se podle potřeby -->
     <style name="WidgetRowPrice">
-        <item name="android:layout_width">60dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:minWidth">50dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">@color/ono_red</item>
         <item name="android:textStyle">bold</item>
@@ -47,9 +49,10 @@
         <item name="android:paddingStart">4dp</item>
     </style>
 
-    <!-- Trend – 18dp -->
+    <!-- Trend – min 22dp, roztáhne se podle potřeby -->
     <style name="WidgetRowTrend">
-        <item name="android:layout_width">18dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:minWidth">22dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textColor">@color/ono_red</item>
         <item name="android:textStyle">bold</item>

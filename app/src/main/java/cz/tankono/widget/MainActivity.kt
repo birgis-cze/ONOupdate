@@ -92,6 +92,7 @@ import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
 import cz.tankono.widget.util.UpdateChecker
 import cz.tankono.widget.work.WorkScheduler
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
@@ -184,6 +185,14 @@ class MainActivity : ComponentActivity() {
 
         WorkScheduler.schedule(this)
         WorkScheduler.schedulePumpSync(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) {
+            AppLogger.i("MainActivity onStop – překresluji widget")
+            cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this)
+        }
     }
 
     private fun hasLocationPermission(): Boolean {
@@ -441,6 +450,22 @@ private fun SettingsScreen(
         } catch (t: Throwable) {
             AppLogger.e("Auto-check: chyba", t)
         }
+    }
+
+    // ---- Auto-save s debounce 500 ms ----
+    LaunchedEffect(state.value) {
+        val current = state.value ?: return@LaunchedEffect
+        if (isConfiguring) return@LaunchedEffect
+
+        val loadedLocal = loaded ?: return@LaunchedEffect
+        if (current == loadedLocal) return@LaunchedEffect
+
+        delay(500)
+
+        AppLogger.i("Auto-save: ukládám nastavení (font=${current.fontSizeSp}, nav=${current.preferredNavigation})")
+        SettingsStore(context).save(current)
+        WorkScheduler.schedule(context)
+        // requestUpdate() volá onStop() v MainActivity
     }
 
     // Načtení pump + polohy
@@ -798,16 +823,28 @@ private fun SettingsScreen(
 
                 Spacer(Modifier.height(4.dp))
 
-                Button(
-                    onClick = { onSave(s) },
-                    enabled = s.visibleProducts.isNotEmpty(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = OnoRed,
-                        contentColor = OnoYellow
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (isConfiguring) "Přidat widget" else "Uložit nastavení widgetu")
+                if (isConfiguring) {
+                    // Při přidávání widgetu – tlačítko nutné
+                    Button(
+                        onClick = { onSave(s) },
+                        enabled = s.visibleProducts.isNotEmpty(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = OnoRed,
+                            contentColor = OnoYellow
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Přidat widget")
+                    }
+                } else {
+                    // V běžném nastavení – ukládá se automaticky
+                    Text(
+                        "Nastavení se ukládá automaticky",
+                        color = OnoRed.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
                 }
 
                 OutlinedButton(
@@ -956,7 +993,7 @@ private fun NavigationRow(
                 )
             }
 
-            // Tlačítko ▼ (stejný styl jako steppery)
+            // Tlačítko ▼
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -973,7 +1010,7 @@ private fun NavigationRow(
             }
         }
 
-        // Dropdown menu – přes celou šířku karty
+        // Dropdown menu
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -981,7 +1018,6 @@ private fun NavigationRow(
                 .background(OnoYellow)
                 .border(2.dp, OnoRed)
         ) {
-            // Systém (vždy)
             DropdownMenuItem(
                 text = {
                     Text(
@@ -997,7 +1033,6 @@ private fun NavigationRow(
                 }
             )
 
-            // Nainstalované appky
             installedApps.forEach { app ->
                 DropdownMenuItem(
                     text = {
@@ -1033,7 +1068,7 @@ private fun NearestPumpSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         when {
             nearestPump != null && distanceKm != null -> {
-                // Řádek 1: label "Nejbližší:" (samostatně)
+                // Řádek 1: label "Nejbližší:"
                 Text(
                     "Nejbližší:",
                     color = OnoRed,
@@ -1042,18 +1077,26 @@ private fun NearestPumpSection(
                 )
                 Spacer(Modifier.height(4.dp))
 
-                // Řádek 2: odsazená adresa + tlačítka M/S
+                // Řádek 2: odsazená adresa (bez tlačítek)
+                Text(
+                    pumpDisplayName(nearestPump.name),
+                    color = OnoRed,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 16.dp)
+                )
+
+                // Řádek 3: odsazená vzdálenost + tlačítka M/S vpravo
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp),
+                        .padding(start = 16.dp, top = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        pumpDisplayName(nearestPump.name),
+                        formatDistanceKm(distanceKm),
                         color = OnoRed,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
@@ -1065,14 +1108,6 @@ private fun NearestPumpSection(
                         SquareButton("S") { onShowAll() }
                     }
                 }
-
-                // Řádek 3: odsazená vzdálenost
-                Text(
-                    formatDistanceKm(distanceKm),
-                    color = OnoRed,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(start = 16.dp, top = 2.dp)
-                )
             }
             !hasLocation -> {
                 Text(
