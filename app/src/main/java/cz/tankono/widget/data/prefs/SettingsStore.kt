@@ -24,7 +24,8 @@ data class WidgetSettings(
     val peakEndMinutes: Int = 16 * 60,
     val intervalPeakMin: Int = 15,
     val intervalOffPeakMin: Int = 60,
-    val fontSizeSp: Int = 15
+    val fontSizeSp: Int = 15,
+    val preferredNavigation: NavigationApp = NavigationApp.SYSTEM
 ) {
     val effectiveIntervalMin: Int
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
@@ -42,6 +43,7 @@ class SettingsStore(private val context: Context) {
         val INTERVAL_OFF      = intPreferencesKey("interval_off")
         val FONT_SIZE         = intPreferencesKey("font_size")
         val LAST_PUMP_SYNC    = longPreferencesKey("last_pump_sync")
+        val PREFERRED_NAV     = stringPreferencesKey("preferred_navigation")
     }
 
     val settings: Flow<WidgetSettings> = context.settingsDataStore.data.map { p ->
@@ -58,7 +60,8 @@ class SettingsStore(private val context: Context) {
             peakEndMinutes    = p[Keys.PEAK_END]        ?: (16 * 60),
             intervalPeakMin   = p[Keys.INTERVAL_PEAK]   ?: 15,
             intervalOffPeakMin= p[Keys.INTERVAL_OFF]    ?: 60,
-            fontSizeSp        = p[Keys.FONT_SIZE]       ?: 15
+            fontSizeSp        = p[Keys.FONT_SIZE]       ?: 15,
+            preferredNavigation = NavigationApp.fromId(p[Keys.PREFERRED_NAV])
         )
     }
 
@@ -72,15 +75,14 @@ class SettingsStore(private val context: Context) {
             p[Keys.INTERVAL_PEAK]    = s.intervalPeakMin
             p[Keys.INTERVAL_OFF]     = s.intervalOffPeakMin
             p[Keys.FONT_SIZE]        = s.fontSizeSp
+            p[Keys.PREFERRED_NAV]    = s.preferredNavigation.id
         }
     }
 
-    /** Uloží timestamp posledního úspěšného sync pump. */
     suspend fun saveLastPumpSync(time: Long) {
         context.settingsDataStore.edit { it[Keys.LAST_PUMP_SYNC] = time }
     }
 
-    /** Vrátí timestamp posledního sync pump (0 = nikdy). */
     suspend fun getLastPumpSync(): Long {
         return context.settingsDataStore.data.map { it[Keys.LAST_PUMP_SYNC] ?: 0L }.first()
     }
