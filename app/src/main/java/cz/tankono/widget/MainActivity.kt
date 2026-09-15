@@ -1077,29 +1077,32 @@ private fun NearestPumpSection(
                 )
                 Spacer(Modifier.height(4.dp))
 
-                // Řádek 2: odsazená adresa (bez tlačítek)
-                Text(
-                    pumpDisplayName(nearestPump.name),
-                    color = OnoRed,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 16.dp)
-                )
-
-                // Řádek 3: odsazená vzdálenost + tlačítka M/S vpravo
+                // Řádek 2+3: adresa + vzdálenost (vlevo), tlačítka M/S (vpravo, vertikálně vystředěná)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, top = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        formatDistanceKm(distanceKm),
-                        color = OnoRed,
-                        fontSize = 13.sp,
-                        modifier = Modifier.weight(1f)
-                    )
+                    // Levý sloupec: adresa + vzdálenost pod sebou
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            pumpDisplayName(nearestPump.name),
+                            color = OnoRed,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            formatDistanceKm(distanceKm),
+                            color = OnoRed,
+                            fontSize = 13.sp
+                        )
+                    }
                     Spacer(Modifier.width(8.dp))
+                    // Pravý sloupec: tlačítka M/S (vertikálně vystředěná díky Row verticalAlignment)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
