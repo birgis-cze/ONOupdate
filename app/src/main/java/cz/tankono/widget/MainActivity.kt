@@ -488,13 +488,13 @@ private fun SettingsScreen(
                                 state.value = s.copy(currency = Currency.EUR)
                             }
                         }
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(8.dp))
                     }
                 }
 
                 // ---- Špička (2 steppery na jednom řádku) ----
                 SettingsCard {
-                    SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
+                    SectionTitle("Špička (aktualizace cen)")
                     TwoSteppersRow(
                         value1 = formatTime(s.peakStartMinutes),
                         value2 = formatTime(s.peakEndMinutes),
@@ -527,7 +527,7 @@ private fun SettingsScreen(
 
                 // ---- Interval (2 steppery na jednom řádku) ----
                 SettingsCard {
-                    SectionTitle("Interval aktualizací špička / mimo špičku (min)")
+                    SectionTitle("Interval aktualizací špička/mimo")
                     TwoSteppersRow(
                         value1 = s.intervalPeakMin.toString(),
                         value2 = s.intervalOffPeakMin.toString(),
@@ -571,7 +571,7 @@ private fun SettingsScreen(
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Text(
-                                "Velikost textu widgetu:",
+                                "Text widgetu:",
                                 color = OnoRed,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
