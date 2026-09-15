@@ -15,14 +15,19 @@ android {
         targetSdk = 35
 
         // === AUTOMATICKÉ VERZOVÁNÍ ===
-        // - versionCode = github.run_number
-        // - versionName = "major.run_number" (např. "4.124")
+        // - versionCode = github.run_number (roste globálně, Android to vyžaduje)
+        // - versionName = "major.counter" (např. "4.124", "5.1")
         // - Při velké změně změň POUZE majorVersion (např. 4 → 5)
+        //   → counter se automaticky resetuje na 1
         val majorVersion = 4
         val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
 
         versionCode = runNumber
-        versionName = "$majorVersion.$runNumber"
+
+        // versionName se vypočítá ve workflow (major.counter)
+        // Při lokálním buildu (bez workflow) použijeme fallback
+        val counter = System.getenv("VERSION_COUNTER") ?: runNumber.toString()
+        versionName = "$majorVersion.$counter"
 
         // GitHub token z prostředí (v CI) nebo prázdný (lokálně)
         val ghToken = System.getenv("GH_TOKEN") ?: ""

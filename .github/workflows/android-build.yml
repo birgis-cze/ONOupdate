@@ -69,27 +69,58 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Compute version
+        id: version
+        run: |
+          # Přečíst major z build.gradle.kts
+          MAJOR=$(grep -oP 'val majorVersion = \K\d+' app/build.gradle.kts | head -1)
+          if [ -z "$MAJOR" ]; then
+            MAJOR="1"
+            echo "VAROVÁNÍ: majorVersion nenalezen, používám 1"
+          fi
+          
+          # Přečíst poslední major z .github/last_major.txt
+          LAST_MAJOR=""
+          if [ -f .github/last_major.txt ]; then
+            LAST_MAJOR=$(cat .github/last_major.txt | tr -d '[:space:]')
+          fi
+          
+          # Přečíst poslední counter z .github/counter.txt
+          COUNTER=0
+          if [ -f .github/counter.txt ]; then
+            COUNTER=$(cat .github/counter.txt | tr -d '[:space:]')
+          fi
+          
+          echo "Major: $MAJOR, last major: $LAST_MAJOR, counter: $COUNTER"
+          
+          # Zjistit nové číslo
+          if [ "$MAJOR" = "$LAST_MAJOR" ]; then
+            # Stejný major → zvýšit counter
+            COUNTER=$((COUNTER + 1))
+          else
+            # Nový major → reset na 1
+            echo "NOVÝ MAJOR → resetuji counter na 1"
+            COUNTER=1
+          fi
+          
+          VERSION_NAME="$MAJOR.$COUNTER"
+          
+          # Uložit nové hodnoty pro commit
+          echo "$COUNTER" > .github/counter.txt
+          echo "$MAJOR" > .github/last_major.txt
+          
+          # Zapsat do GITHUB_OUTPUT a GITHUB_ENV
+          echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "counter=$COUNTER" >> $GITHUB_OUTPUT
+          echo "VERSION_COUNTER=$COUNTER" >> $GITHUB_ENV
+          
+          echo "Verze: $VERSION_NAME"
+
       - name: Build Release APK
         env:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: ./gradlew assembleRelease --daemon --parallel --build-cache --stacktrace
-
-      - name: Get version name
-        id: get_version
-        run: |
-          # Přečíst major z build.gradle.kts
-          MAJOR=$(grep -oP 'val majorVersion = \K\d+' app/build.gradle.kts | head -1)
-          if [ -z "$MAJOR" ]; then
-            echo "VAROVÁNÍ: majorVersion nenalezen v build.gradle.kts, používám 1"
-            MAJOR="1"
-          fi
-          
-          RUN_NUMBER="${{ github.run_number }}"
-          VERSION_NAME="$MAJOR.$RUN_NUMBER"
-          
-          echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "Verze: $VERSION_NAME"
 
       - name: Rename APK
         run: |
@@ -104,12 +135,12 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          name: Verze ${{ steps.get_version.outputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Verze ${{ steps.version.outputs.version }}
           body: |
             **Automatický build #${{ github.run_number }}**
             
-            Verze: ${{ steps.get_version.outputs.version }}
+            Verze: ${{ steps.version.outputs.version }}
             
             Datum: ${{ github.event.head_commit.timestamp }}
             Autor: ${{ github.event.head_commit.author.name }}
@@ -120,6 +151,14 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit counter
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/counter.txt .github/last_major.txt
+          git commit -m "Bump version to ${{ steps.version.outputs.version }} [skip ci]" || echo "Nic ke commitu"
+          git push || echo "Push selhal (možná konflikt)"
 
       - name: Upload APK (artifact)
         uses: actions/upload-artifact@v4
