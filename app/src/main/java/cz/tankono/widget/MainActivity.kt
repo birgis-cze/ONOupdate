@@ -116,19 +116,27 @@ class MainActivity : ComponentActivity() {
         AppLogger.i("=== Aplikace spuštěna ===")
 
         // ============================================================
-        // DOČASNÝ TEST – SMAZAT PO OVĚŘENÍ FÁZE 2a
+        // DOČASNÝ TEST – SMAZAT PO OVĚŘENÍ FÁZE 2b
         // ============================================================
         lifecycleScope.launch {
             try {
-                AppLogger.i("TEST: Spouštím test scraperu pump…")
                 val repo = PumpRepository(this@MainActivity)
+
+                // 1. Seznam pump
+                AppLogger.i("TEST: Stahuji seznam pump…")
                 val count = repo.refreshPumpList()
                 AppLogger.i("TEST: Staženo a uloženo $count pump")
 
+                // 2. GPS pro všechny pumpy
+                AppLogger.i("TEST: Stahuji GPS pro všechny pumpy…")
+                val gpsCount = repo.refreshGpsForAllPumps()
+                AppLogger.i("TEST: GPS stažena pro $gpsCount pump")
+
+                // 3. Výpis všech pump
                 val pumps = repo.getAll()
                 AppLogger.i("TEST: Celkem v DB: ${pumps.size}")
-                pumps.take(5).forEach { pump ->
-                    AppLogger.i("TEST: ${pump.id} – ${pump.name} – ${pump.detailUrl}")
+                pumps.forEach { pump ->
+                    AppLogger.i("TEST: ${pump.id} – ${pump.name} – lat=${pump.lat}, lng=${pump.lng}")
                 }
             } catch (t: Throwable) {
                 AppLogger.e("TEST: chyba", t)
@@ -558,7 +566,7 @@ private fun SettingsScreen(
                     )
                 }
 
-                // ---- Velikost písma (popisek vlevo, stepper v pravé půlce) ----
+                // ---- Text widgetu (popisek vlevo, stepper v pravé půlce) ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -935,7 +943,7 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     val fg = if (selected) OnoYellow else OnoRed
     Box(
         modifier = Modifier
-            .width(90.dp)
+            .width(70.dp)
             .height(44.dp)
             .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
             .background(bg, RoundedCornerShape(8.dp))

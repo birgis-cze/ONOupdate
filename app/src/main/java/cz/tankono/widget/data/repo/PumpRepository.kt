@@ -13,9 +13,7 @@ class PumpRepository(private val context: Context) {
     /**
      * Aktualizuje seznam pump:
      * 1. Stáhne aktuální seznam z webu
-     * 2. Uloží do DB (nahradí staré)
-     *
-     * Vrací počet pump.
+     * 2. Uloží do DB (zachová GPS z existujících záznamů)
      */
     suspend fun refreshPumpList(): Int {
         AppLogger.i("PumpRepository: aktualizuji seznam pump…")
@@ -27,14 +25,12 @@ class PumpRepository(private val context: Context) {
             return 0
         }
 
-        // Zjistit existující pumpy (kvůli GPS)
+        // Zachovat GPS z existujících záznamů
         val existing = dao.getAll().associateBy { it.id }
 
-        // Zachovat GPS z existujících záznamů
         val merged = newPumps.map { newPump ->
             val oldPump = existing[newPump.id]
             if (oldPump != null && oldPump.lat != null && oldPump.lng != null) {
-                // Zachovat GPS
                 newPump.copy(
                     lat = oldPump.lat,
                     lng = oldPump.lng,
@@ -52,17 +48,43 @@ class PumpRepository(private val context: Context) {
     }
 
     /**
-     * Vrátí všechny pumpy z DB.
+     * Stáhne GPS pro všechny pumpy, které ho ještě nemají.
+     * Vrací počet úspěšně stažených GPS.
      */
+    suspend fun refreshGpsForAllPumps(): Int {
+        val pumpsWithoutGps = dao.getPumpsWithoutGps()
+
+        if (pumpsWithoutGps.isEmpty()) {
+            AppLogger.d("PumpRepository: všechny pumpy mají GPS")
+            return 0
+        }
+
+        AppLogger.i("PumpRepository: stahuji GPS pro ${pumpsWithoutGps.size} pump…")
+
+        var successCount = 0
+
+        for (pump in pumpsWithoutGps) {
+            val gps = PumpScraper.fetchGpsForPump(pump)
+            if (gps != null) {
+                dao.updateGps(
+                    id = pump.id,
+                    lat = gps.first,
+                    lng = gps.second,
+                    time = System.currentTimeMillis()
+                )
+                successCount++
+            }
+            // Krátká pauza mezi requesty (aby web nezablokoval)
+            kotlinx.coroutines.delay(300)
+        }
+
+        AppLogger.i("PumpRepository: GPS stažena pro $successCount / ${pumpsWithoutGps.size} pump")
+        return successCount
+    }
+
     suspend fun getAll(): List<PumpEntity> = dao.getAll()
 
-    /**
-     * Vrátí počet pump v DB.
-     */
     suspend fun count(): Int = dao.count()
 
-    /**
-     * Vrátí pumpy bez GPS (pro Fázi 2b).
-     */
     suspend fun getPumpsWithoutGps(): List<PumpEntity> = dao.getPumpsWithoutGps()
 }
