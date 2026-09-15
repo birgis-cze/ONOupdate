@@ -78,6 +78,7 @@ import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.data.remote.TankOnoScraper
+import cz.tankono.widget.data.repo.PumpRepository
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.UpdateChecker
 import cz.tankono.widget.work.WorkScheduler
@@ -113,6 +114,29 @@ class MainActivity : ComponentActivity() {
 
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
+
+        // ============================================================
+        // DOČASNÝ TEST – SMAZAT PO OVĚŘENÍ FÁZE 2a
+        // ============================================================
+        lifecycleScope.launch {
+            try {
+                AppLogger.i("TEST: Spouštím test scraperu pump…")
+                val repo = PumpRepository(this@MainActivity)
+                val count = repo.refreshPumpList()
+                AppLogger.i("TEST: Staženo a uloženo $count pump")
+
+                val pumps = repo.getAll()
+                AppLogger.i("TEST: Celkem v DB: ${pumps.size}")
+                pumps.take(5).forEach { pump ->
+                    AppLogger.i("TEST: ${pump.id} – ${pump.name} – ${pump.detailUrl}")
+                }
+            } catch (t: Throwable) {
+                AppLogger.e("TEST: chyba", t)
+            }
+        }
+        // ============================================================
+        // KONEC DOČASNÉHO TESTU
+        // ============================================================
 
         configWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -166,15 +190,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Otevře systémový instalátor APK. */
     private fun installApk(file: File) {
         try {
             val uri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                file
+                this, "$packageName.fileprovider", file
             )
-
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(uri, "application/vnd.android.package-archive")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -228,16 +248,10 @@ class MainActivity : ComponentActivity() {
 
     private fun exportLog() {
         try {
-            val logFile = AppLogger.getLogFile(this)
-            if (!logFile.exists()) {
-                Toast.makeText(this, "Log je prázdný", Toast.LENGTH_SHORT).show()
-                return
-            }
-            val cacheFile = File(cacheDir, "tankono_log.txt")
-            logFile.copyTo(cacheFile, overwrite = true)
+            val logFile = AppLogger.createExportFile(this)
 
             val uri = FileProvider.getUriForFile(
-                this, "$packageName.fileprovider", cacheFile
+                this, "$packageName.fileprovider", logFile
             )
 
             val intent = Intent(Intent.ACTION_SEND).apply {
@@ -381,14 +395,14 @@ private fun SettingsScreen(
                     Text(
                         "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(lastPublished) ?: "--"),
                         color = OnoRed,
-                        fontSize = 12.sp
+                        fontSize = 13.sp
                     )
                     Text(
                         "Widget aktualizován: " + (lastFetched?.let {
                             SimpleDateFormat("d.M.yyyy H:mm", Locale("cs", "CZ")).format(Date(it))
                         } ?: "--"),
                         color = OnoRed,
-                        fontSize = 12.sp
+                        fontSize = 13.sp
                     )
                 }
 
@@ -402,7 +416,7 @@ private fun SettingsScreen(
                     ProductGroup("Směnárna",
                         Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
                     if (s.visibleProducts.isEmpty()) {
-                        Text("Musíte vybrat alespoň jeden produkt.", color = OnoRed, fontSize = 14.sp)
+                        Text("Musíte vybrat alespoň jeden produkt.", color = OnoRed, fontSize = 12.sp)
                     }
                 }
 
@@ -415,7 +429,7 @@ private fun SettingsScreen(
                         Text(
                             "Krátké názvy produktů:",
                             color = OnoRed,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
@@ -445,7 +459,7 @@ private fun SettingsScreen(
                         Text(
                             "Zobrazování ceny:",
                             color = OnoRed,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
@@ -463,7 +477,7 @@ private fun SettingsScreen(
 
                 // ---- Špička ----
                 SettingsCard {
-                    SectionTitle("Špička (pravděpodobný čas změny cen)")
+                    SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Start,
@@ -509,7 +523,7 @@ private fun SettingsScreen(
 
                 // ---- Interval ----
                 SettingsCard {
-                    SectionTitle("Interval aktualizací špička/mimo")
+                    SectionTitle("Interval aktualizací špička / mimo špičku (min)")
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.Start,
@@ -562,27 +576,25 @@ private fun SettingsScreen(
                         Text(
                             "Velikost textu widgetu:",
                             color = OnoRed,
-                            fontSize = 12.sp,
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f)
                         )
-                        Box(modifier = Modifier.width(160.dp)) {
-                            NumberStepper(
-                                value = s.fontSizeSp.toString(),
-                                onMinus = {
-                                    val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
-                                    state.value = s.copy(fontSizeSp = newVal)
-                                },
-                                onPlus = {
-                                    val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
-                                    state.value = s.copy(fontSizeSp = newVal)
-                                },
-                                canMinus = s.fontSizeSp > 10,
-                                canPlus = s.fontSizeSp < 30,
-                                onMin = { state.value = s.copy(fontSizeSp = 10) },
-                                onMax = { state.value = s.copy(fontSizeSp = 30) }
-                            )
-                        }
+                        NumberStepper(
+                            value = s.fontSizeSp.toString(),
+                            onMinus = {
+                                val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
+                                state.value = s.copy(fontSizeSp = newVal)
+                            },
+                            onPlus = {
+                                val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
+                                state.value = s.copy(fontSizeSp = newVal)
+                            },
+                            canMinus = s.fontSizeSp > 10,
+                            canPlus = s.fontSizeSp < 30,
+                            onMin = { state.value = s.copy(fontSizeSp = 10) },
+                            onMax = { state.value = s.copy(fontSizeSp = 30) }
+                        )
                     }
                 }
 
@@ -607,7 +619,7 @@ private fun SettingsScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Aktualizovat data cen")
+                    Text("↻  Aktualizovat data")
                 }
 
                 // ---- Kontrola aktualizací ----
@@ -620,11 +632,7 @@ private fun SettingsScreen(
                             updateInfo = info
                             isChecking = false
                             if (info == null) {
-                                Toast.makeText(
-                                    context,
-                                    "Máš nejnovější verzi",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(context, "Máš nejnovější verzi", Toast.LENGTH_SHORT).show()
                             }
                         }
                     },
