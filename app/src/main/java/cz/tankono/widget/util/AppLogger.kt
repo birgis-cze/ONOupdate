@@ -90,4 +90,10 @@ object AppLogger {
     fun getLogFile(context: Context): File {
         return File(context.filesDir, LOG_FILE)
     }
+    /** Vytvoří soubor s logem pro sdílení. */
+    fun createExportFile(context: Context): File {
+        val exportFile = File(context.cacheDir, "tankono_log_export.txt")
+        exportFile.writeText(readLog(context))
+        return exportFile
+    }
 }
