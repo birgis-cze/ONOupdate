@@ -344,6 +344,7 @@ private fun SettingsScreen(
     var isChecking by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
 
+    // Načtení uloženého stavu
     LaunchedEffect(loaded) {
         if (loaded != null && state.value == null) {
             state.value = loaded
@@ -354,6 +355,22 @@ private fun SettingsScreen(
             lastPublished = s.current?.publishedAt
             lastFetched = s.current?.fetchedAt
         } catch (_: Throwable) {}
+    }
+
+    // Automatická kontrola aktualizací při otevření aplikace
+    LaunchedEffect(Unit) {
+        try {
+            AppLogger.d("Auto-check: kontroluji aktualizace…")
+            val info = UpdateChecker.checkForUpdate()
+            if (info != null) {
+                updateInfo = info
+                AppLogger.i("Auto-check: nalezena novější verze ${info.version}")
+            } else {
+                AppLogger.d("Auto-check: máš nejnovější verzi")
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("Auto-check: chyba", t)
+        }
     }
 
     val s = state.value
@@ -475,126 +492,114 @@ private fun SettingsScreen(
                     }
                 }
 
-                // ---- Špička ----
+                // ---- Špička (2 steppery na jednom řádku) ----
                 SettingsCard {
                     SectionTitle("Špička (pravděpodobný čas aktualizace cen)")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            NumberStepper(
-                                value = formatTime(s.peakStartMinutes),
-                                onMinus = {
-                                    val newVal = (s.peakStartMinutes - 15).coerceAtLeast(0)
-                                    state.value = s.copy(peakStartMinutes = newVal)
-                                },
-                                onPlus = {
-                                    val newVal = (s.peakStartMinutes + 15).coerceAtMost(1440)
-                                    state.value = s.copy(peakStartMinutes = newVal)
-                                },
-                                canMinus = s.peakStartMinutes > 0,
-                                canPlus = s.peakStartMinutes < 1440,
-                                onMin = { state.value = s.copy(peakStartMinutes = 0) },
-                                onMax = { state.value = s.copy(peakStartMinutes = 1440) }
-                            )
-                        }
-                        Spacer(Modifier.width(4.dp))
-                        Box(modifier = Modifier.weight(1f)) {
-                            NumberStepper(
-                                value = formatTime(s.peakEndMinutes),
-                                onMinus = {
-                                    val newVal = (s.peakEndMinutes - 15).coerceAtLeast(0)
-                                    state.value = s.copy(peakEndMinutes = newVal)
-                                },
-                                onPlus = {
-                                    val newVal = (s.peakEndMinutes + 15).coerceAtMost(1440)
-                                    state.value = s.copy(peakEndMinutes = newVal)
-                                },
-                                canMinus = s.peakEndMinutes > 0,
-                                canPlus = s.peakEndMinutes < 1440,
-                                onMin = { state.value = s.copy(peakEndMinutes = 0) },
-                                onMax = { state.value = s.copy(peakEndMinutes = 1440) }
-                            )
-                        }
-                    }
+                    TwoSteppersRow(
+                        value1 = formatTime(s.peakStartMinutes),
+                        value2 = formatTime(s.peakEndMinutes),
+                        onMinus1 = {
+                            val newVal = (s.peakStartMinutes - 15).coerceAtLeast(0)
+                            state.value = s.copy(peakStartMinutes = newVal)
+                        },
+                        onPlus1 = {
+                            val newVal = (s.peakStartMinutes + 15).coerceAtMost(1440)
+                            state.value = s.copy(peakStartMinutes = newVal)
+                        },
+                        onMinus2 = {
+                            val newVal = (s.peakEndMinutes - 15).coerceAtLeast(0)
+                            state.value = s.copy(peakEndMinutes = newVal)
+                        },
+                        onPlus2 = {
+                            val newVal = (s.peakEndMinutes + 15).coerceAtMost(1440)
+                            state.value = s.copy(peakEndMinutes = newVal)
+                        },
+                        canMinus1 = s.peakStartMinutes > 0,
+                        canPlus1 = s.peakStartMinutes < 1440,
+                        canMinus2 = s.peakEndMinutes > 0,
+                        canPlus2 = s.peakEndMinutes < 1440,
+                        onMin1 = { state.value = s.copy(peakStartMinutes = 0) },
+                        onMax1 = { state.value = s.copy(peakStartMinutes = 1440) },
+                        onMin2 = { state.value = s.copy(peakEndMinutes = 0) },
+                        onMax2 = { state.value = s.copy(peakEndMinutes = 1440) }
+                    )
                 }
 
-                // ---- Interval ----
+                // ---- Interval (2 steppery na jednom řádku) ----
                 SettingsCard {
                     SectionTitle("Interval aktualizací špička / mimo špičku (min)")
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            NumberStepper(
-                                value = s.intervalPeakMin.toString(),
-                                onMinus = {
-                                    val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
-                                    state.value = s.copy(intervalPeakMin = newVal)
-                                },
-                                onPlus = {
-                                    val newVal = (s.intervalPeakMin + 5).coerceAtMost(360)
-                                    state.value = s.copy(intervalPeakMin = newVal)
-                                },
-                                canMinus = s.intervalPeakMin > 15,
-                                canPlus = s.intervalPeakMin < 360,
-                                onMin = { state.value = s.copy(intervalPeakMin = 15) },
-                                onMax = { state.value = s.copy(intervalPeakMin = 360) }
-                            )
-                        }
-                        Spacer(Modifier.width(4.dp))
-                        Box(modifier = Modifier.weight(1f)) {
-                            NumberStepper(
-                                value = s.intervalOffPeakMin.toString(),
-                                onMinus = {
-                                    val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
-                                    state.value = s.copy(intervalOffPeakMin = newVal)
-                                },
-                                onPlus = {
-                                    val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(360)
-                                    state.value = s.copy(intervalOffPeakMin = newVal)
-                                },
-                                canMinus = s.intervalOffPeakMin > 15,
-                                canPlus = s.intervalOffPeakMin < 360,
-                                onMin = { state.value = s.copy(intervalOffPeakMin = 15) },
-                                onMax = { state.value = s.copy(intervalOffPeakMin = 360) }
-                            )
-                        }
-                    }
+                    TwoSteppersRow(
+                        value1 = s.intervalPeakMin.toString(),
+                        value2 = s.intervalOffPeakMin.toString(),
+                        onMinus1 = {
+                            val newVal = (s.intervalPeakMin - 5).coerceAtLeast(15)
+                            state.value = s.copy(intervalPeakMin = newVal)
+                        },
+                        onPlus1 = {
+                            val newVal = (s.intervalPeakMin + 5).coerceAtMost(360)
+                            state.value = s.copy(intervalPeakMin = newVal)
+                        },
+                        onMinus2 = {
+                            val newVal = (s.intervalOffPeakMin - 5).coerceAtLeast(15)
+                            state.value = s.copy(intervalOffPeakMin = newVal)
+                        },
+                        onPlus2 = {
+                            val newVal = (s.intervalOffPeakMin + 5).coerceAtMost(360)
+                            state.value = s.copy(intervalOffPeakMin = newVal)
+                        },
+                        canMinus1 = s.intervalPeakMin > 15,
+                        canPlus1 = s.intervalPeakMin < 360,
+                        canMinus2 = s.intervalOffPeakMin > 15,
+                        canPlus2 = s.intervalOffPeakMin < 360,
+                        onMin1 = { state.value = s.copy(intervalPeakMin = 15) },
+                        onMax1 = { state.value = s.copy(intervalPeakMin = 360) },
+                        onMin2 = { state.value = s.copy(intervalOffPeakMin = 15) },
+                        onMax2 = { state.value = s.copy(intervalOffPeakMin = 360) }
+                    )
                 }
 
-                // ---- Velikost písma ----
+                // ---- Velikost písma (popisek vlevo, stepper v pravé půlce) ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            "Velikost textu widgetu:",
-                            color = OnoRed,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        NumberStepper(
-                            value = s.fontSizeSp.toString(),
-                            onMinus = {
-                                val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
-                                state.value = s.copy(fontSizeSp = newVal)
-                            },
-                            onPlus = {
-                                val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
-                                state.value = s.copy(fontSizeSp = newVal)
-                            },
-                            canMinus = s.fontSizeSp > 10,
-                            canPlus = s.fontSizeSp < 30,
-                            onMin = { state.value = s.copy(fontSizeSp = 10) },
-                            onMax = { state.value = s.copy(fontSizeSp = 30) }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                "Velikost textu widgetu:",
+                                color = OnoRed,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 8.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            NumberStepper(
+                                value = s.fontSizeSp.toString(),
+                                onMinus = {
+                                    val newVal = (s.fontSizeSp - 1).coerceAtLeast(10)
+                                    state.value = s.copy(fontSizeSp = newVal)
+                                },
+                                onPlus = {
+                                    val newVal = (s.fontSizeSp + 1).coerceAtMost(30)
+                                    state.value = s.copy(fontSizeSp = newVal)
+                                },
+                                canMinus = s.fontSizeSp > 10,
+                                canPlus = s.fontSizeSp < 30,
+                                onMin = { state.value = s.copy(fontSizeSp = 10) },
+                                onMax = { state.value = s.copy(fontSizeSp = 30) }
+                            )
+                        }
                     }
                 }
 
@@ -622,7 +627,7 @@ private fun SettingsScreen(
                     Text("↻  Aktualizovat data")
                 }
 
-                // ---- Kontrola aktualizací ----
+                // ---- Kontrola aktualizací (ruční) ----
                 OutlinedButton(
                     onClick = {
                         isChecking = true
@@ -731,6 +736,63 @@ private fun SectionTitle(text: String) {
     Text(text = text, color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
 }
 
+@Composable
+private fun TwoSteppersRow(
+    value1: String,
+    value2: String,
+    onMinus1: () -> Unit,
+    onPlus1: () -> Unit,
+    onMinus2: () -> Unit,
+    onPlus2: () -> Unit,
+    canMinus1: Boolean = true,
+    canPlus1: Boolean = true,
+    canMinus2: Boolean = true,
+    canPlus2: Boolean = true,
+    onMin1: (() -> Unit)? = null,
+    onMax1: (() -> Unit)? = null,
+    onMin2: (() -> Unit)? = null,
+    onMax2: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            NumberStepper(
+                value = value1,
+                onMinus = onMinus1,
+                onPlus = onPlus1,
+                canMinus = canMinus1,
+                canPlus = canPlus1,
+                onMin = onMin1,
+                onMax = onMax1
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            NumberStepper(
+                value = value2,
+                onMinus = onMinus2,
+                onPlus = onPlus2,
+                canMinus = canMinus2,
+                canPlus = canPlus2,
+                onMin = onMin2,
+                onMax = onMax2
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NumberStepper(
@@ -742,7 +804,7 @@ private fun NumberStepper(
     onMin: (() -> Unit)? = null,
     onMax: (() -> Unit)? = null
 ) {
-    val buttonSize = 44.dp
+    val buttonSize = 40.dp
 
     BoxWithConstraints {
         val availableWidth = maxWidth
@@ -750,13 +812,13 @@ private fun NumberStepper(
         val remaining = availableWidth - buttonsWidth
 
         val gap = when {
-            remaining >= 130.dp -> 4.dp
-            remaining >= 110.dp -> 3.dp
-            remaining >= 90.dp  -> 2.dp
+            remaining >= 120.dp -> 4.dp
+            remaining >= 100.dp -> 3.dp
+            remaining >= 80.dp  -> 2.dp
             else                -> 1.dp
         }
 
-        val valueWidth = (remaining - (gap * 2)).coerceAtLeast(20.dp)
+        val valueWidth = (remaining - (gap * 2)).coerceAtLeast(40.dp)
 
         val valueFontSize = when {
             valueWidth >= 70.dp -> 18.sp
@@ -783,7 +845,7 @@ private fun NumberStepper(
                 contentAlignment = Alignment.Center
             ) {
                 if (canMinus) {
-                    Text("−", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text("−", color = OnoRed, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -816,7 +878,7 @@ private fun NumberStepper(
                 contentAlignment = Alignment.Center
             ) {
                 if (canPlus) {
-                    Text("+", color = OnoRed, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                    Text("+", color = OnoRed, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
