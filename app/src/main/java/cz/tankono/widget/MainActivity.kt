@@ -591,7 +591,7 @@ private fun SettingsScreen(
                             PumpRefreshProgress.Idle            -> null
                         }
 
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(1.dp))
                         Text(progressText, color = OnoRed, fontSize = 11.sp)
                         Spacer(Modifier.height(2.dp))
                         if (progressValue != null) {
@@ -610,14 +610,14 @@ private fun SettingsScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(1.dp))
+                    Spacer(Modifier.height(0.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
                             .background(OnoRed.copy(alpha = 0.3f))
                     )
-                    Spacer(Modifier.height(1.dp))
+                    Spacer(Modifier.height(0.dp))
 
                     NearestPumpSection(
                         nearestPump = nearestPump,
@@ -1273,7 +1273,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
             content = content
         )
     }
