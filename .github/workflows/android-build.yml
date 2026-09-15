@@ -29,11 +29,9 @@ jobs:
 
       - name: Setup Android SDK (manual)
         run: |
-          # Najít sdkmanager
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           echo "SDK_ROOT=$SDK_ROOT"
           
-          # Najít cmdline-tools
           CMDLINE_TOOLS=$(find "$SDK_ROOT/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
           if [ -z "$CMDLINE_TOOLS" ]; then
             echo "sdkmanager nenalezen, instaluji cmdline-tools..."
@@ -47,11 +45,9 @@ jobs:
           
           echo "sdkmanager: $CMDLINE_TOOLS"
           
-          # Nainstalovat potřebné balíčky
           yes | "$CMDLINE_TOOLS" --licenses || true
           "$CMDLINE_TOOLS" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
           
-          # Nastavit ANDROID_HOME
           echo "ANDROID_HOME=$SDK_ROOT" >> $GITHUB_ENV
           echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> $GITHUB_ENV
 
@@ -79,14 +75,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: ./gradlew assembleRelease --daemon --parallel --build-cache --stacktrace
 
-      - name: Get version name
+      - name: Get version name (z Gradle)
         id: get_version
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: |
-          VERSION="${{ github.run_number }}"
-          MAJOR="1"
-          FULL_VERSION="$MAJOR.$VERSION"
-          echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
-          echo "Verze: $FULL_VERSION"
+          # Zavolat gradle task, který vypíše verzi
+          OUTPUT=$(./gradlew -q printVersionName 2>/dev/null)
+          echo "Gradle output:"
+          echo "$OUTPUT"
+          
+          VERSION_NAME=$(echo "$OUTPUT" | grep "VERSION_NAME=" | cut -d= -f2)
+          VERSION_CODE=$(echo "$OUTPUT" | grep "VERSION_CODE=" | cut -d= -f2)
+          
+          echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Verze z Gradle: $VERSION_NAME (code: $VERSION_CODE)"
 
       - name: Rename APK
         run: |
@@ -105,6 +109,9 @@ jobs:
           name: Verze ${{ steps.get_version.outputs.version }}
           body: |
             **Automatický build #${{ github.run_number }}**
+            
+            Verze: ${{ steps.get_version.outputs.version }}
+            Verze code: ${{ steps.get_version.outputs.versionCode }}
             
             Datum: ${{ github.event.head_commit.timestamp }}
             Autor: ${{ github.event.head_commit.author.name }}

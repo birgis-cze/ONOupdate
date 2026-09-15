@@ -14,12 +14,17 @@ android {
         minSdk = 26
         targetSdk = 35
 
-        val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        // === AUTOMATICKÉ VERZOVÁNÍ ===
+        // - versionCode = github.run_number (roste s každým buildem)
+        // - versionName = "major.run_number" (např. "4.123")
+        // - Změň POUZE majorVersion při velké změně!
         val majorVersion = 4
+        val runNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
 
         versionCode = runNumber
         versionName = "$majorVersion.$runNumber"
 
+        // GitHub token z prostředí (v CI) nebo prázdný (lokálně)
         val ghToken = System.getenv("GH_TOKEN") ?: ""
         buildConfigField("String", "GH_TOKEN", "\"$ghToken\"")
     }
@@ -106,4 +111,15 @@ dependencies {
 
     // Google Play Services – Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
+}
+
+/**
+ * Task, který vypíše aktuální versionName a versionCode.
+ * Workflow ho zavolá, aby získal PŘESNOU verzi z Gradle.
+ */
+tasks.register("printVersionName") {
+    doLast {
+        println("VERSION_NAME=${android.defaultConfig.versionName}")
+        println("VERSION_CODE=${android.defaultConfig.versionCode}")
+    }
 }
