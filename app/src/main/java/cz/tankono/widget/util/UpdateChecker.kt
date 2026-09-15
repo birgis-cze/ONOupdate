@@ -55,7 +55,7 @@ object UpdateChecker {
             val json = JSONObject(response)
 
             val latestVersion = json.getString("tag_name")
-            val releaseNotes = json.optString("body", null)
+            val releaseNotes = if (json.has("body")) json.getString("body") else null
 
             // Najít APK asset – použít API URL (funguje s tokenem)
             val assets = json.getJSONArray("assets")
