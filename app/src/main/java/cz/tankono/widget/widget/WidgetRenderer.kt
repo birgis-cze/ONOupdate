@@ -204,20 +204,18 @@ object WidgetRenderer {
         val density = context.resources.displayMetrics.density
         val fontSize = settings.fontSizeSp.toFloat()
 
-        // Trend: šířka znaku ▲/▼/= je cca 0.9× fontSize, přidáme rezervu
-        // Min 22dp, max 40dp
+        // Trend: min 22dp, max 40dp (Float – setViewLayoutWidth očekává Float)
         val trendWidthDp = (fontSize * 1.5f).coerceIn(22f, 40f)
-        val trendWidthPx = (trendWidthDp * density).toInt()
+        val trendWidthPx = trendWidthDp * density
 
-        // Stará cena: 5 znaků v závorce "( 33,50 )" nebo "( --,-- )"
-        // Cca 5.5× fontSize/2, protože stará cena má fontSize - 2
+        // Stará cena: min 55dp, max 90dp
         val oldFontSize = (fontSize - 2).coerceAtLeast(8f)
         val oldWidthDp = (oldFontSize * 3.5f).coerceIn(55f, 90f)
-        val oldWidthPx = (oldWidthDp * density).toInt()
+        val oldWidthPx = oldWidthDp * density
 
-        // Aktuální cena: 4-5 znaků "33,90" nebo "1,234"
+        // Aktuální cena: min 50dp, max 85dp
         val priceWidthDp = (fontSize * 3.2f).coerceIn(50f, 85f)
-        val priceWidthPx = (priceWidthDp * density).toInt()
+        val priceWidthPx = priceWidthDp * density
 
         TREND_IDS.forEach { id ->
             views.setViewLayoutWidth(id, trendWidthPx, TypedValue.COMPLEX_UNIT_PX)
