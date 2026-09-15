@@ -610,14 +610,14 @@ private fun SettingsScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(1.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
                             .background(OnoRed.copy(alpha = 0.3f))
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(1.dp))
 
                     NearestPumpSection(
                         nearestPump = nearestPump,
