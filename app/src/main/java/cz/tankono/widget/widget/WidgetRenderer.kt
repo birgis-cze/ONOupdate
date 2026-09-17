@@ -97,10 +97,15 @@ object WidgetRenderer {
         views.setInt(R.id.widget_root, "setBackgroundColor", bg)
 
         val pi = buildRefreshPendingIntent(context)
-        views.setOnClickPendingIntent(R.id.widget_root, pi)
+        views.setOnClickListener(R.id.widget_root, pi)
 
         // ---------- DYNAMICKÉ ŠÍŘKY SLOUPCŮ (API 31+) ----------
         applyDynamicColumnWidths(context, views, settings)
+
+        // ---------- ROZHODNUTÍ: zobrazit trend? ----------
+        // Trend (▲/▼) se zobrazuje POUZE v den, kdy byl ceník zveřejněn.
+        val showTrend = TankOnoScraper.isPublishedToday(state.current?.publishedAt)
+        AppLogger.d("WidgetRenderer: showTrend=$showTrend (publishedAt=${state.current?.publishedAt})")
 
         // ---------- HLAVIČKA ----------
         val publishedFormatted = TankOnoScraper.formatPublished(state.current?.publishedAt) ?: "--"
@@ -163,18 +168,18 @@ object WidgetRenderer {
                 views.setTextColor(PRICE_IDS[index], fg)
                 views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Trend – vždy viditelný
+                // Trend – zobrazit POUZE pokud byl ceník zveřejněn DNES
                 views.setViewVisibility(TREND_IDS[index], View.VISIBLE)
-                val arrow = if (old != null && cur != null) {
+                val arrow = if (showTrend && old != null && cur != null) {
                     val oldVal = PriceFormatter.valueFor(old, settings.currency)
                     val curVal = PriceFormatter.valueFor(cur, settings.currency)
                     when {
-                        oldVal == null || curVal == null -> "="
+                        oldVal == null || curVal == null -> ""
                         curVal > oldVal -> "▲"
                         curVal < oldVal -> "▼"
                         else -> "="
                     }
-                } else "="
+                } else ""   // ← prázdný string, když se nezobrazuje
                 views.setTextViewText(TREND_IDS[index], arrow)
                 views.setTextColor(TREND_IDS[index], fg)
                 views.setFloat(TREND_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())

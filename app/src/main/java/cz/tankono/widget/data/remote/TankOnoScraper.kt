@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.Calendar
 import java.util.Locale
 
@@ -158,5 +159,29 @@ object TankOnoScraper {
 
             "${dayFmt.format(cal.time)} ${dateFmt.format(cal.time)} ${timeFmt.format(cal.time)}"
         }.getOrDefault(raw)
+    }
+
+    /**
+     * Parsuje "15.9.2026 (14:53:47)" na LocalDate.
+     * Vrací null při chybě.
+     */
+    fun parseDateFromPublished(publishedAt: String?): LocalDate? {
+        if (publishedAt.isNullOrBlank()) return null
+        return try {
+            val m = Regex("""(\d{1,2})\.(\d{1,2})\.(\d{4})""").find(publishedAt) ?: return null
+            val (d, mo, y) = m.destructured
+            LocalDate.of(y.toInt(), mo.toInt(), d.toInt())
+        } catch (t: Throwable) {
+            null
+        }
+    }
+
+    /**
+     * Vrátí true, pokud je datum zveřejnění DNEŠNÍ.
+     * Používá se pro rozhodnutí, zda zobrazit trend (▲/▼).
+     */
+    fun isPublishedToday(publishedAt: String?): Boolean {
+        val pubDate = parseDateFromPublished(publishedAt) ?: return false
+        return pubDate == LocalDate.now()
     }
 }
