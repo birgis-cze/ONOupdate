@@ -97,7 +97,7 @@ object WidgetRenderer {
         views.setInt(R.id.widget_root, "setBackgroundColor", bg)
 
         val pi = buildRefreshPendingIntent(context)
-        views.setOnClickListener(R.id.widget_root, pi)
+        views.setOnClickPendingIntent(R.id.widget_root, pi)
 
         // ---------- DYNAMICKÉ ŠÍŘKY SLOUPCŮ (API 31+) ----------
         applyDynamicColumnWidths(context, views, settings)
