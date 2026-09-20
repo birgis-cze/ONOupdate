@@ -279,10 +279,17 @@ object WidgetRenderer {
         views.setTextColor(R.id.nearest_text, fg)
         views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
 
-        // Klik → navigace (na kontejner i text)
+        // Ikonka vybrané navigace (nebo univerzální pro SYSTEM)
+        // Vybraná navigace – pokud není žádná, použije se SYSTEM (univerzální ikona)
+        val iconRes = settings.preferredNavigation.iconRes
+        views.setImageViewResource(R.id.nearest_icon, iconRes)
+        views.setInt(R.id.nearest_icon, "setColorFilter", fg)
+
+        // Klik → navigace (na kontejner i text i ikonu)
         val pi = buildNavigationPendingIntent(context, pump, settings.preferredNavigation)
         views.setOnClickPendingIntent(R.id.nearest_container, pi)
         views.setOnClickPendingIntent(R.id.nearest_text, pi)
+        views.setOnClickPendingIntent(R.id.nearest_icon, pi)
     }
 
     /**

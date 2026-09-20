@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import cz.tankono.widget.R
 import cz.tankono.widget.util.AppLogger
 
 /**
@@ -13,12 +14,13 @@ import cz.tankono.widget.util.AppLogger
 enum class NavigationApp(
     val id: String,
     val displayName: String,
-    val packageName: String?
+    val packageName: String?,
+    val iconRes: Int
 ) {
-    SYSTEM("system", "Systém", null),
-    GOOGLE_MAPS("google_maps", "Google Maps", "com.google.android.apps.maps"),
-    MAPY_CZ("mapy_cz", "Mapy.com", "cz.seznam.mapy"),
-    WAZE("waze", "Waze", "com.waze");
+    SYSTEM("system", "Systém", null, R.drawable.ic_nav_system),
+    GOOGLE_MAPS("google_maps", "Google Maps", "com.google.android.apps.maps", R.drawable.ic_nav_google_maps),
+    MAPY_CZ("mapy_cz", "Mapy.com", "cz.seznam.mapy", R.drawable.ic_nav_mapy_cz),
+    WAZE("waze", "Waze", "com.waze", R.drawable.ic_nav_waze);
 
     companion object {
         fun fromId(id: String?): NavigationApp =
@@ -50,7 +52,6 @@ enum class NavigationApp(
     fun navigate(context: Context, lat: Double, lng: Double, label: String) {
         AppLogger.i("NavigationApp: navigate() do $lat,$lng (preference=$this)")
 
-        // Fallback, pokud je vybraná appka nedostupná
         val target = if (packageName != null && !isInstalledSafe(context, packageName)) {
             AppLogger.w("NavigationApp: $displayName není nainstalovaná, fallback na SYSTEM")
             SYSTEM
@@ -58,26 +59,22 @@ enum class NavigationApp(
 
         val intent = when (target) {
             SYSTEM -> {
-                // Systémové chování: geo: URI, Android rozhodne
                 val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})")
                 Intent(Intent.ACTION_VIEW, uri)
             }
             GOOGLE_MAPS -> {
-                // Rovnou navigace
                 val uri = Uri.parse("google.navigation:q=$lat,$lng")
                 Intent(Intent.ACTION_VIEW, uri).apply {
                     setPackage(packageName)
                 }
             }
             MAPY_CZ -> {
-                // Mapy.cz nemá veřejné navigační URI → otevřeme bod na mapě
                 val uri = Uri.parse("geo:$lat,$lng?q=$lat,$lng(${Uri.encode(label)})")
                 Intent(Intent.ACTION_VIEW, uri).apply {
                     setPackage(packageName)
                 }
             }
             WAZE -> {
-                // Rovnou navigace
                 val uri = Uri.parse("waze://?ll=$lat,$lng&navigate=yes")
                 Intent(Intent.ACTION_VIEW, uri).apply {
                     setPackage(packageName)
@@ -93,7 +90,6 @@ enum class NavigationApp(
         } catch (t: Throwable) {
             AppLogger.e("NavigationApp: selhalo ($target), zkouším fallback na geo:", t)
 
-            // Poslední záchrana – systémový geo: bez package
             try {
                 val fallback = Intent(
                     Intent.ACTION_VIEW,
