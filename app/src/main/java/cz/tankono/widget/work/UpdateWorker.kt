@@ -31,6 +31,7 @@ class UpdateWorker(
             if (changed) {
                 AppLogger.i("Nový ceník – notifikace")
                 Notifier.notifyNewPrices(applicationContext)
+                TankOnoWidget.requestUpdate(applicationContext)  // ← jen když se něco změnilo
             } else {
                 AppLogger.d("Ceník beze změny")
             }

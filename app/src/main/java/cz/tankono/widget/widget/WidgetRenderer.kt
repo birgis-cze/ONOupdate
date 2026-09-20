@@ -108,12 +108,9 @@ object WidgetRenderer {
     /**
      * Získá nejbližší pumpu s cache fallbackem.
      *
-     * Logika:
-     *  1. Zkus získat aktuální polohu + najít nejbližší pumpu.
-     *  2. Když se to podaří → ulož do cache a vrať NOVOU hodnotu.
-     *  3. Když se to nepodaří → přečti cache.
-     *     - Cache existuje → vrať STAROU hodnotu (nezmizí z widgetu).
-     *     - Cache prázdná → vrať null (schováme blok – první spuštění).
+     * DŮLEŽITÉ: Nikdy nevrací null, pokud existuje cache.
+     * Tím se zajistí, že widget po probuzení displeje
+     * neztratí informaci o nejbližší stanici.
      */
     private suspend fun resolveNearestPumpWithCache(
         context: Context,
@@ -122,7 +119,6 @@ object WidgetRenderer {
         // 1. Zkus aktuální polohu
         val fresh = findNearestPumpForWidget(context)
         if (fresh != null) {
-            // Ulož do cache
             val (pump, dist) = fresh
             if (pump.lat != null && pump.lng != null) {
                 settingsStore.saveCachedNearestPump(
@@ -133,17 +129,15 @@ object WidgetRenderer {
                         lng = pump.lng
                     )
                 )
-                AppLogger.d("Widget: cache uložena (${pump.name}, ${"%.1f".format(dist)} km)")
+                AppLogger.i("Widget: FRESH → ${pump.name}, ${"%.1f".format(dist)} km (cache uložena)")
             }
             return fresh
         }
 
-        // 2. Fallback na cache
-        AppLogger.w("Widget: aktuální poloha nedostupná, používám cache")
+        // 2. Fallback na cache – VŽDY použij, když existuje
         val cached = settingsStore.getCachedNearestPump()
         if (cached != null) {
-            AppLogger.i("Widget: z cache → ${cached.name}, ${"%.1f".format(cached.distanceKm)} km")
-            // Sestavíme PumpEntity z cache
+            AppLogger.i("Widget: CACHE → ${cached.name}, ${"%.1f".format(cached.distanceKm)} km (fresh selhal)")
             val pump = PumpEntity(
                 id = -1,
                 name = cached.name,
@@ -155,7 +149,7 @@ object WidgetRenderer {
             return pump to cached.distanceKm
         }
 
-        AppLogger.w("Widget: cache prázdná, nelze zobrazit nejbližší pumpu")
+        AppLogger.w("Widget: ani fresh, ani cache → vracím null")
         return null
     }
 
@@ -268,46 +262,59 @@ object WidgetRenderer {
     /**
      * Vykreslí spodní řádek s nejbližší stanicí.
      * Skryje celý blok, pokud je přepínač vypnutý nebo pumpa není dostupná.
-     */
+        */
     private fun renderNearestPump(
         context: Context,
         views: RemoteViews,
         settings: WidgetSettings,
         nearestPump: Pair<PumpEntity, Double>?
     ) {
-        if (!settings.showNearestPump || nearestPump == null) {
+        // Přepínač vypnutý → schovat (správně)
+        if (!settings.showNearestPump) {
             views.setViewVisibility(R.id.nearest_container, View.GONE)
             return
         }
 
-        val (pump, distanceKm) = nearestPump
-
+        // Přepínač zapnutý → VŽDY zobrazit
         views.setViewVisibility(R.id.nearest_container, View.VISIBLE)
 
-        // Vzdálenost – tučně
-        val distanceText = formatDistance(distanceKm)
-        views.setTextViewText(R.id.nearest_distance, distanceText)
-
-        // Adresa – normálně
-        val name = pump.name.removePrefix("ČS ").trim()
-        views.setTextViewText(R.id.nearest_text, name)
-
-        // Barvy dle dark/light režimu
         val night = isNight(context)
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
+        // Když opravdu nic neznáme (první render, cache prázdná)
+        if (nearestPump == null) {
+            views.setImageViewResource(R.id.nearest_icon, R.drawable.ic_nav_system)
+            views.setInt(R.id.nearest_icon, "setColorFilter", fg)
+
+            views.setTextViewText(R.id.nearest_distance, "")
+            views.setTextColor(R.id.nearest_distance, fg)
+            views.setFloat(R.id.nearest_distance, "setTextSize", settings.fontSizeSp.toFloat())
+
+            views.setTextViewText(R.id.nearest_text, "Zjišťuji polohu…")
+            views.setTextColor(R.id.nearest_text, fg)
+            views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
+
+            // Bez kliku (není kam navigovat)
+            return
+        }
+
+        // Normální render
+        val (pump, distanceKm) = nearestPump
+
+        val distanceText = formatDistance(distanceKm)
+        views.setTextViewText(R.id.nearest_distance, distanceText)
         views.setTextColor(R.id.nearest_distance, fg)
         views.setFloat(R.id.nearest_distance, "setTextSize", settings.fontSizeSp.toFloat())
 
+        val name = pump.name.removePrefix("ČS ").trim()
+        views.setTextViewText(R.id.nearest_text, name)
         views.setTextColor(R.id.nearest_text, fg)
         views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
 
-        // Ikonka vybrané navigace (nebo univerzální pro SYSTEM)
         val iconRes = settings.preferredNavigation.iconRes
         views.setImageViewResource(R.id.nearest_icon, iconRes)
         views.setInt(R.id.nearest_icon, "setColorFilter", fg)
 
-        // Klik → navigace (na kontejner, ikonu i oba texty)
         val pi = buildNavigationPendingIntent(context, pump, settings.preferredNavigation)
         views.setOnClickPendingIntent(R.id.nearest_container, pi)
         views.setOnClickPendingIntent(R.id.nearest_icon, pi)
