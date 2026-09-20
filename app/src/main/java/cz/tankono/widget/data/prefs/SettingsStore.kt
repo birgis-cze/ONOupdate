@@ -16,6 +16,11 @@ import kotlinx.coroutines.flow.map
 
 private val Context.settingsDataStore by preferencesDataStore(name = "tankono_settings")
 
+val CACHED_NEAREST_PUMP_NAME = stringPreferencesKey("cached_nearest_pump_name")
+val CACHED_NEAREST_PUMP_DIST = stringPreferencesKey("cached_nearest_pump_dist")
+val CACHED_NEAREST_PUMP_LAT  = stringPreferencesKey("cached_nearest_pump_lat")
+val CACHED_NEAREST_PUMP_LNG  = stringPreferencesKey("cached_nearest_pump_lng")
+
 data class WidgetSettings(
     val visibleProducts: Set<Product> = Product.entries.toSet(),
     val currency: Currency = Currency.CZK,
@@ -89,5 +94,44 @@ class SettingsStore(private val context: Context) {
 
     suspend fun getLastPumpSync(): Long {
         return context.settingsDataStore.data.map { it[Keys.LAST_PUMP_SYNC] ?: 0L }.first()
+    }
+
+    /**
+    * Cache poslední známé nejbližší pumpy.
+    * Drží se i po vypnutí displeje / restartu launcheru,
+    * takže widget neztratí informaci, když se poloha právě nedaří získat.
+    */
+    data class CachedNearestPump(
+        val name: String,
+        val distanceKm: Double,
+        val lat: Double,
+        val lng: Double
+    )
+
+    suspend fun saveCachedNearestPump(p: CachedNearestPump) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[Keys.CACHED_NEAREST_PUMP_NAME] = p.name
+            prefs[Keys.CACHED_NEAREST_PUMP_DIST] = p.distanceKm.toString()
+            prefs[Keys.CACHED_NEAREST_PUMP_LAT]  = p.lat.toString()
+            prefs[Keys.CACHED_NEAREST_PUMP_LNG]  = p.lng.toString()
+        }
+    }
+
+    suspend fun getCachedNearestPump(): CachedNearestPump? {
+        val p = context.settingsDataStore.data.first()
+        val name = p[Keys.CACHED_NEAREST_PUMP_NAME] ?: return null
+        val dist = p[Keys.CACHED_NEAREST_PUMP_DIST]?.toDoubleOrNull() ?: return null
+        val lat  = p[Keys.CACHED_NEAREST_PUMP_LAT]?.toDoubleOrNull()  ?: return null
+        val lng  = p[Keys.CACHED_NEAREST_PUMP_LNG]?.toDoubleOrNull()  ?: return null
+        return CachedNearestPump(name, dist, lat, lng)
+    }
+
+    suspend fun clearCachedNearestPump() {
+        context.settingsDataStore.edit { prefs ->
+            prefs.remove(Keys.CACHED_NEAREST_PUMP_NAME)
+            prefs.remove(Keys.CACHED_NEAREST_PUMP_DIST)
+            prefs.remove(Keys.CACHED_NEAREST_PUMP_LAT)
+            prefs.remove(Keys.CACHED_NEAREST_PUMP_LNG)
+        }
     }
 }

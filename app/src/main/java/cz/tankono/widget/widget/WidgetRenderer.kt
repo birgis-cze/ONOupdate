@@ -81,14 +81,15 @@ object WidgetRenderer {
         AppLogger.d("=== RENDER widgetId=$widgetId ===")
         scope.launch {
             try {
-                val settings = SettingsStore(context).settings.first()
+                val settingsStore = SettingsStore(context)
+                val settings = settingsStore.settings.first()
                 val state = PriceRepository(context).loadState()
 
-                // Pokud má uživatel zapnutou nejbližší stanici, zjistit ji
+                // Nejbližší pumpa – s cache fallbackem
                 val nearestPump: Pair<PumpEntity, Double>? =
                     if (settings.showNearestPump) {
                         withContext(Dispatchers.IO) {
-                            findNearestPumpForWidget(context)
+                            resolveNearestPumpWithCache(context, settingsStore)
                         }
                     } else null
 
@@ -103,43 +104,59 @@ object WidgetRenderer {
         }
     }
 
+
     /**
-     * Zjistí aktuální polohu uživatele a vrátí nejbližší pumpu + vzdálenost v km.
-     * Vrací null při chybě / chybějícím oprávnění.
+     * Získá nejbližší pumpu s cache fallbackem.
+     *
+     * Logika:
+     *  1. Zkus získat aktuální polohu + najít nejbližší pumpu.
+     *  2. Když se to podaří → ulož do cache a vrať NOVOU hodnotu.
+     *  3. Když se to nepodaří → přečti cache.
+     *     - Cache existuje → vrať STAROU hodnotu (nezmizí z widgetu).
+     *     - Cache prázdná → vrať null (schováme blok – první spuštění).
      */
-    private suspend fun findNearestPumpForWidget(
-        context: Context
+    private suspend fun resolveNearestPumpWithCache(
+        context: Context,
+        settingsStore: SettingsStore
     ): Pair<PumpEntity, Double>? {
-        return try {
-            // Kontrola oprávnění
-            val fine = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-            val coarse = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (!fine && !coarse) {
-                AppLogger.w("Widget: chybí oprávnění k poloze")
-                return null
+        // 1. Zkus aktuální polohu
+        val fresh = findNearestPumpForWidget(context)
+        if (fresh != null) {
+            // Ulož do cache
+            val (pump, dist) = fresh
+            if (pump.lat != null && pump.lng != null) {
+                settingsStore.saveCachedNearestPump(
+                    SettingsStore.CachedNearestPump(
+                        name = pump.name,
+                        distanceKm = dist,
+                        lat = pump.lat,
+                        lng = pump.lng
+                    )
+                )
+                AppLogger.d("Widget: cache uložena (${pump.name}, ${"%.1f".format(dist)} km)")
             }
-
-            // Získat polohu
-            val loc = LocationProvider.getCurrentLocation(context)
-            if (loc == null) {
-                AppLogger.w("Widget: polohu nelze získat")
-                return null
-            }
-
-            // Najít nejbližší pumpu
-            val pumps = PumpRepository(context)
-                .getAllSortedByDistance(loc.first, loc.second)
-
-            pumps.firstOrNull()
-        } catch (t: Throwable) {
-            AppLogger.e("Widget: chyba při hledání nejbližší pumpy", t)
-            null
+            return fresh
         }
+
+        // 2. Fallback na cache
+        AppLogger.w("Widget: aktuální poloha nedostupná, používám cache")
+        val cached = settingsStore.getCachedNearestPump()
+        if (cached != null) {
+            AppLogger.i("Widget: z cache → ${cached.name}, ${"%.1f".format(cached.distanceKm)} km")
+            // Sestavíme PumpEntity z cache
+            val pump = PumpEntity(
+                id = -1,
+                name = cached.name,
+                detailUrl = "",
+                lat = cached.lat,
+                lng = cached.lng,
+                lastUpdated = 0L
+            )
+            return pump to cached.distanceKm
+        }
+
+        AppLogger.w("Widget: cache prázdná, nelze zobrazit nejbližší pumpu")
+        return null
     }
 
     private fun buildViews(

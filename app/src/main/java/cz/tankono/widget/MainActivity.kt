@@ -278,6 +278,12 @@ class MainActivity : ComponentActivity() {
             if (configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 finish()
             }
+            SettingsStore(this@MainActivity).save(settings)
+            
+            // Volitelně: vyčistit cache, když se přepínač vypne
+            if (!settings.showNearestPump) {
+                SettingsStore(this@MainActivity).clearCachedNearestPump()
+            }
         }
     }
 
