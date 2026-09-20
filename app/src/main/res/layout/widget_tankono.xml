@@ -14,7 +14,7 @@
         android:layout_height="30dp"
         android:background="@color/ono_yellow">
 
-        <!-- VRSTVA 1: Linka 1 (horní, tenká) – y = 41 px, výška 3 px, od spodku 13 dp -->
+        <!-- VRSTVA 1: Linka 1 (horní, tenká) -->
         <ImageView
             android:id="@+id/header_line_1"
             android:layout_width="match_parent"
@@ -24,7 +24,7 @@
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- VRSTVA 1: Linka 2 (spodní, silná) – y = 46 px, výška 3 px, od spodku 8 dp -->
+        <!-- VRSTVA 1: Linka 2 (spodní, silná) -->
         <ImageView
             android:id="@+id/header_line_2"
             android:layout_width="match_parent"
@@ -34,7 +34,7 @@
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- VRSTVA 2: ONO – PŘES linky, vlevo dole -->
+        <!-- VRSTVA 2: ONO -->
         <ImageView
             android:id="@+id/header_logo_text"
             android:layout_width="match_parent"
@@ -44,7 +44,7 @@
             android:src="@drawable/logo_text"
             android:contentDescription="@string/app_name"/>
 
-        <!-- VRSTVA 3: Časy – vpravo nahoře, PŘES všechno-->
+        <!-- VRSTVA 3: Časy -->
         <LinearLayout
             android:id="@+id/header_times"
             android:layout_width="wrap_content"
@@ -150,6 +150,37 @@
         <TextView android:id="@+id/row_10_old"   style="@style/WidgetRowOld"/>
         <TextView android:id="@+id/row_10_price" style="@style/WidgetRowPrice"/>
         <TextView android:id="@+id/row_10_trend" style="@style/WidgetRowTrend"/>
+    </LinearLayout>
+
+    <!-- ========== NEJBLIŽŠÍ STANICE ========== -->
+    <LinearLayout
+        android:id="@+id/nearest_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Oddělovací červená linka -->
+        <ImageView
+            android:id="@+id/nearest_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="3dp"
+            android:background="@color/ono_red"
+            android:contentDescription="@null"/>
+
+        <!-- Jeden řádek: vzdálenost + název -->
+        <TextView
+            android:id="@+id/nearest_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="@color/ono_red"
+            android:textStyle="bold"
+            android:textSize="14sp"/>
+
     </LinearLayout>
 
 </LinearLayout>

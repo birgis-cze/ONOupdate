@@ -628,15 +628,45 @@ private fun SettingsScreen(
                     )
                 }
 
-                // ---- Navigace (jen pokud 2+ nainstalované) ----
-                if (installedNavApps.size >= 2) {
-                    SettingsCard {
+                // ---- Navigace ----
+                SettingsCard {
+                    // Řádek s výběrem navigační aplikace
+                    // (zobrazí se jen pokud jsou 2+ nainstalované)
+                    if (installedNavApps.size >= 2) {
                         NavigationRow(
                             current = s.preferredNavigation,
                             installedApps = installedNavApps,
                             onSelect = { nav ->
                                 state.value = s.copy(preferredNavigation = nav)
                             }
+                        )
+                    }
+
+                    // Přepínač "Zobrazit nejbližší stanici na widgetu"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Zobrazit na widgetu:",
+                            color = OnoRed,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = s.showNearestPump,
+                            onCheckedChange = { checked ->
+                                state.value = s.copy(showNearestPump = checked)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = OnoYellow,
+                                checkedTrackColor = OnoRed,
+                                checkedBorderColor = OnoRed,
+                                uncheckedThumbColor = OnoRed,
+                                uncheckedTrackColor = Color.White,
+                                uncheckedBorderColor = OnoRed
+                            )
                         )
                     }
                 }

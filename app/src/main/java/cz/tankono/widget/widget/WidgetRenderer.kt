@@ -1,9 +1,11 @@
 package cz.tankono.widget.widget
 
+import android.Manifest
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Typeface
 import android.os.Build
@@ -15,16 +17,21 @@ import android.text.style.SuperscriptSpan
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import androidx.core.content.ContextCompat
 import cz.tankono.widget.R
+import cz.tankono.widget.data.db.PumpEntity
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.PriceFormatter
 import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
+import cz.tankono.widget.data.prefs.NavigationApp
 import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.data.repo.PriceRepository
+import cz.tankono.widget.data.repo.PumpRepository
 import cz.tankono.widget.util.AppLogger
+import cz.tankono.widget.util.LocationProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,6 +49,9 @@ object WidgetRenderer {
     private const val COLOR_DARK_BG  = 0xFFC92200.toInt()
     private const val COLOR_DARK_FG  = 0xFFFFD600.toInt()
     private const val HEADER_FG      = COLOR_LIGHT_FG
+
+    private const val REQUEST_CODE_REFRESH = 0
+    private const val REQUEST_CODE_NAV     = 1
 
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
@@ -73,7 +83,16 @@ object WidgetRenderer {
             try {
                 val settings = SettingsStore(context).settings.first()
                 val state = PriceRepository(context).loadState()
-                val views = buildViews(context, settings, state)
+
+                // Pokud má uživatel zapnutou nejbližší stanici, zjistit ji
+                val nearestPump: Pair<PumpEntity, Double>? =
+                    if (settings.showNearestPump) {
+                        withContext(Dispatchers.IO) {
+                            findNearestPumpForWidget(context)
+                        }
+                    } else null
+
+                val views = buildViews(context, settings, state, nearestPump)
                 withContext(Dispatchers.Main) {
                     mgr.updateAppWidget(widgetId, views)
                 }
@@ -84,10 +103,50 @@ object WidgetRenderer {
         }
     }
 
+    /**
+     * Zjistí aktuální polohu uživatele a vrátí nejbližší pumpu + vzdálenost v km.
+     * Vrací null při chybě / chybějícím oprávnění.
+     */
+    private suspend fun findNearestPumpForWidget(
+        context: Context
+    ): Pair<PumpEntity, Double>? {
+        return try {
+            // Kontrola oprávnění
+            val fine = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val coarse = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!fine && !coarse) {
+                AppLogger.w("Widget: chybí oprávnění k poloze")
+                return null
+            }
+
+            // Získat polohu
+            val loc = LocationProvider.getCurrentLocation(context)
+            if (loc == null) {
+                AppLogger.w("Widget: polohu nelze získat")
+                return null
+            }
+
+            // Najít nejbližší pumpu
+            val pumps = PumpRepository(context)
+                .getAllSortedByDistance(loc.first, loc.second)
+
+            pumps.firstOrNull()
+        } catch (t: Throwable) {
+            AppLogger.e("Widget: chyba při hledání nejbližší pumpy", t)
+            null
+        }
+    }
+
     private fun buildViews(
         context: Context,
         settings: WidgetSettings,
-        state: PriceState
+        state: PriceState,
+        nearestPump: Pair<PumpEntity, Double>?
     ): RemoteViews {
         val night = isNight(context)
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
@@ -103,7 +162,6 @@ object WidgetRenderer {
         applyDynamicColumnWidths(context, views, settings)
 
         // ---------- ROZHODNUTÍ: zobrazit trend? ----------
-        // Trend (▲/▼) se zobrazuje POUZE v den, kdy byl ceník zveřejněn.
         val showTrend = TankOnoScraper.isPublishedToday(state.current?.publishedAt)
         AppLogger.d("WidgetRenderer: showTrend=$showTrend (publishedAt=${state.current?.publishedAt})")
 
@@ -144,14 +202,12 @@ object WidgetRenderer {
                 val cur = state.current?.entries?.get(product)
                 val old = state.previous?.entries?.get(product)
 
-                // Název – dlouhý nebo krátký podle uživatelského nastavení
                 val name = if (settings.useShortNames) product.shortName else product.displayName
                 views.setViewVisibility(NAME_IDS[index], View.VISIBLE)
                 views.setTextViewText(NAME_IDS[index], name)
                 views.setTextColor(NAME_IDS[index], fg)
                 views.setFloat(NAME_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Stará cena – vždy viditelná
                 views.setViewVisibility(OLD_IDS[index], View.VISIBLE)
                 val oldText = if (old != null)
                     "(${PriceFormatter.format(old, settings.currency)})"
@@ -161,14 +217,12 @@ object WidgetRenderer {
                 views.setTextColor(OLD_IDS[index], fg)
                 views.setFloat(OLD_IDS[index], "setTextSize", (settings.fontSizeSp - 2).toFloat())
 
-                // Aktuální cena – vždy viditelná
                 views.setViewVisibility(PRICE_IDS[index], View.VISIBLE)
                 val priceSpannable = buildPriceSpannable(cur, product, settings)
                 views.setTextViewText(PRICE_IDS[index], priceSpannable)
                 views.setTextColor(PRICE_IDS[index], fg)
                 views.setFloat(PRICE_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
 
-                // Trend – zobrazit POUZE pokud byl ceník zveřejněn DNES
                 views.setViewVisibility(TREND_IDS[index], View.VISIBLE)
                 val arrow = if (showTrend && old != null && cur != null) {
                     val oldVal = PriceFormatter.valueFor(old, settings.currency)
@@ -179,7 +233,7 @@ object WidgetRenderer {
                         curVal < oldVal -> "▼"
                         else -> "="
                     }
-                } else ""   // ← prázdný string, když se nezobrazuje
+                } else ""
                 views.setTextViewText(TREND_IDS[index], arrow)
                 views.setTextColor(TREND_IDS[index], fg)
                 views.setFloat(TREND_IDS[index], "setTextSize", settings.fontSizeSp.toFloat())
@@ -188,13 +242,88 @@ object WidgetRenderer {
             }
         }
 
+        // ---------- NEJBLIŽŠÍ STANICE ----------
+        renderNearestPump(context, views, settings, nearestPump)
+
         return views
+    }
+
+    /**
+     * Vykreslí spodní řádek s nejbližší stanicí.
+     * Skryje celý blok, pokud je přepínač vypnutý nebo pumpa není dostupná.
+     */
+    private fun renderNearestPump(
+        context: Context,
+        views: RemoteViews,
+        settings: WidgetSettings,
+        nearestPump: Pair<PumpEntity, Double>?
+    ) {
+        if (!settings.showNearestPump || nearestPump == null) {
+            views.setViewVisibility(R.id.nearest_container, View.GONE)
+            return
+        }
+
+        val (pump, distanceKm) = nearestPump
+
+        views.setViewVisibility(R.id.nearest_container, View.VISIBLE)
+
+        // Formát: "33km - Brno, Hviezdoslavova"
+        val distanceText = formatDistance(distanceKm)
+        val name = pump.name.removePrefix("ČS ").trim()
+        views.setTextViewText(R.id.nearest_text, "$distanceText - $name")
+
+        // Barvy dle dark/light režimu
+        val night = isNight(context)
+        val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
+
+        views.setTextColor(R.id.nearest_text, fg)
+        views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
+
+        // Klik → navigace (na kontejner i text)
+        val pi = buildNavigationPendingIntent(context, pump, settings.preferredNavigation)
+        views.setOnClickPendingIntent(R.id.nearest_container, pi)
+        views.setOnClickPendingIntent(R.id.nearest_text, pi)
+    }
+
+    /**
+     * "33km" pro >= 10 km, "3,5km" pro < 10 km.
+     */
+    private fun formatDistance(km: Double): String {
+        return if (km < 10.0) {
+            "%.1fkm".format(km).replace('.', ',')
+        } else {
+            "%.0fkm".format(km)
+        }
+    }
+
+    /**
+     * PendingIntent pro klik na nejbližší stanici.
+     * Předá Intent do TankOnoWidget.onReceive(), který spustí navigaci.
+     */
+    private fun buildNavigationPendingIntent(
+        context: Context,
+        pump: PumpEntity,
+        navApp: NavigationApp
+    ): PendingIntent {
+        val intent = Intent(context, TankOnoWidget::class.java).apply {
+            action = TankOnoWidget.ACTION_NAVIGATE
+            putExtra(TankOnoWidget.EXTRA_LAT, pump.lat ?: 0.0)
+            putExtra(TankOnoWidget.EXTRA_LNG, pump.lng ?: 0.0)
+            putExtra(TankOnoWidget.EXTRA_LABEL, pump.name)
+            putExtra(TankOnoWidget.EXTRA_NAV_APP, navApp.id)
+        }
+
+        return PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_NAV,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
     }
 
     /**
      * Dynamicky nastaví šířky sloupců podle fontSizeSp.
      * Funguje pouze na API 31+ (setViewLayoutWidth).
-     * Na starších API zůstávají hodnoty z XML (wrap_content + minWidth).
      */
     private fun applyDynamicColumnWidths(
         context: Context,
@@ -202,23 +331,19 @@ object WidgetRenderer {
         settings: WidgetSettings
     ) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-            // API < 31 – RemoteViews.setViewLayoutWidth není dostupné
             return
         }
 
         val density = context.resources.displayMetrics.density
         val fontSize = settings.fontSizeSp.toFloat()
 
-        // Trend: min 22dp, max 40dp (Float – setViewLayoutWidth očekává Float)
         val trendWidthDp = (fontSize * 1.5f).coerceIn(22f, 40f)
         val trendWidthPx = trendWidthDp * density
 
-        // Stará cena: min 55dp, max 90dp
         val oldFontSize = (fontSize - 2).coerceAtLeast(8f)
         val oldWidthDp = (oldFontSize * 3.5f).coerceIn(55f, 90f)
         val oldWidthPx = oldWidthDp * density
 
-        // Aktuální cena: min 50dp, max 85dp
         val priceWidthDp = (fontSize * 3.2f).coerceIn(50f, 85f)
         val priceWidthPx = priceWidthDp * density
 
@@ -269,7 +394,7 @@ object WidgetRenderer {
             action = TankOnoWidget.ACTION_REFRESH
         }
         return PendingIntent.getBroadcast(
-            context, 0, intent,
+            context, REQUEST_CODE_REFRESH, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }

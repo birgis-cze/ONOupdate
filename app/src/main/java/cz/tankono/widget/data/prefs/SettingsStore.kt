@@ -25,7 +25,8 @@ data class WidgetSettings(
     val intervalPeakMin: Int = 15,
     val intervalOffPeakMin: Int = 60,
     val fontSizeSp: Int = 15,
-    val preferredNavigation: NavigationApp = NavigationApp.SYSTEM
+    val preferredNavigation: NavigationApp = NavigationApp.SYSTEM,
+    val showNearestPump: Boolean = false
 ) {
     val effectiveIntervalMin: Int
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
@@ -44,6 +45,7 @@ class SettingsStore(private val context: Context) {
         val FONT_SIZE         = intPreferencesKey("font_size")
         val LAST_PUMP_SYNC    = longPreferencesKey("last_pump_sync")
         val PREFERRED_NAV     = stringPreferencesKey("preferred_navigation")
+        val SHOW_NEAREST_PUMP = booleanPreferencesKey("show_nearest_pump")
     }
 
     val settings: Flow<WidgetSettings> = context.settingsDataStore.data.map { p ->
@@ -61,7 +63,8 @@ class SettingsStore(private val context: Context) {
             intervalPeakMin   = p[Keys.INTERVAL_PEAK]   ?: 15,
             intervalOffPeakMin= p[Keys.INTERVAL_OFF]    ?: 60,
             fontSizeSp        = p[Keys.FONT_SIZE]       ?: 15,
-            preferredNavigation = NavigationApp.fromId(p[Keys.PREFERRED_NAV])
+            preferredNavigation = NavigationApp.fromId(p[Keys.PREFERRED_NAV]),
+            showNearestPump   = p[Keys.SHOW_NEAREST_PUMP] ?: false
         )
     }
 
@@ -76,6 +79,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.INTERVAL_OFF]     = s.intervalOffPeakMin
             p[Keys.FONT_SIZE]        = s.fontSizeSp
             p[Keys.PREFERRED_NAV]    = s.preferredNavigation.id
+            p[Keys.SHOW_NEAREST_PUMP]= s.showNearestPump
         }
     }
 
