@@ -27,6 +27,7 @@ import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.NavigationApp
 import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.WidgetSettings
+import cz.tankono.widget.data.prefs.CachedNearestPump
 import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.data.repo.PriceRepository
 import cz.tankono.widget.data.repo.PumpRepository
@@ -104,7 +105,6 @@ object WidgetRenderer {
         }
     }
 
-
     /**
      * Získá nejbližší pumpu s cache fallbackem.
      *
@@ -122,7 +122,7 @@ object WidgetRenderer {
             val (pump, dist) = fresh
             if (pump.lat != null && pump.lng != null) {
                 settingsStore.saveCachedNearestPump(
-                    SettingsStore.CachedNearestPump(
+                    CachedNearestPump(
                         name = pump.name,
                         distanceKm = dist,
                         lat = pump.lat,
@@ -151,6 +151,45 @@ object WidgetRenderer {
 
         AppLogger.w("Widget: ani fresh, ani cache → vracím null")
         return null
+    }
+
+    /**
+     * Zjistí aktuální polohu uživatele a vrátí nejbližší pumpu + vzdálenost v km.
+     * Vrací null při chybě / chybějícím oprávnění.
+     */
+    private suspend fun findNearestPumpForWidget(
+        context: Context
+    ): Pair<PumpEntity, Double>? {
+        return try {
+            // Kontrola oprávnění
+            val fine = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val coarse = ContextCompat.checkSelfPermission(
+                context, Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!fine && !coarse) {
+                AppLogger.w("Widget: chybí oprávnění k poloze")
+                return null
+            }
+
+            // Získat polohu
+            val loc = LocationProvider.getCurrentLocation(context)
+            if (loc == null) {
+                AppLogger.w("Widget: polohu nelze získat")
+                return null
+            }
+
+            // Najít nejbližší pumpu
+            val pumps = PumpRepository(context)
+                .getAllSortedByDistance(loc.first, loc.second)
+
+            pumps.firstOrNull()
+        } catch (t: Throwable) {
+            AppLogger.e("Widget: chyba při hledání nejbližší pumpy", t)
+            null
+        }
     }
 
     private fun buildViews(
@@ -261,8 +300,11 @@ object WidgetRenderer {
 
     /**
      * Vykreslí spodní řádek s nejbližší stanicí.
-     * Skryje celý blok, pokud je přepínač vypnutý nebo pumpa není dostupná.
-        */
+     *
+     * Pokud je přepínač zapnutý, blok je VŽDY VISIBLE (nikdy GONE),
+     * aby po probuzení displeje zůstal viditelný.
+     * Když nejsou data, zobrazí "Zjišťuji polohu…".
+     */
     private fun renderNearestPump(
         context: Context,
         views: RemoteViews,
@@ -294,27 +336,30 @@ object WidgetRenderer {
             views.setTextColor(R.id.nearest_text, fg)
             views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
 
-            // Bez kliku (není kam navigovat)
             return
         }
 
-        // Normální render
+        // Normální render s daty
         val (pump, distanceKm) = nearestPump
 
+        // Vzdálenost – tučně
         val distanceText = formatDistance(distanceKm)
         views.setTextViewText(R.id.nearest_distance, distanceText)
         views.setTextColor(R.id.nearest_distance, fg)
         views.setFloat(R.id.nearest_distance, "setTextSize", settings.fontSizeSp.toFloat())
 
+        // Adresa – normálně
         val name = pump.name.removePrefix("ČS ").trim()
         views.setTextViewText(R.id.nearest_text, name)
         views.setTextColor(R.id.nearest_text, fg)
         views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
 
+        // Ikonka vybrané navigace
         val iconRes = settings.preferredNavigation.iconRes
         views.setImageViewResource(R.id.nearest_icon, iconRes)
         views.setInt(R.id.nearest_icon, "setColorFilter", fg)
 
+        // Klik → navigace
         val pi = buildNavigationPendingIntent(context, pump, settings.preferredNavigation)
         views.setOnClickPendingIntent(R.id.nearest_container, pi)
         views.setOnClickPendingIntent(R.id.nearest_icon, pi)
@@ -335,7 +380,6 @@ object WidgetRenderer {
 
     /**
      * PendingIntent pro klik na nejbližší stanici.
-     * Předá Intent do TankOnoWidget.onReceive(), který spustí navigaci.
      */
     private fun buildNavigationPendingIntent(
         context: Context,
