@@ -16,11 +16,6 @@ import kotlinx.coroutines.flow.map
 
 private val Context.settingsDataStore by preferencesDataStore(name = "tankono_settings")
 
-val CACHED_NEAREST_PUMP_NAME = stringPreferencesKey("cached_nearest_pump_name")
-val CACHED_NEAREST_PUMP_DIST = stringPreferencesKey("cached_nearest_pump_dist")
-val CACHED_NEAREST_PUMP_LAT  = stringPreferencesKey("cached_nearest_pump_lat")
-val CACHED_NEAREST_PUMP_LNG  = stringPreferencesKey("cached_nearest_pump_lng")
-
 data class WidgetSettings(
     val visibleProducts: Set<Product> = Product.entries.toSet(),
     val currency: Currency = Currency.CZK,
@@ -37,6 +32,18 @@ data class WidgetSettings(
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
 }
 
+/**
+ * Cache poslední známé nejbližší pumpy.
+ * Drží se i po vypnutí displeje / restartu launcheru,
+ * takže widget neztratí informaci, když se poloha právě nedaří získat.
+ */
+data class CachedNearestPump(
+    val name: String,
+    val distanceKm: Double,
+    val lat: Double,
+    val lng: Double
+)
+
 class SettingsStore(private val context: Context) {
 
     private object Keys {
@@ -51,6 +58,12 @@ class SettingsStore(private val context: Context) {
         val LAST_PUMP_SYNC    = longPreferencesKey("last_pump_sync")
         val PREFERRED_NAV     = stringPreferencesKey("preferred_navigation")
         val SHOW_NEAREST_PUMP = booleanPreferencesKey("show_nearest_pump")
+
+        // Cache poslední známé nejbližší pumpy
+        val CACHED_NEAREST_PUMP_NAME = stringPreferencesKey("cached_nearest_pump_name")
+        val CACHED_NEAREST_PUMP_DIST = stringPreferencesKey("cached_nearest_pump_dist")
+        val CACHED_NEAREST_PUMP_LAT  = stringPreferencesKey("cached_nearest_pump_lat")
+        val CACHED_NEAREST_PUMP_LNG  = stringPreferencesKey("cached_nearest_pump_lng")
     }
 
     val settings: Flow<WidgetSettings> = context.settingsDataStore.data.map { p ->
@@ -96,17 +109,7 @@ class SettingsStore(private val context: Context) {
         return context.settingsDataStore.data.map { it[Keys.LAST_PUMP_SYNC] ?: 0L }.first()
     }
 
-    /**
-    * Cache poslední známé nejbližší pumpy.
-    * Drží se i po vypnutí displeje / restartu launcheru,
-    * takže widget neztratí informaci, když se poloha právě nedaří získat.
-    */
-    data class CachedNearestPump(
-        val name: String,
-        val distanceKm: Double,
-        val lat: Double,
-        val lng: Double
-    )
+    // ---------- CACHE NEJBLIŽŠÍ PUMPY ----------
 
     suspend fun saveCachedNearestPump(p: CachedNearestPump) {
         context.settingsDataStore.edit { prefs ->
