@@ -267,29 +267,35 @@ object WidgetRenderer {
 
         views.setViewVisibility(R.id.nearest_container, View.VISIBLE)
 
-        // Formát: "33km - Brno, Hviezdoslavova"
+        // Vzdálenost – tučně
         val distanceText = formatDistance(distanceKm)
+        views.setTextViewText(R.id.nearest_distance, distanceText)
+
+        // Adresa – normálně
         val name = pump.name.removePrefix("ČS ").trim()
-        views.setTextViewText(R.id.nearest_text, "$distanceText - $name")
+        views.setTextViewText(R.id.nearest_text, name)
 
         // Barvy dle dark/light režimu
         val night = isNight(context)
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
+        views.setTextColor(R.id.nearest_distance, fg)
+        views.setFloat(R.id.nearest_distance, "setTextSize", settings.fontSizeSp.toFloat())
+
         views.setTextColor(R.id.nearest_text, fg)
         views.setFloat(R.id.nearest_text, "setTextSize", settings.fontSizeSp.toFloat())
 
         // Ikonka vybrané navigace (nebo univerzální pro SYSTEM)
-        // Vybraná navigace – pokud není žádná, použije se SYSTEM (univerzální ikona)
         val iconRes = settings.preferredNavigation.iconRes
         views.setImageViewResource(R.id.nearest_icon, iconRes)
         views.setInt(R.id.nearest_icon, "setColorFilter", fg)
 
-        // Klik → navigace (na kontejner i text i ikonu)
+        // Klik → navigace (na kontejner, ikonu i oba texty)
         val pi = buildNavigationPendingIntent(context, pump, settings.preferredNavigation)
         views.setOnClickPendingIntent(R.id.nearest_container, pi)
-        views.setOnClickPendingIntent(R.id.nearest_text, pi)
         views.setOnClickPendingIntent(R.id.nearest_icon, pi)
+        views.setOnClickPendingIntent(R.id.nearest_distance, pi)
+        views.setOnClickPendingIntent(R.id.nearest_text, pi)
     }
 
     /**

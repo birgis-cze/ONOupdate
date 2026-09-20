@@ -50,6 +50,11 @@ class TankOnoWidget : AppWidgetProvider() {
                 AppLogger.i("Klik na nejbližší stanici – spouštím navigaci")
                 handleNavigate(context, intent)
             }
+            Intent.ACTION_USER_PRESENT -> {
+                // Telefon odemknut – překreslit widget, aby se obnovil obsah
+                AppLogger.d("USER_PRESENT – překresluji widget")
+                requestUpdate(context)
+            }
         }
     }
 

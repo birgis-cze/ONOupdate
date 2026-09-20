@@ -170,7 +170,7 @@
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
-        <!-- Jeden řádek: ikona + vzdálenost + název -->
+        <!-- Řádek: ikona + vzdálenost (bold) + adresa (normal) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -187,14 +187,24 @@
                 android:contentDescription="@null"/>
 
             <TextView
+                android:id="@+id/nearest_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:textColor="@color/ono_red"
+                android:textStyle="bold"
+                android:textSize="14sp"/>
+
+            <TextView
                 android:id="@+id/nearest_text"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="6dp"
                 android:singleLine="true"
                 android:ellipsize="end"
                 android:textColor="@color/ono_red"
-                android:textStyle="bold"
+                android:textStyle="normal"
                 android:textSize="14sp"/>
 
         </LinearLayout>
