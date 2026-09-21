@@ -72,6 +72,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -905,7 +906,19 @@ private fun SettingsScreen(
                 }
 
                 OutlinedButton(
-                    onClick = onRefresh,
+                    onClick = {
+                        onRefresh()
+                        // Po refreshi znovu načíst stav z DataStore
+                        scope.launch {
+                            delay(1500)  // počkat, až se data stáhnou a uloží
+                            try {
+                                val repo = cz.tankono.widget.data.repo.PriceRepository(context)
+                                val s = repo.loadState()
+                                lastPublished = s.current?.publishedAt
+                                lastFetched = s.current?.fetchedAt
+                            } catch (_: Throwable) {}
+                        }
+                    },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
                 ) {
