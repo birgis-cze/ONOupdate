@@ -994,7 +994,7 @@ private fun SettingsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp)
+                        .padding(horizontal = 2.dp)
                         .height(1.dp)
                         .background(OnoRed.copy(alpha = 0.3f))
                 )
@@ -1065,7 +1065,8 @@ private fun SettingsScreen(
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
                         lineHeight = 10.sp,
-                        modifier = Modifier,
+                        modifier = Modifier
+                            .fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
                 }
