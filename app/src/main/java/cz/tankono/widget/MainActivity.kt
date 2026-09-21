@@ -1021,21 +1021,20 @@ private fun SettingsScreen(
                            "Nic jiného se neposílá!",
                     color = OnoRed.copy(alpha = 0.5f),
                     fontSize = 8.sp,
-                    lineHeight = 11.sp,
+                    lineHeight = 10.sp,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
                 if (hash != null) {
                     Text(
-                        text = hash,
+                        text = "Váš hash: " + hash,
                         color = OnoRed.copy(alpha = 0.4f),
-                        fontSize = 8.sp,
+                        fontSize = 7.sp,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
                         textAlign = TextAlign.Center
                     )
                 }
