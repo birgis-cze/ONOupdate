@@ -1033,10 +1033,10 @@ private fun SettingsScreen(
                            "Nic jiného se neposílá.",
                     color = OnoRed.copy(alpha = 0.6f),
                     fontSize = 10.sp,
-                    lineHeight = 14.sp,
+                    lineHeight = 12.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = 4.dp),
                     textAlign = TextAlign.Center
                 )
 
@@ -1054,7 +1054,7 @@ private fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(0.dp))
 
                     // Rozdělit hash na 2 řádky po 32 znacích (aby se nelámal)
                     val half = (hash.length + 1) / 2
@@ -1069,7 +1069,7 @@ private fun SettingsScreen(
                         lineHeight = 12.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 2.dp),
                         textAlign = TextAlign.Center
                     )
                 }
