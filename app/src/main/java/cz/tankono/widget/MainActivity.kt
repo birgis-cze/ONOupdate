@@ -91,6 +91,7 @@ import cz.tankono.widget.data.repo.PumpRepository
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
 import cz.tankono.widget.util.UpdateChecker
+import cz.tankono.widget.util.InstallReporter
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -152,6 +153,9 @@ class MainActivity : ComponentActivity() {
 
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
+
+        // ← PŘIDAT: jednorázové odeslání hashe (jen orientační statistika)
+        InstallReporter.reportIfNeeded(this)
 
         configWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
