@@ -990,6 +990,17 @@ private fun SettingsScreen(
 
                 Spacer(Modifier.height(16.dp))
 
+                // ---- Oddělovač ----
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .height(1.dp)
+                        .background(OnoRed.copy(alpha = 0.3f))
+                )
+
+                Spacer(Modifier.height(8.dp))
+
                 // ---- Autor ----
                 Text(
                     "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: birgis",
@@ -999,45 +1010,71 @@ private fun SettingsScreen(
                     textAlign = TextAlign.Center
                 )
 
-                // ---- Počet instalací aplikace ----
+                // ---- Počet instalací ----
                 Text(
                     text = when {
                         installCountLoading -> "Počet instalací aplikace: …"
                         installCount != null -> "Počet instalací aplikace: $installCount"
                         else -> "Počet instalací aplikace: —"
                     },
-                    color = OnoRed.copy(alpha = 0.7f),
-                    fontSize = 11.sp,
+                    color = OnoRed.copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(12.dp))
 
-                val hash = deviceHash
+                // ---- Info o odeslání hashe ----
                 Text(
                     text = "Aplikace odeslala při prvním spuštění hash " +
                            "vašeho zařízení pro statistiku počtu instalací.\n" +
-                           "Nic jiného se neposílá!",
-                    color = OnoRed.copy(alpha = 0.5f),
-                    fontSize = 8.sp,
-                    lineHeight = 10.sp,
+                           "Nic jiného se neposílá.",
+                    color = OnoRed.copy(alpha = 0.6f),
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp,
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
                     textAlign = TextAlign.Center
                 )
+
+                Spacer(Modifier.height(12.dp))
+
+                // ---- Váš hash ----
+                val hash = deviceHash
                 if (hash != null) {
                     Text(
-                        text = "Váš hash: " + hash,
-                        color = OnoRed.copy(alpha = 0.4f),
-                        fontSize = 7.sp,
+                        text = "VÁŠ HASH:",
+                        color = OnoRed.copy(alpha = 0.5f),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(4.dp))
+
+                    // Rozdělit hash na 2 řádky po 32 znacích (aby se nelámal)
+                    val half = (hash.length + 1) / 2
+                    val firstHalf = hash.substring(0, half)
+                    val secondHalf = hash.substring(half)
+
+                    Text(
+                        text = "$firstHalf\n$secondHalf",
+                        color = OnoRed.copy(alpha = 0.5f),
+                        fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
+                        lineHeight = 12.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                            .padding(horizontal = 8.dp),
                         textAlign = TextAlign.Center
                     )
                 }
+
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
