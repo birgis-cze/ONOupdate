@@ -994,7 +994,7 @@ private fun SettingsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
+                        .padding(horizontal = 4.dp)
                         .height(1.dp)
                         .background(OnoRed.copy(alpha = 0.3f))
                 )
@@ -1052,7 +1052,7 @@ private fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
-                    Spacer(Modifier.height(0.dp))
+                    //Spacer(Modifier.height(0.dp))
 
                     // Rozdělit hash na 2 řádky po 32 znacích (aby se nelámal)
                     val half = (hash.length + 1) / 2
@@ -1065,8 +1065,7 @@ private fun SettingsScreen(
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
                         lineHeight = 10.sp,
-                        modifier = Modifier
-                            .fillMaxWidth(),
+                        modifier = Modifier,
                         textAlign = TextAlign.Center
                     )
                 }
