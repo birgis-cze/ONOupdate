@@ -121,4 +121,45 @@ object InstallReporter {
             null
         }
     }
+    
+    /**
+     * Získá aktuální počet evidovaných zařízení z Apps Scriptu.
+     * Vrací null při chybě.
+     */
+    suspend fun fetchTotalCount(): Int? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("$ENDPOINT_URL?token=$ADMIN_TOKEN")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 10_000
+            conn.readTimeout = 10_000
+
+            val code = conn.responseCode
+            if (code != 200) {
+                AppLogger.w("InstallReporter.fetchTotalCount: HTTP $code")
+                return@withContext null
+            }
+
+            val response = conn.inputStream.bufferedReader().readText()
+            val json = JSONObject(response)
+            if (json.optBoolean("ok", false)) {
+                json.optInt("total", -1).takeIf { it >= 0 }
+            } else {
+                AppLogger.w("InstallReporter.fetchTotalCount: ${json.optString("error")}")
+                null
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("InstallReporter.fetchTotalCount: chyba", t)
+            null
+        }
+    }
+
+    /**
+     * Vrátí hash tohoto zařízení (stejný, jaký se odesílá na server).
+     * Slouží pro transparentní zobrazení v nastavení.
+     * Vrací null, pokud hash nelze získat.
+     */
+    fun getDeviceHash(context: Context): String? {
+        return buildDeviceHash(context)
+    }
 }

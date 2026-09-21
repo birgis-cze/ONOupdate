@@ -89,9 +89,9 @@ import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.data.repo.PumpRefreshProgress
 import cz.tankono.widget.data.repo.PumpRepository
 import cz.tankono.widget.util.AppLogger
+import cz.tankono.widget.util.InstallReporter
 import cz.tankono.widget.util.LocationProvider
 import cz.tankono.widget.util.UpdateChecker
-import cz.tankono.widget.util.InstallReporter
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
 
-        // ← PŘIDAT: jednorázové odeslání hashe (jen orientační statistika)
+        // Jednorázové odeslání hashe (jen orientační statistika)
         InstallReporter.reportIfNeeded(this)
 
         configWidgetId = intent?.extras?.getInt(
@@ -265,7 +265,14 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             AppLogger.i("Ukládám nastavení: visible=${settings.visibleProducts.size}, " +
                     "currency=${settings.currency}, nav=${settings.preferredNavigation}")
+
             SettingsStore(this@MainActivity).save(settings)
+
+            // Pokud uživatel vypnul zobrazení nejbližší pumpy, smažeme cache
+            if (!settings.showNearestPump) {
+                SettingsStore(this@MainActivity).clearCachedNearestPump()
+            }
+
             WorkScheduler.schedule(this@MainActivity)
             cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this@MainActivity)
 
@@ -281,12 +288,6 @@ class MainActivity : ComponentActivity() {
 
             if (configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 finish()
-            }
-            SettingsStore(this@MainActivity).save(settings)
-            
-            // Volitelně: vyčistit cache, když se přepínač vypne
-            if (!settings.showNearestPump) {
-                SettingsStore(this@MainActivity).clearCachedNearestPump()
             }
         }
     }
@@ -405,6 +406,11 @@ private fun SettingsScreen(
     var isChecking by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
 
+    // Počet evidovaných zařízení (z Apps Scriptu)
+    var installCount by remember { mutableStateOf<Int?>(null) }
+    var installCountLoading by remember { mutableStateOf(false) }   
+    var deviceHash by remember { mutableStateOf<String?>(null) }
+
     // Pumpy / poloha / progress
     val pumpRepo = remember { PumpRepository(context) }
     val progress by pumpRepo.progress.collectAsStateWithLifecycle()
@@ -460,6 +466,17 @@ private fun SettingsScreen(
         } catch (t: Throwable) {
             AppLogger.e("Auto-check: chyba", t)
         }
+    }
+
+    // Načtení počtu evidovaných zařízení + hashe tohoto zařízení
+    LaunchedEffect(Unit) {
+        // Hash zařízení (rychlá lokální operace)
+        deviceHash = InstallReporter.getDeviceHash(context)
+
+        // Počet zařízení ze serveru (síťová operace)
+        installCountLoading = true
+        installCount = InstallReporter.fetchTotalCount()
+        installCountLoading = false
     }
 
     // ---- Auto-save s debounce 500 ms ----
@@ -960,6 +977,7 @@ private fun SettingsScreen(
 
                 Spacer(Modifier.height(16.dp))
 
+                // ---- Autor ----
                 Text(
                     "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: birgis",
                     color = OnoRed.copy(alpha = 0.7f),
@@ -968,7 +986,46 @@ private fun SettingsScreen(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(8.dp))
+                // ---- Počet instalací aplikace ----
+                Text(
+                    text = when {
+                        installCountLoading -> "Počet instalací aplikace: …"
+                        installCount != null -> "Počet instalací aplikace: $installCount"
+                        else -> "Počet instalací aplikace: —"
+                    },
+                    color = OnoRed.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(4.dp))
+
+                val hash = deviceHash
+                Text(
+                    text = "Aplikace odeslala při prvním spuštění hash " +
+                           "vašeho zařízení pro statistiku počtu instalací.\n" +
+                           "Nic jiného se neposílá!",
+                    color = OnoRed.copy(alpha = 0.5f),
+                    fontSize = 8.sp,
+                    lineHeight = 11.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    textAlign = TextAlign.Center
+                )
+                if (hash != null) {
+                    Text(
+                        text = hash,
+                        color = OnoRed.copy(alpha = 0.4f),
+                        fontSize = 8.sp,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
