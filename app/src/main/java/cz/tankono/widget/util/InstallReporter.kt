@@ -28,7 +28,7 @@ object InstallReporter {
     private const val ADMIN_TOKEN  = "4f4a0ba5-b5f3-43a2-a2fb-72b3f3eae428"
 
     // Sůl pro hash – změň na nějaký náhodný string (např. UUID)
-    private const val SALT = "onoupdate-salt-zmen-me-2026"
+    private const val SALT = "4f4a0ba5-b5f3-43a2-a2fb-72b3f3eae428"
 
     private const val PREFS_NAME = "install_reporter"
     private const val KEY_SENT = "sent"
