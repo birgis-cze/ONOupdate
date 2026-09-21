@@ -1017,30 +1017,29 @@ private fun SettingsScreen(
                         installCount != null -> "Počet instalací aplikace: $installCount"
                         else -> "Počet instalací aplikace: —"
                     },
-                    color = OnoRed.copy(alpha = 0.8f),
-                    fontSize = 13.sp,
+                    color = OnoRed.copy(alpha = 0.7f),
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(4.dp))
 
                 // ---- Info o odeslání hashe ----
                 Text(
                     text = "Aplikace odeslala při prvním spuštění hash " +
-                           "vašeho zařízení pro statistiku počtu instalací.\n" +
+                           "tohoto zařízení pro statistiku počtu instalací.\n" +
                            "Nic jiného se neposílá.",
                     color = OnoRed.copy(alpha = 0.6f),
                     fontSize = 10.sp,
-                    lineHeight = 12.sp,
+                    lineHeight = 11.sp,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp),
+                        .fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(2.dp))
 
                 // ---- Váš hash ----
                 val hash = deviceHash
@@ -1050,7 +1049,6 @@ private fun SettingsScreen(
                         color = OnoRed.copy(alpha = 0.5f),
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
@@ -1066,15 +1064,14 @@ private fun SettingsScreen(
                         color = OnoRed.copy(alpha = 0.5f),
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
-                        lineHeight = 12.sp,
+                        lineHeight = 10.sp,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp),
+                            .fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(4.dp))
             }
         }
     }
