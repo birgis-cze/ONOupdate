@@ -24,8 +24,8 @@ import java.security.MessageDigest
 object InstallReporter {
 
     // === ZMĚŇ NA SVOJE HODNOTY ===
-    private const val ENDPOINT_URL = "https://script.google.com/macros/s/AKfycb.../exec"
-    private const val ADMIN_TOKEN  = "zmen-si-tento-tajny-token-12345"
+    private const val ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwyeSZO33wBOIG6dhGGGbin8FcFUB_ZLnG6t6Nlm-fW59sRMrurQvuBCZY5Zc0_aNLJ/exec"
+    private const val ADMIN_TOKEN  = "4f4a0ba5-b5f3-43a2-a2fb-72b3f3eae428"
 
     // Sůl pro hash – změň na nějaký náhodný string (např. UUID)
     private const val SALT = "onoupdate-salt-zmen-me-2026"
