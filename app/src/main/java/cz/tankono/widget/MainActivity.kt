@@ -1028,12 +1028,12 @@ private fun SettingsScreen(
 
                 // ---- Info o odeslání hashe ----
                 Text(
-                    text = "Aplikace odeslala při prvním spuštění hash " +
-                           "tohoto zařízení\n pouze pro statistiku počtu instalací.\n" +
+                    text = "Aplikace odeslala hash tohoto zařízení" +
+                           "\n pro statistiku počtu instalací.\n" +
                            "Nic jiného se neposílá.",
                     color = OnoRed.copy(alpha = 0.6f),
                     fontSize = 10.sp,
-                    lineHeight = 11.sp,
+                    // lineHeight = 11.sp,
                     modifier = Modifier
                         .fillMaxWidth(),
                     textAlign = TextAlign.Center
