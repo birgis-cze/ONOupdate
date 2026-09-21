@@ -988,14 +988,14 @@ private fun SettingsScreen(
                     Text("Exportovat log")
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(0.dp))
 
                 // ---- Oddělovač ----
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 2.dp)
-                        .height(1.dp)
+                        .padding(horizontal = 0.dp)
+                        .height(0.dp)
                         .background(OnoRed.copy(alpha = 0.3f))
                 )
 
@@ -1029,7 +1029,7 @@ private fun SettingsScreen(
                 // ---- Info o odeslání hashe ----
                 Text(
                     text = "Aplikace odeslala při prvním spuštění hash " +
-                           "tohoto zařízení pro statistiku počtu instalací.\n" +
+                           "tohoto zařízení\n pouze pro statistiku počtu instalací.\n" +
                            "Nic jiného se neposílá.",
                     color = OnoRed.copy(alpha = 0.6f),
                     fontSize = 10.sp,
