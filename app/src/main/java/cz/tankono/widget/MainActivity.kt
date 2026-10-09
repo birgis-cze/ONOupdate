@@ -1007,7 +1007,7 @@ private fun SettingsScreen(
                     Text("Exportovat log")
                 }
 
-                                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
                 // ---- Oddělovač ----
                 Box(
@@ -1018,11 +1018,11 @@ private fun SettingsScreen(
                         .background(OnoRed.copy(alpha = 0.25f))
                 )
 
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(2.dp))
 
                 // ---- Autor + počet instalací (spolu) ----
                 Text(
-                    text = "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: birgis",
+                    text = "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: Jirka Zeman",
                     color = OnoRed.copy(alpha = 0.6f),
                     fontSize = 10.sp,
                     modifier = Modifier.fillMaxWidth(),
@@ -1044,21 +1044,20 @@ private fun SettingsScreen(
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(2.dp))
 
                 // ---- Info o odeslání hashe (kompaktní) ----
                 Text(
                     text = "Aplikace odeslala hash tohoto zařízení pro statistiku počtu instalací. Nic jiného se neposílá.",
                     color = OnoRed.copy(alpha = 0.55f),
                     fontSize = 9.sp,
-                    lineHeight = 12.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp),
+                        .padding(horizontal = 2.dp),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(2.dp))
 
                 // ---- Váš hash (kompaktní) ----
                 val hash = deviceHash
@@ -1073,7 +1072,7 @@ private fun SettingsScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(Modifier.height(3.dp))
+                    Spacer(Modifier.height(2.dp))
 
                     // Rozdělit hash na 2 řádky po 32 znacích
                     val half = (hash.length + 1) / 2
@@ -1085,16 +1084,15 @@ private fun SettingsScreen(
                         color = OnoRed.copy(alpha = 0.45f),
                         fontSize = 8.sp,
                         fontFamily = FontFamily.Monospace,
-                        lineHeight = 11.sp,
                         letterSpacing = 0.5.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
+                            .padding(horizontal = 2.dp),
                         textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(8.dp))
             }
         }
     }
