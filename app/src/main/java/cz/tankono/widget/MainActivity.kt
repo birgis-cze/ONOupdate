@@ -915,13 +915,13 @@ private fun SettingsScreen(
                     }
                 } else {
                     // V běžném nastavení – ukládá se automaticky
-                    Text(
-                        "Nastavení se ukládá automaticky",
-                        color = OnoRed.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center
-                    )
+                    //Text(
+                    //    "Nastavení se ukládá automaticky",
+                    //    color = OnoRed.copy(alpha = 0.6f),
+                    //    fontSize = 11.sp,
+                    //    modifier = Modifier.fillMaxWidth(),
+                    //    textAlign = TextAlign.Center
+                    //)
                 }
 
                 OutlinedButton(
@@ -1007,89 +1007,97 @@ private fun SettingsScreen(
                     Text("Exportovat log")
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                // ---- Oddělovač ----
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 48.dp)
-                        .height(1.dp)
-                        .background(OnoRed.copy(alpha = 0.25f))
-                )
-
-                Spacer(Modifier.height(2.dp))
-
-                // ---- Autor + počet instalací (spolu) ----
-                Text(
-                    text = "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: Jirka Zeman",
-                    color = OnoRed.copy(alpha = 0.6f),
-                    fontSize = 10.sp,
+                // ---- ZÁPATÍ (kompaktní, bez spacedBy) ----
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
+                    verticalArrangement = Arrangement.spacedBy(0.dp)  // ← vypnout spacedBy!
+                ) {
+                    Spacer(Modifier.height(8.dp))
 
-                Spacer(Modifier.height(2.dp))
+                    // Oddělovač
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 48.dp)
+                            .height(1.dp)
+                            .background(OnoRed.copy(alpha = 0.25f))
+                    )
 
-                Text(
-                    text = when {
-                        installCountLoading -> "Počet instalací: …"
-                        installCount != null -> "Počet instalací: $installCount"
-                        else -> "Počet instalací: —"
-                    },
-                    color = OnoRed.copy(alpha = 0.8f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(Modifier.height(4.dp))
 
-                Spacer(Modifier.height(2.dp))
-
-                // ---- Info o odeslání hashe (kompaktní) ----
-                Text(
-                    text = "Aplikace odeslala hash tohoto zařízení pro statistiku počtu instalací. Nic jiného se neposílá.",
-                    color = OnoRed.copy(alpha = 0.55f),
-                    fontSize = 9.sp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 2.dp),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(Modifier.height(2.dp))
-
-                // ---- Váš hash (kompaktní) ----
-                val hash = deviceHash
-                if (hash != null) {
+                    // Autor
                     Text(
-                        text = "VÁŠ HASH",
-                        color = OnoRed.copy(alpha = 0.5f),
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.5.sp,
+                        text = "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: Jirka Zeman",
+                        color = OnoRed.copy(alpha = 0.6f),
+                        fontSize = 10.sp,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
 
                     Spacer(Modifier.height(2.dp))
 
-                    // Rozdělit hash na 2 řádky po 32 znacích
-                    val half = (hash.length + 1) / 2
-                    val firstHalf = hash.substring(0, half)
-                    val secondHalf = hash.substring(half)
-
+                    // Počet instalací
                     Text(
-                        text = "$firstHalf\n$secondHalf",
-                        color = OnoRed.copy(alpha = 0.45f),
-                        fontSize = 8.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.5.sp,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp),
+                        text = when {
+                            installCountLoading -> "Počet instalací: …"
+                            installCount != null -> "Počet instalací: $installCount"
+                            else -> "Počet instalací: —"
+                        },
+                        color = OnoRed.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Info o odeslání hashe
+                    Text(
+                        text = "Aplikace odeslala hash tohoto zařízení pro statistiku počtu instalací. Nic jiného se neposílá.",
+                        color = OnoRed.copy(alpha = 0.55f),
+                        fontSize = 9.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        textAlign = TextAlign.Center
+                    )
+
+                    // Váš hash
+                    val hash = deviceHash
+                    if (hash != null) {
+                        Spacer(Modifier.height(4.dp))
+
+                        Text(
+                            text = "VÁŠ HASH",
+                            color = OnoRed.copy(alpha = 0.5f),
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(Modifier.height(2.dp))
+
+                        val half = (hash.length + 1) / 2
+                        val firstHalf = hash.substring(0, half)
+                        val secondHalf = hash.substring(half)
+
+                        Text(
+                            text = "$firstHalf\n$secondHalf",
+                            color = OnoRed.copy(alpha = 0.45f),
+                            fontSize = 8.sp,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 4.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
                 }
 
                 Spacer(Modifier.height(8.dp))
