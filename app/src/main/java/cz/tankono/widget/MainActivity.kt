@@ -1012,18 +1012,18 @@ private fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(0.dp)  // ← vypnout spacedBy!
                 ) {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
 
                     // Oddělovač
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 48.dp)
+                            .padding(horizontal = 24.dp)
                             .height(1.dp)
                             .background(OnoRed.copy(alpha = 0.25f))
                     )
 
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
 
                     // Autor
                     Text(
@@ -1050,16 +1050,16 @@ private fun SettingsScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(2.dp))
 
                     // Info o odeslání hashe
                     Text(
-                        text = "Aplikace odeslala hash tohoto zařízení pro statistiku počtu instalací. Nic jiného se neposílá.",
+                        text = "Aplikace odeslala hash tohoto zařízení pro statistiku počtu instalací.\nNic jiného se neposílá.",
                         color = OnoRed.copy(alpha = 0.55f),
                         fontSize = 9.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp),
+                            .padding(horizontal = 8.dp),
                         textAlign = TextAlign.Center
                     )
 
@@ -1078,7 +1078,7 @@ private fun SettingsScreen(
                             textAlign = TextAlign.Center
                         )
 
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(0.dp))
 
                         val half = (hash.length + 1) / 2
                         val firstHalf = hash.substring(0, half)
@@ -1092,14 +1092,11 @@ private fun SettingsScreen(
                             letterSpacing = 0.5.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 4.dp),
+                                .padding(horizontal = 0.dp),
                             textAlign = TextAlign.Center
                         )
                     }
-
-                    Spacer(Modifier.height(8.dp))
                 }
-
                 Spacer(Modifier.height(8.dp))
             }
         }
