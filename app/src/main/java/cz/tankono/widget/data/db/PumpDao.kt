@@ -12,7 +12,7 @@ interface PumpDao {
     @Query("SELECT * FROM pumps ORDER BY name ASC")
     suspend fun getAll(): List<PumpEntity>
 
-    /** Vrátí jen pumpy, které mají GPS. */
+    /** Vrátí jen pumpy, které mají GPS. */ 
     @Query("SELECT * FROM pumps WHERE lat IS NOT NULL AND lng IS NOT NULL ORDER BY name ASC")
     suspend fun getAllWithGps(): List<PumpEntity>
 

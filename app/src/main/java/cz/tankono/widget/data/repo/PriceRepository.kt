@@ -27,69 +27,113 @@ class PriceRepository(private val context: Context) {
         val DATA_NEW      = stringPreferencesKey("data_new")
     }
 
+    /**
+     * Refresh ceníku. Chová se takto: 
+     *
+     * 1. Stáhne datum z aktualit.
+     * 2. Když je datum stejné a máme v DataStore ceny → jen aktualizuje fetchedAt.
+     * 3. Když je datum nové NEBO chybí ceny → stáhne ceník a ATOMICKY uloží datum + ceny.
+     * 4. Když stahování selže nebo vrátí prázdná data → NEUKLÁDÁ NIC
+     *    (datum zůstane staré, aby další pokus zkusil znovu).
+     */
     suspend fun refresh(): Boolean {
         AppLogger.d("--- refresh() START ---")
 
+        // 1. Získat datum z aktualit
         AppLogger.d("Stahuji datum z aktualit…")
         val news = TankOnoScraper.fetchLatestNewsDate()
         AppLogger.d("Datum z aktualit: $news")
 
         if (news == null) {
-            AppLogger.w("Nepodařilo se získat datum z aktualit")
+            AppLogger.w("Nepodařilo se získat datum z aktualit → nic neměním")
             return false
         }
 
-        val stored = context.priceDataStore.data.first()[Keys.PUBLISHED_NEW]
-        AppLogger.d("Uložené datum: $stored")
+        // 2. Přečíst aktuální stav DataStore
+        val prefs = context.priceDataStore.data.first()
+        val storedPublished = prefs[Keys.PUBLISHED_NEW]
+        val storedData      = prefs[Keys.DATA_NEW]
 
-        if (stored != null && news == stored) {
-            AppLogger.d("Datum je stejné – jen aktualizuji fetchedAt")
+        // Máme v DataStore reálná data? (ne prázdný string)
+        val hasData = !storedData.isNullOrBlank() && storedData.contains(":")
+
+        AppLogger.d("Uložené datum: $storedPublished, data: ${if (hasData) "OK" else "CHYBÍ"}")
+
+        // 3. Datum stejné + máme data → jen aktualizovat fetchedAt
+        if (storedPublished != null && news == storedPublished && hasData) {
+            AppLogger.d("Datum stejné + máme ceny → jen aktualizuji fetchedAt")
             context.priceDataStore.edit { p ->
                 p[Keys.FETCHED_NEW] = System.currentTimeMillis()
             }
             return false
         }
 
-        AppLogger.i("Nový ceník! Stahuji…")
+        // 4. Potřebujeme stáhnout ceník (nové datum, nebo chybí data)
+        val reason = when {
+            storedPublished == null -> "žádné datum"
+            !hasData                -> "chybí data"
+            else                    -> "nové datum"
+        }
+        AppLogger.i("Stahuji ceník (důvod: $reason)")
+
         val snapshot = TankOnoScraper.fetchPrices()
+
+        // 5. KLÍČOVÉ: Pokud stahování selhalo nebo vrátilo prázdná data,
+        //    NEUKLÁDÁME nové datum. Datum a ceny musí být vždy konzistentní!
         if (snapshot == null) {
-            AppLogger.w("Nepodařilo se stáhnout ceník")
+            AppLogger.w("Ceník se nepodařilo stáhnout → NEUKLÁDÁM datum")
             return false
         }
+        if (snapshot.entries.isEmpty()) {
+            AppLogger.w("Ceník je prázdný (0 položek) → NEUKLÁDÁM datum")
+            return false
+        }
+
         AppLogger.d("Ceník stažen: ${snapshot.entries.size} položek")
 
+        // 6. ATOMICKÝ zápis: datum + ceny společně v jednom edit bloku
         context.priceDataStore.edit { p ->
             val oldPublished = p[Keys.PUBLISHED_NEW]
             val oldFetched   = p[Keys.FETCHED_NEW]
             val oldData      = p[Keys.DATA_NEW]
 
-            if (oldPublished != null) p[Keys.PUBLISHED_OLD] = oldPublished
-            if (oldFetched   != null) p[Keys.FETCHED_OLD]   = oldFetched
-            if (oldData      != null) p[Keys.DATA_OLD]      = oldData
+            // Posunout old ← new jen pokud máme skutečná stará data
+            if (oldPublished != null && oldData != null && oldData.contains(":")) {
+                p[Keys.PUBLISHED_OLD] = oldPublished
+                p[Keys.FETCHED_OLD]   = oldFetched ?: 0L
+                p[Keys.DATA_OLD]      = oldData
+            }
 
+            // Napsat nové datum + ceny SPOLEČNĚ
             p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: news
             p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
             p[Keys.DATA_NEW]      = serialize(snapshot)
         }
-        AppLogger.i("Ceník uložen do DataStore")
+
+        AppLogger.i("Ceník uložen do DataStore (${snapshot.entries.size} položek)")
         return true
     }
 
     /**
-     * Vždy zkusí stáhnout ceník. Pokud se datum nezměnilo, jen aktualizuje čas fetchedAt.
+     * Vynucený refresh – vždy stáhne ceník ze serveru.
+     * Používá se pro ruční "Aktualizovat data" a klik na widget.
      */
     suspend fun forceRefresh(): Boolean {
         AppLogger.d("--- forceRefresh() START ---")
 
         val snapshot = TankOnoScraper.fetchPrices()
         if (snapshot == null) {
-            AppLogger.w("forceRefresh: nepodařilo se stáhnout ceník")
+            AppLogger.w("forceRefresh: nepodařilo se stáhnout ceník → nic neměním")
+            return false
+        }
+        if (snapshot.entries.isEmpty()) {
+            AppLogger.w("forceRefresh: ceník je prázdný → nic neměním")
             return false
         }
 
         val stored = context.priceDataStore.data.first()[Keys.PUBLISHED_NEW]
 
-        // Stejné datum – jen aktualizuj čas fetchedAt
+        // Stejné datum → jen aktualizovat fetchedAt (ceny jsou stejné)
         if (stored != null && stored == snapshot.publishedAt) {
             AppLogger.d("forceRefresh: datum stejné, aktualizuji jen fetchedAt")
             context.priceDataStore.edit { p ->
@@ -98,16 +142,18 @@ class PriceRepository(private val context: Context) {
             return false
         }
 
-        // Nové datum – posun old ← new
+        // Nové datum → posunout old ← new a uložit nové
         AppLogger.i("forceRefresh: nová data, posouvám old ← new")
         context.priceDataStore.edit { p ->
             val oldPublished = p[Keys.PUBLISHED_NEW]
             val oldFetched   = p[Keys.FETCHED_NEW]
             val oldData      = p[Keys.DATA_NEW]
 
-            if (oldPublished != null) p[Keys.PUBLISHED_OLD] = oldPublished
-            if (oldFetched   != null) p[Keys.FETCHED_OLD]   = oldFetched
-            if (oldData      != null) p[Keys.DATA_OLD]      = oldData
+            if (oldPublished != null && oldData != null && oldData.contains(":")) {
+                p[Keys.PUBLISHED_OLD] = oldPublished
+                p[Keys.FETCHED_OLD]   = oldFetched ?: 0L
+                p[Keys.DATA_OLD]      = oldData
+            }
 
             p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: ""
             p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
@@ -137,6 +183,9 @@ class PriceRepository(private val context: Context) {
         val main = data.substringBefore("#")
         val pub  = data.substringAfter("#", "").ifBlank { published ?: "" }
 
+        // Pokud nemáme žádné položky, vrať null (např. poškozená data)
+        if (main.isBlank()) return null
+
         val map = mutableMapOf<Product, PriceEntry>()
         for (part in main.split("|")) {
             val f = part.split(":")
@@ -146,6 +195,8 @@ class PriceRepository(private val context: Context) {
             val eur = f[2].toIntOrNull()?.takeIf { it >= 0 }
             map[prod] = PriceEntry(prod, czk, eur)
         }
+
+        if (map.isEmpty()) return null
 
         return PriceSnapshot(
             entries = map,

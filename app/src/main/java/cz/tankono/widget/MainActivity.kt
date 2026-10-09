@@ -155,8 +155,27 @@ class MainActivity : ComponentActivity() {
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
 
-        // Jednorázové odeslání hashe (jen orientační statistika)
+        // 1. Jednorázové odeslání hashe (orientační statistika)
         InstallReporter.reportIfNeeded(this)
+
+        // 2. Startup refresh ceníku
+        //    Zajistí, že widget neukazuje staré ceny po instalaci/update/delší době.
+        //    Kontroluje datum z aktualit – pokud je nové, stáhne ceny.
+        lifecycleScope.launch {
+            try {
+                AppLogger.i("Startup refresh: kontroluji ceník…")
+                val repo = cz.tankono.widget.data.repo.PriceRepository(this@MainActivity)
+                val changed = repo.refresh()
+                if (changed) {
+                    AppLogger.i("Startup refresh: ceník aktualizován → překresluji widget")
+                    cz.tankono.widget.widget.TankOnoWidget.requestUpdate(this@MainActivity)
+                } else {
+                    AppLogger.d("Startup refresh: ceník beze změny")
+                }
+            } catch (t: Throwable) {
+                AppLogger.e("Startup refresh: chyba", t)
+            }
+        }
 
         configWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
@@ -702,11 +721,11 @@ private fun SettingsScreen(
                 // ---- Produkty ----
                 SettingsCard {
                     SectionTitle("Zobrazované produkty")
-                    ProductGroup("Paliva",
+                    ProductGroup("Paliva:",
                         Product.entries.filter { it.kind == Product.Kind.FUEL }, s, state)
-                    ProductGroup("Ostatní",
+                    ProductGroup("Ostatní:",
                         Product.entries.filter { it.kind == Product.Kind.OTHER }, s, state)
-                    ProductGroup("Směnárna",
+                    ProductGroup("Směnárna:",
                         Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
                     if (s.visibleProducts.isEmpty()) {
                         Text("Musíte vybrat alespoň jeden produkt.", color = OnoRed, fontSize = 12.sp)
@@ -988,90 +1007,94 @@ private fun SettingsScreen(
                     Text("Exportovat log")
                 }
 
-                Spacer(Modifier.height(0.dp))
+                                Spacer(Modifier.height(12.dp))
 
                 // ---- Oddělovač ----
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 0.dp)
-                        .height(0.dp)
-                        .background(OnoRed.copy(alpha = 0.3f))
+                        .padding(horizontal = 48.dp)
+                        .height(1.dp)
+                        .background(OnoRed.copy(alpha = 0.25f))
                 )
 
                 Spacer(Modifier.height(8.dp))
 
-                // ---- Autor ----
+                // ---- Autor + počet instalací (spolu) ----
                 Text(
-                    "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: birgis",
-                    color = OnoRed.copy(alpha = 0.7f),
-                    fontSize = 11.sp,
+                    text = "Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: birgis",
+                    color = OnoRed.copy(alpha = 0.6f),
+                    fontSize = 10.sp,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
 
-                // ---- Počet instalací ----
+                Spacer(Modifier.height(2.dp))
+
                 Text(
                     text = when {
-                        installCountLoading -> "Počet instalací aplikace: …"
-                        installCount != null -> "Počet instalací aplikace: $installCount"
-                        else -> "Počet instalací aplikace: —"
+                        installCountLoading -> "Počet instalací: …"
+                        installCount != null -> "Počet instalací: $installCount"
+                        else -> "Počet instalací: —"
                     },
-                    color = OnoRed.copy(alpha = 0.7f),
+                    color = OnoRed.copy(alpha = 0.8f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(10.dp))
 
-                // ---- Info o odeslání hashe ----
+                // ---- Info o odeslání hashe (kompaktní) ----
                 Text(
-                    text = "Aplikace odeslala hash tohoto zařízení" +
-                           "\n pro statistiku počtu instalací.\n" +
-                           "Nic jiného se neposílá.",
-                    color = OnoRed.copy(alpha = 0.6f),
-                    fontSize = 10.sp,
-                    // lineHeight = 11.sp,
+                    text = "Aplikace odeslala hash tohoto zařízení pro statistiku počtu instalací. Nic jiného se neposílá.",
+                    color = OnoRed.copy(alpha = 0.55f),
+                    fontSize = 9.sp,
+                    lineHeight = 12.sp,
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp),
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(10.dp))
 
-                // ---- Váš hash ----
+                // ---- Váš hash (kompaktní) ----
                 val hash = deviceHash
                 if (hash != null) {
                     Text(
-                        text = "VÁŠ HASH:",
+                        text = "VÁŠ HASH",
                         color = OnoRed.copy(alpha = 0.5f),
-                        fontSize = 9.sp,
+                        fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.5.sp,
                         modifier = Modifier.fillMaxWidth(),
                         textAlign = TextAlign.Center
                     )
-                    //Spacer(Modifier.height(0.dp))
 
-                    // Rozdělit hash na 2 řádky po 32 znacích (aby se nelámal)
+                    Spacer(Modifier.height(3.dp))
+
+                    // Rozdělit hash na 2 řádky po 32 znacích
                     val half = (hash.length + 1) / 2
                     val firstHalf = hash.substring(0, half)
                     val secondHalf = hash.substring(half)
 
                     Text(
                         text = "$firstHalf\n$secondHalf",
-                        color = OnoRed.copy(alpha = 0.5f),
-                        fontSize = 9.sp,
+                        color = OnoRed.copy(alpha = 0.45f),
+                        fontSize = 8.sp,
                         fontFamily = FontFamily.Monospace,
-                        lineHeight = 10.sp,
+                        lineHeight = 11.sp,
+                        letterSpacing = 0.5.sp,
                         modifier = Modifier
-                            .fillMaxWidth(),
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
                         textAlign = TextAlign.Center
                     )
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(16.dp))
             }
         }
     }
@@ -1257,7 +1280,7 @@ private fun NearestPumpSection(
             }
             !hasLocation -> {
                 Text(
-                    "Nejbližší:",
+                    "Nejbližší stanice:",
                     color = OnoRed,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
@@ -1271,7 +1294,7 @@ private fun NearestPumpSection(
             }
             else -> {
                 Text(
-                    "Nejbližší:",
+                    "Nejbližší stanice:",
                     color = OnoRed,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
@@ -1601,7 +1624,7 @@ private fun ProductGroup(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
             ) {
-                Text(product.displayName, color = OnoRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text(product.displayName + " (" + product.shortName + ")", color = OnoRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
                 Switch(
                     checked = checked,
                     onCheckedChange = { isChecked ->
