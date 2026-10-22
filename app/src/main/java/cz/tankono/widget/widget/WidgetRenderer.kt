@@ -106,51 +106,37 @@ object WidgetRenderer {
     }
 
     /**
-     * Získá nejbližší pumpu s cache fallbackem.
-     *
-     * DŮLEŽITÉ: Nikdy nevrací null, pokud existuje cache.
-     * Tím se zajistí, že widget po probuzení displeje
-     * neztratí informaci o nejbližší stanici.
+     * Získá nejbližší pumpu. Nejdříve zjistí polohu (nebo vytáhne z cache),
+     * a pak vždy znovu přepočítá vzdálenost ke všem pumpám v DB.
      */
     private suspend fun resolveNearestPumpWithCache(
         context: Context,
         settingsStore: SettingsStore
     ): Pair<PumpEntity, Double>? {
-        // 1. Zkus aktuální polohu
-        val fresh = findNearestPumpForWidget(context)
-        if (fresh != null) {
-            val (pump, dist) = fresh
-            if (pump.lat != null && pump.lng != null) {
-                settingsStore.saveCachedNearestPump(
-                    CachedNearestPump(
-                        name = pump.name,
-                        distanceKm = dist,
-                        lat = pump.lat,
-                        lng = pump.lng
-                    )
-                )
-                AppLogger.i("Widget: FRESH → ${pump.name}, ${"%.1f".format(dist)} km (cache uložena)")
+        // 1. Zkusíme zjistit polohu (fresh nebo lastLocation)
+        var loc = LocationProvider.getCurrentLocation(context)
+        
+        if (loc != null) {
+            // Úspěch, uložíme si ji pro příště
+            settingsStore.saveCachedLocation(loc.first, loc.second)
+            AppLogger.d("Widget: Poloha získána (${"%.4f".format(loc.first)}, ${"%.4f".format(loc.second)})")
+        } else {
+            // 2. Selhalo, zkusíme cache
+            loc = settingsStore.getCachedLocation()
+            if (loc != null) {
+                AppLogger.w("Widget: Aktuální poloha selhala, používám cache (${"%.4f".format(loc.first)}, ${"%.4f".format(loc.second)})")
             }
-            return fresh
         }
 
-        // 2. Fallback na cache – VŽDY použij, když existuje
-        val cached = settingsStore.getCachedNearestPump()
-        if (cached != null) {
-            AppLogger.i("Widget: CACHE → ${cached.name}, ${"%.1f".format(cached.distanceKm)} km (fresh selhal)")
-            val pump = PumpEntity(
-                id = -1,
-                name = cached.name,
-                detailUrl = "",
-                lat = cached.lat,
-                lng = cached.lng,
-                lastUpdated = 0L
-            )
-            return pump to cached.distanceKm
+        // 3. Pokud nemáme polohu ani v cache, končíme
+        if (loc == null) {
+            AppLogger.w("Widget: Žádná poloha k dispozici")
+            return null
         }
 
-        AppLogger.w("Widget: ani fresh, ani cache → vracím null")
-        return null
+        // 4. VŽDY přepočítáme nejbližší pumpu podle aktuální (nebo uložené) polohy
+        val pumps = PumpRepository(context).getAllSortedByDistance(loc.first, loc.second)
+        return pumps.firstOrNull()
     }
 
     /**

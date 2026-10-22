@@ -4,62 +4,76 @@ import android.annotation.SuppressLint
 import android.content.Context
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
 /**
- * Pomocník pro získání aktuální polohy pomocí FusedLocationProviderClient.
- *
- * POZOR: Vyžaduje runtime oprávnění ACCESS_FINE_LOCATION nebo ACCESS_COARSE_LOCATION.
- * Pokud oprávnění není uděleno, vrátí null (nikdy nevyhodí SecurityException).
+ * Pomocník pro získání aktuální polohy.
+ * Ošetřuje omezení Androidu pro běh na pozadí.
  */
 object LocationProvider {
 
-    /**
-     * Získá aktuální polohu.
-     * 1. Zkusí poslední známou polohu (rychlé).
-     * 2. Pokud null, vyžádá fresh fix (pomalejší, přesnější).
-     */
     @SuppressLint("MissingPermission")
-    suspend fun getCurrentLocation(context: Context): Pair<Double, Double>? =
-        suspendCancellableCoroutine { cont ->
-            val client = LocationServices.getFusedLocationProviderClient(context)
+    suspend fun getCurrentLocation(context: Context): Pair<Double, Double>? {
+        val client = LocationServices.getFusedLocationProviderClient(context)
 
-            try {
-                client.lastLocation
+        // 1. Zkusit poslední známou polohu (je okamžitě dostupná a nezatěžuje baterku)
+        val lastLoc = suspendCancellableCoroutine<android.location.Location?> { cont ->
+            client.lastLocation
+                .addOnSuccessListener { if (cont.isActive) cont.resume(it) }
+                .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+        }
+
+        if (lastLoc != null) {
+            // Pokud je poloha mladší než 15 minut, považujeme ji za aktuální
+            val ageMs = System.currentTimeMillis() - lastLoc.time
+            if (ageMs < 15 * 60 * 1000) {
+                AppLogger.d("LocationProvider: lastLocation = ${lastLoc.latitude}, ${lastLoc.longitude} (stáří: ${ageMs / 1000}s)")
+                return lastLoc.latitude to lastLoc.longitude
+            } else {
+                AppLogger.d("LocationProvider: lastLocation je stará (${ageMs / 1000 / 60} min), zkouším fresh fix")
+            }
+        } else {
+            AppLogger.d("LocationProvider: lastLocation null, zkouším fresh fix")
+        }
+
+        // 2. Zkusit čerstvý fix s timeoutem 10 sekund
+        val freshLoc = withTimeoutOrNull(10_000L) {
+            suspendCancellableCoroutine<android.location.Location?> { cont ->
+                // OPRAVA: Android 12+ striktně vyžaduje CancellationToken
+                val cancellationTokenSource = CancellationTokenSource()
+                cont.invokeOnCancellation { cancellationTokenSource.cancel() }
+
+                client.getCurrentLocation(
+                    Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                    cancellationTokenSource.token
+                )
                     .addOnSuccessListener { loc ->
-                        if (loc != null) {
-                            AppLogger.d("LocationProvider: lastLocation = ${loc.latitude}, ${loc.longitude}")
-                            if (cont.isActive) cont.resume(loc.latitude to loc.longitude)
-                        } else {
-                            AppLogger.d("LocationProvider: lastLocation null, zkouším fresh fix")
-                            client.getCurrentLocation(
-                                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
-                                null
-                            )
-                                .addOnSuccessListener { fresh ->
-                                    if (fresh != null) {
-                                        AppLogger.d("LocationProvider: fresh = ${fresh.latitude}, ${fresh.longitude}")
-                                    } else {
-                                        AppLogger.w("LocationProvider: fresh location null")
-                                    }
-                                    if (cont.isActive) {
-                                        cont.resume(fresh?.let { it.latitude to it.longitude })
-                                    }
-                                }
-                                .addOnFailureListener { t ->
-                                    AppLogger.e("LocationProvider: fresh location selhalo", t)
-                                    if (cont.isActive) cont.resume(null)
-                                }
+                        if (cont.isActive) {
+                            if (loc != null) AppLogger.d("LocationProvider: fresh = ${loc.latitude}, ${loc.longitude}")
+                            else AppLogger.w("LocationProvider: fresh location null")
+                            cont.resume(loc)
                         }
                     }
                     .addOnFailureListener { t ->
-                        AppLogger.e("LocationProvider: lastLocation selhalo", t)
+                        AppLogger.e("LocationProvider: fresh location selhalo", t)
                         if (cont.isActive) cont.resume(null)
                     }
-            } catch (t: Throwable) {
-                AppLogger.e("LocationProvider: výjimka", t)
-                if (cont.isActive) cont.resume(null)
             }
         }
+
+        if (freshLoc != null) {
+            return freshLoc.latitude to freshLoc.longitude
+        }
+
+        // 3. Fallback: Když fresh selže, vezmeme si alespoň tu starou
+        if (lastLoc != null) {
+            AppLogger.w("LocationProvider: fresh fix selhal, používám starou lastLocation")
+            return lastLoc.latitude to lastLoc.longitude
+        }
+
+        return null
+    }
 }
