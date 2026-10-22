@@ -104,6 +104,15 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+
+private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
@@ -444,6 +453,7 @@ private fun SettingsScreen(
     var userLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
     var showAllPumpsSheet by remember { mutableStateOf(false) }
     var navTargetPump by remember { mutableStateOf<PumpEntity?>(null) }
+    var showQrDialog by remember { mutableStateOf(false) }
 
     // Nainstalované navigační appky
     val installedNavApps = remember {
@@ -1002,6 +1012,31 @@ private fun SettingsScreen(
                     Text("Nastavení baterie")
                 }
 
+                // ---- Sdílení aplikace ----
+                OutlinedButton(
+                    onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "Tank ONO widget")
+                            putExtra(Intent.EXTRA_TEXT, "Zkus tento super widget na ceny Tank ONO! Stáhneš ho zde:\n$GITHUB_URL")
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Sdílet aplikaci"))
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Sdílet aplikaci")
+                }
+
+                // ---- QR kód ----
+                OutlinedButton(
+                    onClick = { showQrDialog = true },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Ukázat QR kód")
+                }
+
                 OutlinedButton(
                     onClick = onExportLog,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -1129,6 +1164,10 @@ private fun SettingsScreen(
                 navTargetPump = pump
             }
         )
+    }
+
+    if (showQrDialog) {
+        QrCodeDialog(onDismiss = { showQrDialog = false })
     }
 
     // Rovnou navigovat (bez dialogu)
@@ -1682,6 +1721,85 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     ) {
         Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
+
+    // =============================================================================
+    // QR KÓD A SDÍLENÍ
+    // =============================================================================
+
+    /**
+    * Vygeneruje QR kód jako ImageBitmap.
+    */
+    private fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
+        val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        for (x in 0 until size) {
+            for (y in 0 until size) {
+                bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+            }
+        }
+        return bitmap.asImageBitmap()
+    }
+
+    /**
+    * Dialog zobrazující QR kód pro sdílení aplikace.
+    */
+    @Composable
+    private fun QrCodeDialog(
+        onDismiss: () -> Unit
+    ) {
+        val qrBitmap = remember { generateQrCode(GITHUB_URL) }
+
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "Naskenuj a sdílej",
+                    color = OnoRed,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Naskenuj tento QR kód telefonem a pošli odkaz kamarádovi.",
+                        color = OnoRed.copy(alpha = 0.7f),
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Image(
+                        bitmap = qrBitmap,
+                        contentDescription = "QR kód pro stažení aplikace",
+                        modifier = Modifier
+                            .size(240.dp)
+                            .border(4.dp, OnoRed, RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = GITHUB_URL,
+                        color = OnoRed,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Zavřít", color = OnoRed, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = OnoYellow
+        )
+    }
+
 }
 
 private fun formatTime(minutes: Int): String {

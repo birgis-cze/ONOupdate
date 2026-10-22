@@ -116,4 +116,7 @@ dependencies {
 
     // Google Play Services – Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // QR kód
+    implementation("com.google.zxing:core:3.5.3")
 }
