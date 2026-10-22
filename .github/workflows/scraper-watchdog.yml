@@ -1,0 +1,25 @@
+name: Hlídací pes Tank ONO
+
+on:
+  schedule:
+    # Bude běžet každý den v 08:00 ráno (UTC čas)
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Umožní spustit ručně pro test
+
+jobs:
+  check-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run scraper check
+        run: python check_scraper.py
