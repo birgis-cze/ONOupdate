@@ -111,6 +111,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
+import androidx.compose.ui.graphics.ImageBitmap
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -1072,6 +1073,13 @@ private fun SettingsScreen(
                                 fontSize = 10.sp
                             )) {
                                 append("Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: Jirka Zeman")
+                                append("\n")
+                                withStyle(SpanStyle(
+                                    color = OnoRed.copy(alpha = 0.5f),
+                                    fontSize = 8.sp
+                                )) {
+                                    append("Vytvořeno ve spolupráci s Google Gemini")
+                                }
                             }
                             append("\n")
 
@@ -1721,85 +1729,6 @@ private fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit
     ) {
         Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
-
-    // =============================================================================
-    // QR KÓD A SDÍLENÍ
-    // =============================================================================
-
-    /**
-    * Vygeneruje QR kód jako ImageBitmap.
-    */
-    private fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
-        val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-            }
-        }
-        return bitmap.asImageBitmap()
-    }
-
-    /**
-    * Dialog zobrazující QR kód pro sdílení aplikace.
-    */
-    @Composable
-    private fun QrCodeDialog(
-        onDismiss: () -> Unit
-    ) {
-        val qrBitmap = remember { generateQrCode(GITHUB_URL) }
-
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = {
-                Text(
-                    text = "Naskenuj a sdílej",
-                    color = OnoRed,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Naskenuj tento QR kód telefonem a pošli odkaz kamarádovi.",
-                        color = OnoRed.copy(alpha = 0.7f),
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                    Image(
-                        bitmap = qrBitmap,
-                        contentDescription = "QR kód pro stažení aplikace",
-                        modifier = Modifier
-                            .size(240.dp)
-                            .border(4.dp, OnoRed, RoundedCornerShape(8.dp))
-                            .padding(8.dp)
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        text = GITHUB_URL,
-                        color = OnoRed,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = onDismiss) {
-                    Text("Zavřít", color = OnoRed, fontWeight = FontWeight.Bold)
-                }
-            },
-            containerColor = OnoYellow
-        )
-    }
-
 }
 
 private fun formatTime(minutes: Int): String {
@@ -1807,4 +1736,82 @@ private fun formatTime(minutes: Int): String {
     val h = (minutes / 60) % 24
     val m = minutes % 60
     return "%d:%02d".format(h, m)
+}
+
+// =============================================================================
+// QR KÓD A SDÍLENÍ
+// =============================================================================
+
+/**
+ * Vygeneruje QR kód jako ImageBitmap.
+ */
+private fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
+    val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    for (x in 0 until size) {
+        for (y in 0 until size) {
+            bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+        }
+    }
+    return bitmap.asImageBitmap()
+}
+
+/**
+ * Dialog zobrazující QR kód pro sdílení aplikace.
+ */
+@Composable
+private fun QrCodeDialog(
+    onDismiss: () -> Unit
+) {
+    val qrBitmap = remember { generateQrCode(GITHUB_URL) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Naskenuj a sdílej",
+                color = OnoRed,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Naskenuj tento QR kód telefonem a pošli odkaz kamarádovi.",
+                    color = OnoRed.copy(alpha = 0.7f),
+                    fontSize = 13.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                Image(
+                    bitmap = qrBitmap,
+                    contentDescription = "QR kód pro stažení aplikace",
+                    modifier = Modifier
+                        .size(240.dp)
+                        .border(4.dp, OnoRed, RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = GITHUB_URL,
+                    color = OnoRed,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Zavřít", color = OnoRed, fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = OnoYellow
+    )
 }
