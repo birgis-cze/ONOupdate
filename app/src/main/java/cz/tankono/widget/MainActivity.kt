@@ -303,7 +303,7 @@ class MainActivity : ComponentActivity() {
 
             // Pokud uživatel vypnul zobrazení nejbližší pumpy, smažeme cache
             if (!settings.showNearestPump) {
-                SettingsStore(this@MainActivity).clearCachedNearestPump()
+                SettingsStore(this@MainActivity).clearCachedLocation()
             }
 
             WorkScheduler.schedule(this@MainActivity)
