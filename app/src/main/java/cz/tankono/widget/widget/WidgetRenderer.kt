@@ -82,14 +82,15 @@ object WidgetRenderer {
         AppLogger.d("=== RENDER widgetId=$widgetId ===")
         scope.launch {
             try {
-                val settings = SettingsStore(context).settings.first()
+                val settingsStore = SettingsStore(context)
+                val settings = settingsStore.settings.first()
                 val state = PriceRepository(context).loadState()
 
                 // Pokud má uživatel zapnutou nejbližší stanici, zjistit ji
                 val nearestPump: Pair<PumpEntity, Double>? =
                     if (settings.showNearestPump) {
                         withContext(Dispatchers.IO) {
-                            findNearestPumpForWidget(context)
+                            resolveNearestPumpWithCache(context, settingsStore) // ← OPRAVENO
                         }
                     } else null
 
