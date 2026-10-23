@@ -70,6 +70,12 @@ class SettingsStore(private val context: Context) {
         // Cache poslední známé polohy
         val CACHED_LAT = stringPreferencesKey("cached_lat")
         val CACHED_LNG = stringPreferencesKey("cached_lng")
+
+        // Updating
+        val PENDING_UPDATE_VERSION   = stringPreferencesKey("pending_update_version")
+        val PENDING_UPDATE_SINCE     = longPreferencesKey("pending_update_since")
+        val LAST_NOTIFIED_VERSION    = stringPreferencesKey("last_notified_version")
+
     }
 
     val settings: Flow<WidgetSettings> = context.settingsDataStore.data.map { p ->
@@ -138,5 +144,38 @@ class SettingsStore(private val context: Context) {
             prefs.remove(Keys.CACHED_LAT)
             prefs.remove(Keys.CACHED_LNG)
         }
+    }
+
+    // ---------- SLEDOVÁNÍ NOVÝCH VERZÍ ----------
+
+    suspend fun savePendingUpdateInfo(version: String, since: Long) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[Keys.PENDING_UPDATE_VERSION] = version
+            prefs[Keys.PENDING_UPDATE_SINCE] = since
+        }
+    }
+
+    suspend fun getPendingUpdateInfo(): Pair<String, Long>? {
+        val p = context.settingsDataStore.data.first()
+        val version = p[Keys.PENDING_UPDATE_VERSION] ?: return null
+        val since = p[Keys.PENDING_UPDATE_SINCE] ?: return null
+        return version to since
+    }
+
+    suspend fun clearPendingUpdateInfo() {
+        context.settingsDataStore.edit { prefs ->
+            prefs.remove(Keys.PENDING_UPDATE_VERSION)
+            prefs.remove(Keys.PENDING_UPDATE_SINCE)
+        }
+    }
+
+    suspend fun saveLastNotifiedVersion(version: String) {
+        context.settingsDataStore.edit { prefs ->
+            prefs[Keys.LAST_NOTIFIED_VERSION] = version
+        }
+    }
+
+    suspend fun getLastNotifiedVersion(): String? {
+        return context.settingsDataStore.data.first()[Keys.LAST_NOTIFIED_VERSION]
     }
 }

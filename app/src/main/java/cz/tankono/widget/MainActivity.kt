@@ -269,6 +269,7 @@ class MainActivity : ComponentActivity() {
 
         WorkScheduler.schedule(this)
         WorkScheduler.schedulePumpSync(this)
+        WorkScheduler.scheduleUpdateCheck(this) // <-- NOVÉ
     }
 
     override fun onStop() {

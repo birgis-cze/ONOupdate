@@ -90,4 +90,63 @@ object Notifier {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         mgr.cancel(NOTIF_ID_PROGRESS)
     }
+
+    private const val CHANNEL_UPDATE_ID = "tankono_update_available"
+    private const val NOTIF_ID_UPDATE = 1003
+
+    /**
+     * Kanál pro upozornění na novou verzi aplikace (tichý, ale viditelný).
+     */
+    private fun ensureUpdateChannel(ctx: Context) {
+        val mgr = ctx.getSystemService(NotificationManager::class.java)
+        if (mgr.getNotificationChannel(CHANNEL_UPDATE_ID) == null) {
+            val channel = NotificationChannel(
+                CHANNEL_UPDATE_ID,
+                "Nová verze aplikace",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Tiché upozornění na dostupnou novou verzi aplikace"
+                setSound(null, null)          // Ticho
+                enableVibration(false)         // Bez vibrací
+                enableLights(false)
+                setShowBadge(true)            // Ale tečka na ikoně ano
+            }
+            mgr.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * Tiché upozornění, že je dostupná nová verze aplikace.
+     * Kliknutím se otevře aplikace, kde je připravené tlačítko "Stáhnout verzi".
+     */
+    fun notifyUpdateAvailable(ctx: Context, version: String) {
+        ensureUpdateChannel(ctx)
+
+        // Klik otevře aplikaci
+        val intent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+        val pendingIntent = if (intent != null) {
+            android.app.PendingIntent.getActivity(
+                ctx, 0, intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+        } else null
+
+        val notification = NotificationCompat.Builder(ctx, CHANNEL_UPDATE_ID)
+            .setSmallIcon(R.drawable.ic_notif_station)
+            .setContentTitle("Nová verze Tank ONO")
+            .setContentText("K dispozici je verze $version. Klepněte pro aktualizaci.")
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("K dispozici je nová verze $version. Klepněte pro otevření aplikace a stažení."))
+            .setAutoCancel(true)
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .apply { if (pendingIntent != null) setContentIntent(pendingIntent) }
+            .build()
+
+        val mgr = ctx.getSystemService(NotificationManager::class.java)
+        mgr.notify(NOTIF_ID_UPDATE, notification)
+    }
 }
