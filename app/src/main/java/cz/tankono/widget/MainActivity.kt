@@ -1947,7 +1947,7 @@ private fun QrCodeDialog(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Naskenuj tento QR kód telefonem a pošli odkaz kamarádovi.",
+                    text = "Naskenuj tento QR kód telefonem.",
                     color = OnoRed.copy(alpha = 0.7f),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
@@ -1969,7 +1969,6 @@ private fun QrCodeDialog(
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
                     textAlign = TextAlign.Center,
-                    textDecoration = TextDecoration.Underline,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
