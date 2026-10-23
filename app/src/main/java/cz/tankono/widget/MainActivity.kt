@@ -252,7 +252,6 @@ class MainActivity : ComponentActivity() {
                     onExportLog = { exportLog() },
                     onOpenBatterySettings = { openBatterySettings() },
                     onRequestLocation = { requestLocationPermissionIfNeeded() },
-                    onRequestNotification = { requestNotificationPermissionIfNeeded() },
                     onInstallApk = { file -> installApk(file) },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
@@ -463,7 +462,6 @@ private fun SettingsScreen(
     onExportLog: () -> Unit,
     onOpenBatterySettings: () -> Unit,
     onRequestLocation: () -> Unit,
-    onRequestNotification: () -> Unit,
     onInstallApk: (File) -> Boolean,
     isConfiguring: Boolean
 ) {
@@ -778,7 +776,13 @@ private fun SettingsScreen(
                         }
                         if (!hasNotif) {
                             OutlinedButton(
-                                onClick = onRequestNotification,
+                                onClick = {
+                                    // Otevře přímo nastavení notifikací pro tuto aplikaci
+                                    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                },
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
