@@ -62,8 +62,12 @@ class PriceRepository(private val context: Context) {
         // 3. Datum stejné + máme data → jen aktualizovat fetchedAt
         if (storedPublished != null && news == storedPublished && hasData) {
             AppLogger.d("Datum stejné + máme ceny → jen aktualizuji fetchedAt")
-            context.priceDataStore.edit { p ->
-                p[Keys.FETCHED_NEW] = System.currentTimeMillis()
+            try {
+                context.priceDataStore.edit { p ->
+                    p[Keys.FETCHED_NEW] = System.currentTimeMillis()
+                }
+            } catch (t: Throwable) {
+                AppLogger.e("PriceRepository: Uložení fetchedAt (refresh) selhalo", t)
             }
             return false
         }
@@ -92,26 +96,30 @@ class PriceRepository(private val context: Context) {
         AppLogger.d("Ceník stažen: ${snapshot.entries.size} položek")
 
         // 6. ATOMICKÝ zápis: datum + ceny společně v jednom edit bloku
-        context.priceDataStore.edit { p ->
-            val oldPublished = p[Keys.PUBLISHED_NEW]
-            val oldFetched   = p[Keys.FETCHED_NEW]
-            val oldData      = p[Keys.DATA_NEW]
+        try {
+            context.priceDataStore.edit { p ->
+                val oldPublished = p[Keys.PUBLISHED_NEW]
+                val oldFetched   = p[Keys.FETCHED_NEW]
+                val oldData      = p[Keys.DATA_NEW]
 
-            // Posunout old ← new jen pokud máme skutečná stará data
-            if (oldPublished != null && oldData != null && oldData.contains(":")) {
-                p[Keys.PUBLISHED_OLD] = oldPublished
-                p[Keys.FETCHED_OLD]   = oldFetched ?: 0L
-                p[Keys.DATA_OLD]      = oldData
+                // Posunout old ← new jen pokud máme skutečná stará data
+                if (oldPublished != null && oldData != null && oldData.contains(":")) {
+                    p[Keys.PUBLISHED_OLD] = oldPublished
+                    p[Keys.FETCHED_OLD]   = oldFetched ?: 0L
+                    p[Keys.DATA_OLD]      = oldData
+                }
+
+                // Napsat nové datum + ceny SPOLEČNĚ
+                p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: news
+                p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
+                p[Keys.DATA_NEW]      = serialize(snapshot)
             }
-
-            // Napsat nové datum + ceny SPOLEČNĚ
-            p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: news
-            p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
-            p[Keys.DATA_NEW]      = serialize(snapshot)
+            AppLogger.i("Ceník uložen do DataStore (${snapshot.entries.size} položek)")
+            return true
+        } catch (t: Throwable) {
+            AppLogger.e("PriceRepository: Uložení nového ceníku selhalo", t)
+            return false
         }
-
-        AppLogger.i("Ceník uložen do DataStore (${snapshot.entries.size} položek)")
-        return true
     }
 
     /**
@@ -136,30 +144,39 @@ class PriceRepository(private val context: Context) {
         // Stejné datum → jen aktualizovat fetchedAt (ceny jsou stejné)
         if (stored != null && stored == snapshot.publishedAt) {
             AppLogger.d("forceRefresh: datum stejné, aktualizuji jen fetchedAt")
-            context.priceDataStore.edit { p ->
-                p[Keys.FETCHED_NEW] = snapshot.fetchedAt
+            try {
+                context.priceDataStore.edit { p ->
+                    p[Keys.FETCHED_NEW] = snapshot.fetchedAt
+                }
+            } catch (t: Throwable) {
+                AppLogger.e("PriceRepository: Uložení fetchedAt (forceRefresh) selhalo", t)
             }
             return false
         }
 
         // Nové datum → posunout old ← new a uložit nové
         AppLogger.i("forceRefresh: nová data, posouvám old ← new")
-        context.priceDataStore.edit { p ->
-            val oldPublished = p[Keys.PUBLISHED_NEW]
-            val oldFetched   = p[Keys.FETCHED_NEW]
-            val oldData      = p[Keys.DATA_NEW]
+        try {
+            context.priceDataStore.edit { p ->
+                val oldPublished = p[Keys.PUBLISHED_NEW]
+                val oldFetched   = p[Keys.FETCHED_NEW]
+                val oldData      = p[Keys.DATA_NEW]
 
-            if (oldPublished != null && oldData != null && oldData.contains(":")) {
-                p[Keys.PUBLISHED_OLD] = oldPublished
-                p[Keys.FETCHED_OLD]   = oldFetched ?: 0L
-                p[Keys.DATA_OLD]      = oldData
+                if (oldPublished != null && oldData != null && oldData.contains(":")) {
+                    p[Keys.PUBLISHED_OLD] = oldPublished
+                    p[Keys.FETCHED_OLD]   = oldFetched ?: 0L
+                    p[Keys.DATA_OLD]      = oldData
+                }
+
+                p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: ""
+                p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
+                p[Keys.DATA_NEW]      = serialize(snapshot)
             }
-
-            p[Keys.PUBLISHED_NEW] = snapshot.publishedAt ?: ""
-            p[Keys.FETCHED_NEW]   = snapshot.fetchedAt
-            p[Keys.DATA_NEW]      = serialize(snapshot)
+            return true
+        } catch (t: Throwable) {
+            AppLogger.e("PriceRepository: Uložení nových dat (forceRefresh) selhalo", t)
+            return false
         }
-        return true
     }
 
     suspend fun loadState(): PriceState {

@@ -8,12 +8,14 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import androidx.compose.runtime.Immutable
 
 object UpdateChecker {
 
     private const val OWNER = "birgis-cze"
     private const val REPO = "ONOupdate"
-
+    
+    @Immutable
     data class UpdateInfo(
         val version: String,
         val downloadApiUrl: String,

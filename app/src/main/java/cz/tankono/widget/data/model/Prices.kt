@@ -1,6 +1,9 @@
 package cz.tankono.widget.data.model
 
+import androidx.compose.runtime.Immutable
+
 /** Jedna cenová položka produktu. */
+@Immutable
 data class PriceEntry(
     val product: Product,
     /** Cena v Kč v haléřích (4250 = 42,50 Kč). */
@@ -10,6 +13,7 @@ data class PriceEntry(
 )
 
 /** Snímek ceníku v jednom okamžiku. */
+@Immutable
 data class PriceSnapshot(
     val entries: Map<Product, PriceEntry>,
     /** Datum a čas zveřejnění (řetězec ze stránky aktualit), např. "10.9.2026 (14:42:44)". */
@@ -19,6 +23,7 @@ data class PriceSnapshot(
 )
 
 /** Stav – aktuální snímek + předchozí (pro zobrazení trendu). */
+@Immutable
 data class PriceState(
     val current: PriceSnapshot?,
     val previous: PriceSnapshot?

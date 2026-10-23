@@ -1,6 +1,7 @@
 package cz.tankono.widget.data.prefs
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -10,6 +11,7 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.Product
+import cz.tankono.widget.util.AppLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -22,6 +24,7 @@ enum class ThemeMode(val id: String, val displayName: String) {
     DARK("dark", "Tmavý")
 }
 
+@Immutable
 data class WidgetSettings(
     val visibleProducts: Set<Product> = Product.entries.toSet(),
     val currency: Currency = Currency.CZK,
@@ -44,6 +47,7 @@ data class WidgetSettings(
  * Drží se i po vypnutí displeje / restartu launcheru,
  * takže widget neztratí informaci, když se poloha právě nedaří získat.
  */
+@Immutable
 data class CachedNearestPump(
     val name: String,
     val distanceKm: Double,
@@ -75,7 +79,6 @@ class SettingsStore(private val context: Context) {
         val PENDING_UPDATE_VERSION   = stringPreferencesKey("pending_update_version")
         val PENDING_UPDATE_SINCE     = longPreferencesKey("pending_update_since")
         val LAST_NOTIFIED_VERSION    = stringPreferencesKey("last_notified_version")
-
     }
 
     val settings: Flow<WidgetSettings> = context.settingsDataStore.data.map { p ->
@@ -100,23 +103,31 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun save(s: WidgetSettings) {
-        context.settingsDataStore.edit { p ->
-            p[Keys.VISIBLE_PRODUCTS] = s.visibleProducts.map { it.id }.toSet()
-            p[Keys.CURRENCY]         = s.currency.name
-            p[Keys.USE_SHORT_NAMES]  = s.useShortNames
-            p[Keys.PEAK_START]       = s.peakStartMinutes
-            p[Keys.PEAK_END]         = s.peakEndMinutes
-            p[Keys.INTERVAL_PEAK]    = s.intervalPeakMin
-            p[Keys.INTERVAL_OFF]     = s.intervalOffPeakMin
-            p[Keys.FONT_SIZE]        = s.fontSizeSp
-            p[Keys.PREFERRED_NAV]    = s.preferredNavigation.id
-            p[Keys.SHOW_NEAREST_PUMP]= s.showNearestPump
-            p[Keys.THEME_MODE]       = s.themeMode.id
+        try {
+            context.settingsDataStore.edit { p ->
+                p[Keys.VISIBLE_PRODUCTS] = s.visibleProducts.map { it.id }.toSet()
+                p[Keys.CURRENCY]         = s.currency.name
+                p[Keys.USE_SHORT_NAMES]  = s.useShortNames
+                p[Keys.PEAK_START]       = s.peakStartMinutes
+                p[Keys.PEAK_END]         = s.peakEndMinutes
+                p[Keys.INTERVAL_PEAK]    = s.intervalPeakMin
+                p[Keys.INTERVAL_OFF]     = s.intervalOffPeakMin
+                p[Keys.FONT_SIZE]        = s.fontSizeSp
+                p[Keys.PREFERRED_NAV]    = s.preferredNavigation.id
+                p[Keys.SHOW_NEAREST_PUMP]= s.showNearestPump
+                p[Keys.THEME_MODE]       = s.themeMode.id
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Uložení nastavení selhalo", t)
         }
     }
 
     suspend fun saveLastPumpSync(time: Long) {
-        context.settingsDataStore.edit { it[Keys.LAST_PUMP_SYNC] = time }
+        try {
+            context.settingsDataStore.edit { it[Keys.LAST_PUMP_SYNC] = time }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Uložení času sync pump selhalo", t)
+        }
     }
 
     suspend fun getLastPumpSync(): Long {
@@ -126,9 +137,13 @@ class SettingsStore(private val context: Context) {
     // ---------- CACHE POLOHY ----------
 
     suspend fun saveCachedLocation(lat: Double, lng: Double) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[Keys.CACHED_LAT] = lat.toString()
-            prefs[Keys.CACHED_LNG] = lng.toString()
+        try {
+            context.settingsDataStore.edit { prefs ->
+                prefs[Keys.CACHED_LAT] = lat.toString()
+                prefs[Keys.CACHED_LNG] = lng.toString()
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Uložení polohy selhalo", t)
         }
     }
 
@@ -140,18 +155,26 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun clearCachedLocation() {
-        context.settingsDataStore.edit { prefs ->
-            prefs.remove(Keys.CACHED_LAT)
-            prefs.remove(Keys.CACHED_LNG)
+        try {
+            context.settingsDataStore.edit { prefs ->
+                prefs.remove(Keys.CACHED_LAT)
+                prefs.remove(Keys.CACHED_LNG)
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Smazání polohy selhalo", t)
         }
     }
 
     // ---------- SLEDOVÁNÍ NOVÝCH VERZÍ ----------
 
     suspend fun savePendingUpdateInfo(version: String, since: Long) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[Keys.PENDING_UPDATE_VERSION] = version
-            prefs[Keys.PENDING_UPDATE_SINCE] = since
+        try {
+            context.settingsDataStore.edit { prefs ->
+                prefs[Keys.PENDING_UPDATE_VERSION] = version
+                prefs[Keys.PENDING_UPDATE_SINCE] = since
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Uložení info o nové verzi selhalo", t)
         }
     }
 
@@ -163,15 +186,23 @@ class SettingsStore(private val context: Context) {
     }
 
     suspend fun clearPendingUpdateInfo() {
-        context.settingsDataStore.edit { prefs ->
-            prefs.remove(Keys.PENDING_UPDATE_VERSION)
-            prefs.remove(Keys.PENDING_UPDATE_SINCE)
+        try {
+            context.settingsDataStore.edit { prefs ->
+                prefs.remove(Keys.PENDING_UPDATE_VERSION)
+                prefs.remove(Keys.PENDING_UPDATE_SINCE)
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Smazání info o nové verzi selhalo", t)
         }
     }
 
     suspend fun saveLastNotifiedVersion(version: String) {
-        context.settingsDataStore.edit { prefs ->
-            prefs[Keys.LAST_NOTIFIED_VERSION] = version
+        try {
+            context.settingsDataStore.edit { prefs ->
+                prefs[Keys.LAST_NOTIFIED_VERSION] = version
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("SettingsStore: Uložení poslední notifikované verze selhalo", t)
         }
     }
 

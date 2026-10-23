@@ -2,6 +2,7 @@ package cz.tankono.widget.data.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.compose.runtime.Immutable
 
 /**
  * Entita čerpací stanice Tank ONO.
@@ -13,6 +14,7 @@ import androidx.room.PrimaryKey
  * https://www.tank-ono.cz/cz/index.php?page=pumpcard&pump=X
  * (přes zkrácený goo.gl odkaz na Google Maps)
  */
+@Immutable
 @Entity(tableName = "pumps")
 data class PumpEntity(
     /** ID pumpy ze serveru (1–46) */

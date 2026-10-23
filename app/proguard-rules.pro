@@ -21,3 +21,7 @@
 
 # Zachovat DataStore
 -keep class androidx.datastore.** { *; }
+
+# Zachovat ZXing (QR kód)
+-keep class com.google.zxing.** { *; }
+-dontwarn com.google.zxing.**
