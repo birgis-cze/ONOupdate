@@ -1221,7 +1221,7 @@ private fun SettingsScreen(
                         text = buildAnnotatedString {
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.6f),
-                                fontSize = 11.sp
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )) {
                                 append("Tank ONO widget v${BuildConfig.VERSION_NAME}\nAutor: Jirka Zeman pomocí GEMINI AI")
