@@ -1257,7 +1257,7 @@ private fun SettingsScreen(
                         containerColor = if (isUpdateAvailable) OnoRed else Color.Transparent,
                         contentColor = if (isUpdateAvailable) OnoYellow else OnoRed
                     ),
-                    border = if (isUpdateAvailable) null else BorderStroke(1.dp, OnoRed),
+                    // ZDE BYL PROBLÉM: Odstraněn parametr 'border', aby tlačítko vypadalo naprosto stejně jako ostatní
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     contentPadding = PaddingValues(0.dp),
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
