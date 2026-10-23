@@ -4,6 +4,7 @@ import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -42,6 +44,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,11 +59,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,15 +73,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,6 +91,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
 import cz.tankono.widget.data.db.PumpEntity
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.Product
@@ -104,20 +113,11 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.graphics.Bitmap
-import androidx.compose.foundation.Image
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.MultiFormatWriter
-import androidx.compose.ui.graphics.ImageBitmap
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
-
 
 /**
  * Ořeže "ČS " prefix z názvu stanice pro zobrazení.
@@ -130,8 +130,6 @@ private fun pumpDisplayName(fullName: String): String =
 class MainActivity : ComponentActivity() {
 
     private var configWidgetId: Int = AppWidgetManager.INVALID_APPWIDGET_ID
-
-    // Stav oprávnění k poloze
     private var locationGrantedState by androidx.compose.runtime.mutableStateOf(false)
 
     private val notifPermissionLauncher = registerForActivityResult(
@@ -168,12 +166,9 @@ class MainActivity : ComponentActivity() {
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
 
-        // 1. Jednorázové odeslání hashe (orientační statistika)
         InstallReporter.reportIfNeeded(this)
 
-        // 2. Startup refresh ceníku
-        //    Zajistí, že widget neukazuje staré ceny po instalaci/update/delší době.
-        //    Kontroluje datum z aktualit – pokud je nové, stáhne ceny.
+        // Startup refresh ceníku
         lifecycleScope.launch {
             try {
                 AppLogger.i("Startup refresh: kontroluji ceník…")
@@ -439,7 +434,6 @@ private fun SettingsScreen(
     var isChecking by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
 
-    // Počet evidovaných zařízení (z Apps Scriptu)
     var installCount by remember { mutableStateOf<Int?>(null) }
     var installCountLoading by remember { mutableStateOf(false) }   
     var deviceHash by remember { mutableStateOf<String?>(null) }
@@ -455,6 +449,10 @@ private fun SettingsScreen(
     var showAllPumpsSheet by remember { mutableStateOf(false) }
     var navTargetPump by remember { mutableStateOf<PumpEntity?>(null) }
     var showQrDialog by remember { mutableStateOf(false) }
+
+    // Tajné odemknutí exportu logu a stavy
+    var showExportLog by remember { mutableStateOf(false) }
+    var footerTapCount by remember { mutableIntStateOf(0) }
 
     // Nainstalované navigační appky
     val installedNavApps = remember {
@@ -504,10 +502,7 @@ private fun SettingsScreen(
 
     // Načtení počtu evidovaných zařízení + hashe tohoto zařízení
     LaunchedEffect(Unit) {
-        // Hash zařízení (rychlá lokální operace)
         deviceHash = InstallReporter.getDeviceHash(context)
-
-        // Počet zařízení ze serveru (síťová operace)
         installCountLoading = true
         installCount = InstallReporter.fetchTotalCount()
         installCountLoading = false
@@ -526,15 +521,12 @@ private fun SettingsScreen(
         AppLogger.i("Auto-save: ukládám nastavení (font=${current.fontSizeSp}, nav=${current.preferredNavigation})")
         SettingsStore(context).save(current)
         WorkScheduler.schedule(context)
-        // requestUpdate() volá onStop() v MainActivity
     }
 
     // Načtení pump + polohy
     LaunchedEffect(locationGranted) {
         try {
             val settingsStore = SettingsStore(context)
-
-            // 1. Sync seznamu pump jen pokud uplynulo > 24 h
             val now = System.currentTimeMillis()
             val lastSync = settingsStore.getLastPumpSync()
             val dayMs = 24 * 60 * 60 * 1000L
@@ -549,13 +541,11 @@ private fun SettingsScreen(
                 AppLogger.d("SETTINGS: Sync přeskočen (proběhl nedávno)")
             }
 
-            // 2. GPS pro pumpy bez GPS
             val gpsCount = pumpRepo.refreshGpsForAllPumps()
             if (gpsCount > 0) {
                 AppLogger.i("SETTINGS: Došti GPS pro $gpsCount pump")
             }
 
-            // 3. Poloha uživatele
             if (locationGranted) {
                 AppLogger.i("SETTINGS: Zjišťuji polohu…")
                 val loc = LocationProvider.getCurrentLocation(context)
@@ -691,8 +681,6 @@ private fun SettingsScreen(
 
                 // ---- Navigace ----
                 SettingsCard {
-                    // Řádek s výběrem navigační aplikace
-                    // (zobrazí se jen pokud jsou 2+ nainstalované)
                     if (installedNavApps.size >= 2) {
                         NavigationRow(
                             current = s.preferredNavigation,
@@ -703,7 +691,6 @@ private fun SettingsScreen(
                         )
                     }
 
-                    // Přepínač "Zobrazit nejbližší stanici na widgetu"
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -915,7 +902,6 @@ private fun SettingsScreen(
                 Spacer(Modifier.height(4.dp))
 
                 if (isConfiguring) {
-                    // Při přidávání widgetu – tlačítko nutné
                     Button(
                         onClick = { onSave(s) },
                         enabled = s.visibleProducts.isNotEmpty(),
@@ -928,22 +914,14 @@ private fun SettingsScreen(
                         Text("Přidat widget")
                     }
                 } else {
-                    // V běžném nastavení – ukládá se automaticky
-                    //Text(
-                    //    "Nastavení se ukládá automaticky",
-                    //    color = OnoRed.copy(alpha = 0.6f),
-                    //    fontSize = 11.sp,
-                    //    modifier = Modifier.fillMaxWidth(),
-                    //    textAlign = TextAlign.Center
-                    //)
+                    // Text "Nastavení se ukládá automaticky" je skrytý
                 }
 
                 OutlinedButton(
                     onClick = {
                         onRefresh()
-                        // Po refreshi znovu načíst stav z DataStore
                         scope.launch {
-                            delay(1500)  // počkat, až se data stáhnou a uloží
+                            delay(1500)
                             try {
                                 val repo = cz.tankono.widget.data.repo.PriceRepository(context)
                                 val s = repo.loadState()
@@ -955,7 +933,7 @@ private fun SettingsScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("↻  Aktualizovat data")
+                    Text("Aktualizovat data") // <-- Odebráno emoji ↻
                 }
 
                 OutlinedButton(
@@ -1013,37 +991,44 @@ private fun SettingsScreen(
                     Text("Nastavení baterie")
                 }
 
-                // ---- Sdílení aplikace ----
-                OutlinedButton(
-                    onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "Tank ONO widget")
-                            putExtra(Intent.EXTRA_TEXT, "Zkus tento super widget na ceny Tank ONO! Stáhneš ho zde:\n$GITHUB_URL")
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Sdílet aplikaci"))
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                    modifier = Modifier.fillMaxWidth()
+                // ---- Sdílení aplikace a QR kód (vedle sebe) ----
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Sdílet aplikaci")
+                    OutlinedButton(
+                        onClick = {
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "Tank ONO widget")
+                                putExtra(Intent.EXTRA_TEXT, "Zkus tento super widget na ceny Tank ONO! Stáhneš ho zde:\n$GITHUB_URL")
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Sdílet aplikaci"))
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Sdílet")
+                    }
+
+                    OutlinedButton(
+                        onClick = { showQrDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("QR kód")
+                    }
                 }
 
-                // ---- QR kód ----
-                OutlinedButton(
-                    onClick = { showQrDialog = true },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Ukázat QR kód")
-                }
-
-                OutlinedButton(
-                    onClick = onExportLog,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Exportovat log")
+                // ---- Skryté tlačítko Exportovat log ----
+                if (showExportLog) {
+                    OutlinedButton(
+                        onClick = onExportLog,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Exportovat log")
+                    }
                 }
 
                 // ---- ZÁPATÍ (jeden blok textu) ----
@@ -1053,7 +1038,6 @@ private fun SettingsScreen(
                 ) {
                     Spacer(Modifier.height(8.dp))
 
-                    // Oddělovač
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1064,26 +1048,16 @@ private fun SettingsScreen(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Jeden Text s AnnotatedString – vše v jednom bloku
                     Text(
                         text = buildAnnotatedString {
-                            // --- Autor ---
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.6f),
                                 fontSize = 10.sp
                             )) {
                                 append("Tank ONO widget v${BuildConfig.VERSION_NAME} · autor: Jirka Zeman")
-                                append("\n")
-                                withStyle(SpanStyle(
-                                    color = OnoRed.copy(alpha = 0.5f),
-                                    fontSize = 8.sp
-                                )) {
-                                    append("Vytvořeno ve spolupráci s Google Gemini")
-                                }
                             }
                             append("\n")
 
-                            // --- Počet instalací (tučně) ---
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.85f),
                                 fontSize = 11.sp,
@@ -1097,7 +1071,6 @@ private fun SettingsScreen(
                             }
                             append("\n\n")
 
-                            // --- Info text ---
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.55f),
                                 fontSize = 9.sp
@@ -1113,7 +1086,6 @@ private fun SettingsScreen(
                             }
                             append("\n\n")
 
-                            // --- Odeslaný hash – label ---
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.5f),
                                 fontSize = 8.sp,
@@ -1124,7 +1096,6 @@ private fun SettingsScreen(
                             }
                             append("\n")
 
-                            // --- Odeslaný hash – hodnota (monospace, 2 řádky) ---
                             val hash = deviceHash
                             if (hash != null) {
                                 val half = (hash.length + 1) / 2
@@ -1151,7 +1122,19 @@ private fun SettingsScreen(
                         color = OnoRed,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp),
+                            .padding(horizontal = 12.dp)
+                            // Tajné odemknutí 10x kliknutím na zápatí
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) {
+                                footerTapCount++
+                                if (footerTapCount >= 10) {
+                                    showExportLog = true
+                                    footerTapCount = 0
+                                    Toast.makeText(context, "Debug režim odemčen", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                         textAlign = TextAlign.Center,
                         lineHeight = 13.sp
                     )
@@ -1178,7 +1161,6 @@ private fun SettingsScreen(
         QrCodeDialog(onDismiss = { showQrDialog = false })
     }
 
-    // Rovnou navigovat (bez dialogu)
     navTargetPump?.let { pump ->
         LaunchedEffect(pump) {
             val lat = pump.lat
@@ -1208,7 +1190,6 @@ private fun NavigationRow(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Levý text: "Navigace: Waze"
             Row(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
@@ -1227,7 +1208,6 @@ private fun NavigationRow(
                 )
             }
 
-            // Tlačítko ▼
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -1244,7 +1224,6 @@ private fun NavigationRow(
             }
         }
 
-        // Dropdown menu
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
@@ -1302,7 +1281,6 @@ private fun NearestPumpSection(
     Column(modifier = Modifier.fillMaxWidth()) {
         when {
             nearestPump != null && distanceKm != null -> {
-                // Řádek 1: label "Nejbližší:"
                 Text(
                     "Nejbližší:",
                     color = OnoRed,
@@ -1311,14 +1289,12 @@ private fun NearestPumpSection(
                 )
                 Spacer(Modifier.height(4.dp))
 
-                // Řádek 2+3: adresa + vzdálenost (vlevo), tlačítka M/S (vpravo, vertikálně vystředěná)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, top = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Levý sloupec: adresa + vzdálenost pod sebou
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -1336,7 +1312,6 @@ private fun NearestPumpSection(
                         )
                     }
                     Spacer(Modifier.width(8.dp))
-                    // Pravý sloupec: tlačítka M/S (vertikálně vystředěná díky Row verticalAlignment)
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
