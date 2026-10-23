@@ -194,6 +194,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Vynutíme tmavé (černé) ikony v horní stavové liště, protože pozadí je vždy žluté
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+
+        // Pročistíme cache od starých/nainstalovaných balíčků
+        checkPendingUpdate(this)
+        
         // Pročistíme cache od starých/nainstalovaných balíčků
         checkPendingUpdate(this)
 
@@ -1091,7 +1097,7 @@ private fun SettingsScreen(
                             UpdateState.CHECKING -> "Kontroluji…"
                             UpdateState.DOWNLOADING -> "Stahuji a připravuji…"
                             UpdateState.READY_TO_INSTALL -> "Spustit instalaci (v$displayVersion)"
-                            UpdateState.UP_TO_DATE -> "Zkontrolovat znovu"
+                            UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
                         }
                     )
                 }
