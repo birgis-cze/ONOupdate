@@ -98,6 +98,7 @@ import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.NavigationApp
 import cz.tankono.widget.data.prefs.SettingsStore
+import cz.tankono.widget.data.prefs.ThemeMode
 import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.data.repo.PumpRefreshProgress
@@ -625,40 +626,17 @@ private fun SettingsScreen(
                         fontSize = 13.sp
                     )
 
-                    if (progress !is PumpRefreshProgress.Idle) {
-                        val progressText = when (val p = progress) {
-                            is PumpRefreshProgress.FetchingList -> "Stahuji seznam stanic…"
-                            is PumpRefreshProgress.FetchingGps  -> "Stahuji GPS ${p.done}/${p.total}…"
-                            is PumpRefreshProgress.Done         -> "Hotovo"
-                            is PumpRefreshProgress.Error        -> "Chyba: ${p.message}"
-                            PumpRefreshProgress.Idle            -> ""
-                        }
-                        val progressValue = when (val p = progress) {
-                            is PumpRefreshProgress.FetchingList -> null
-                            is PumpRefreshProgress.FetchingGps  ->
-                                if (p.total > 0) p.done.toFloat() / p.total else null
-                            is PumpRefreshProgress.Done         -> 1f
-                            is PumpRefreshProgress.Error        -> null
-                            PumpRefreshProgress.Idle            -> null
-                        }
-
+                    // Progress bar zobrazíme POUZE při stahování seznamu stanic z webu.
+                    // Běžná aktualizace GPS polohy na pozadí se zde nezobrazuje.
+                    if (progress is PumpRefreshProgress.FetchingList) {
                         Spacer(Modifier.height(1.dp))
-                        Text(progressText, color = OnoRed, fontSize = 11.sp)
+                        Text("Stahuji seznam stanic…", color = OnoRed, fontSize = 11.sp)
                         Spacer(Modifier.height(2.dp))
-                        if (progressValue != null) {
-                            LinearProgressIndicator(
-                                progress = { progressValue },
-                                color = OnoRed,
-                                trackColor = OnoRed.copy(alpha = 0.2f),
-                                modifier = Modifier.fillMaxWidth().height(4.dp)
-                            )
-                        } else {
-                            LinearProgressIndicator(
-                                color = OnoRed,
-                                trackColor = OnoRed.copy(alpha = 0.2f),
-                                modifier = Modifier.fillMaxWidth().height(4.dp)
-                            )
-                        }
+                        LinearProgressIndicator(
+                            color = OnoRed,
+                            trackColor = OnoRed.copy(alpha = 0.2f),
+                            modifier = Modifier.fillMaxWidth().height(4.dp)
+                        )
                     }
 
                     Spacer(Modifier.height(0.dp))
@@ -899,6 +877,76 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Vzhled (Tmavý režim) ----
+                SettingsCard {
+                    var themeExpanded by remember { mutableStateOf(false) }
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Vzhled: ",
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    s.themeMode.displayName,
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                                    .clickable { themeExpanded = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "▼",
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = themeExpanded,
+                            onDismissRequest = { themeExpanded = false },
+                            modifier = Modifier
+                                .background(OnoYellow)
+                                .border(2.dp, OnoRed)
+                        ) {
+                            ThemeMode.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            mode.displayName,
+                                            color = OnoRed,
+                                            fontSize = 14.sp,
+                                            fontWeight = if (s.themeMode == mode) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    },
+                                    onClick = {
+                                        state.value = s.copy(themeMode = mode)
+                                        themeExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(4.dp))
 
                 if (isConfiguring) {
@@ -913,8 +961,6 @@ private fun SettingsScreen(
                     ) {
                         Text("Přidat widget")
                     }
-                } else {
-                    // Text "Nastavení se ukládá automaticky" je skrytý
                 }
 
                 OutlinedButton(

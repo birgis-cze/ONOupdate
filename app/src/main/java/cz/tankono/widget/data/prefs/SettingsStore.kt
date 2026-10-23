@@ -16,6 +16,12 @@ import kotlinx.coroutines.flow.map
 
 private val Context.settingsDataStore by preferencesDataStore(name = "tankono_settings")
 
+enum class ThemeMode(val id: String, val displayName: String) {
+    SYSTEM("system", "Systém"),
+    LIGHT("light", "Světlý"),
+    DARK("dark", "Tmavý")
+}
+
 data class WidgetSettings(
     val visibleProducts: Set<Product> = Product.entries.toSet(),
     val currency: Currency = Currency.CZK,
@@ -26,7 +32,8 @@ data class WidgetSettings(
     val intervalOffPeakMin: Int = 60,
     val fontSizeSp: Int = 15,
     val preferredNavigation: NavigationApp = NavigationApp.SYSTEM,
-    val showNearestPump: Boolean = false
+    val showNearestPump: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM
 ) {
     val effectiveIntervalMin: Int
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
@@ -58,13 +65,9 @@ class SettingsStore(private val context: Context) {
         val LAST_PUMP_SYNC    = longPreferencesKey("last_pump_sync")
         val PREFERRED_NAV     = stringPreferencesKey("preferred_navigation")
         val SHOW_NEAREST_PUMP = booleanPreferencesKey("show_nearest_pump")
+        val THEME_MODE        = stringPreferencesKey("theme_mode")
 
-        // Cache poslední známé nejbližší pumpy
-        val CACHED_NEAREST_PUMP_NAME = stringPreferencesKey("cached_nearest_pump_name")
-        val CACHED_NEAREST_PUMP_DIST = stringPreferencesKey("cached_nearest_pump_dist")
-        val CACHED_NEAREST_PUMP_LAT  = stringPreferencesKey("cached_nearest_pump_lat")
-        val CACHED_NEAREST_PUMP_LNG  = stringPreferencesKey("cached_nearest_pump_lng")
-
+        // Cache poslední známé polohy
         val CACHED_LAT = stringPreferencesKey("cached_lat")
         val CACHED_LNG = stringPreferencesKey("cached_lng")
     }
@@ -85,7 +88,8 @@ class SettingsStore(private val context: Context) {
             intervalOffPeakMin= p[Keys.INTERVAL_OFF]    ?: 60,
             fontSizeSp        = p[Keys.FONT_SIZE]       ?: 15,
             preferredNavigation = NavigationApp.fromId(p[Keys.PREFERRED_NAV]),
-            showNearestPump   = p[Keys.SHOW_NEAREST_PUMP] ?: false
+            showNearestPump   = p[Keys.SHOW_NEAREST_PUMP] ?: false,
+            themeMode         = ThemeMode.entries.find { it.id == p[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM
         )
     }
 
@@ -101,6 +105,7 @@ class SettingsStore(private val context: Context) {
             p[Keys.FONT_SIZE]        = s.fontSizeSp
             p[Keys.PREFERRED_NAV]    = s.preferredNavigation.id
             p[Keys.SHOW_NEAREST_PUMP]= s.showNearestPump
+            p[Keys.THEME_MODE]       = s.themeMode.id
         }
     }
 
@@ -112,9 +117,7 @@ class SettingsStore(private val context: Context) {
         return context.settingsDataStore.data.map { it[Keys.LAST_PUMP_SYNC] ?: 0L }.first()
     }
 
-    // ---------- CACHE NEJBLIŽŠÍ PUMPY ----------
-
-        // ---------- CACHE POLOHY ----------
+    // ---------- CACHE POLOHY ----------
 
     suspend fun saveCachedLocation(lat: Double, lng: Double) {
         context.settingsDataStore.edit { prefs ->

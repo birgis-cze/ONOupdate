@@ -26,8 +26,8 @@ import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.NavigationApp
 import cz.tankono.widget.data.prefs.SettingsStore
+import cz.tankono.widget.data.prefs.ThemeMode
 import cz.tankono.widget.data.prefs.WidgetSettings
-import cz.tankono.widget.data.prefs.CachedNearestPump
 import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.data.repo.PriceRepository
 import cz.tankono.widget.data.repo.PumpRepository
@@ -82,15 +82,14 @@ object WidgetRenderer {
         AppLogger.d("=== RENDER widgetId=$widgetId ===")
         scope.launch {
             try {
-                val settingsStore = SettingsStore(context)
-                val settings = settingsStore.settings.first()
+                val settings = SettingsStore(context).settings.first()
                 val state = PriceRepository(context).loadState()
 
-                // Nejbližší pumpa – s cache fallbackem
+                // Pokud má uživatel zapnutou nejbližší stanici, zjistit ji
                 val nearestPump: Pair<PumpEntity, Double>? =
                     if (settings.showNearestPump) {
                         withContext(Dispatchers.IO) {
-                            resolveNearestPumpWithCache(context, settingsStore)
+                            findNearestPumpForWidget(context)
                         }
                     } else null
 
@@ -106,8 +105,7 @@ object WidgetRenderer {
     }
 
     /**
-     * Získá nejbližší pumpu. Nejdříve zjistí polohu (nebo vytáhne z cache),
-     * a pak vždy znovu přepočítá vzdálenost ke všem pumpám v DB.
+     * Získá nejbližší pumpu s cache fallbackem.
      */
     private suspend fun resolveNearestPumpWithCache(
         context: Context,
@@ -139,52 +137,13 @@ object WidgetRenderer {
         return pumps.firstOrNull()
     }
 
-    /**
-     * Zjistí aktuální polohu uživatele a vrátí nejbližší pumpu + vzdálenost v km.
-     * Vrací null při chybě / chybějícím oprávnění.
-     */
-    private suspend fun findNearestPumpForWidget(
-        context: Context
-    ): Pair<PumpEntity, Double>? {
-        return try {
-            // Kontrola oprávnění
-            val fine = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-            val coarse = ContextCompat.checkSelfPermission(
-                context, Manifest.permission.ACCESS_COARSE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (!fine && !coarse) {
-                AppLogger.w("Widget: chybí oprávnění k poloze")
-                return null
-            }
-
-            // Získat polohu
-            val loc = LocationProvider.getCurrentLocation(context)
-            if (loc == null) {
-                AppLogger.w("Widget: polohu nelze získat")
-                return null
-            }
-
-            // Najít nejbližší pumpu
-            val pumps = PumpRepository(context)
-                .getAllSortedByDistance(loc.first, loc.second)
-
-            pumps.firstOrNull()
-        } catch (t: Throwable) {
-            AppLogger.e("Widget: chyba při hledání nejbližší pumpy", t)
-            null
-        }
-    }
-
     private fun buildViews(
         context: Context,
         settings: WidgetSettings,
         state: PriceState,
         nearestPump: Pair<PumpEntity, Double>?
     ): RemoteViews {
-        val night = isNight(context)
+        val night = isNight(context, settings.themeMode)
         val bg = if (night) COLOR_DARK_BG else COLOR_LIGHT_BG
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
@@ -286,10 +245,6 @@ object WidgetRenderer {
 
     /**
      * Vykreslí spodní řádek s nejbližší stanicí.
-     *
-     * Pokud je přepínač zapnutý, blok je VŽDY VISIBLE (nikdy GONE),
-     * aby po probuzení displeje zůstal viditelný.
-     * Když nejsou data, zobrazí "Zjišťuji polohu…".
      */
     private fun renderNearestPump(
         context: Context,
@@ -306,7 +261,7 @@ object WidgetRenderer {
         // Přepínač zapnutý → VŽDY zobrazit
         views.setViewVisibility(R.id.nearest_container, View.VISIBLE)
 
-        val night = isNight(context)
+        val night = isNight(context, settings.themeMode)
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
         // Když opravdu nic neznáme (první render, cache prázdná)
@@ -390,7 +345,6 @@ object WidgetRenderer {
 
     /**
      * Dynamicky nastaví šířky sloupců podle fontSizeSp.
-     * Funguje pouze na API 31+ (setViewLayoutWidth).
      */
     private fun applyDynamicColumnWidths(
         context: Context,
@@ -466,9 +420,12 @@ object WidgetRenderer {
         )
     }
 
-    private fun isNight(context: Context): Boolean {
-        return (context.resources.configuration.uiMode and
-                Configuration.UI_MODE_NIGHT_MASK) ==
-                Configuration.UI_MODE_NIGHT_YES
+    private fun isNight(context: Context, themeMode: ThemeMode): Boolean {
+        return when (themeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> (context.resources.configuration.uiMode and
+                    Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        }
     }
 }
