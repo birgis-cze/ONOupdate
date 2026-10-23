@@ -1499,7 +1499,7 @@ private fun NearestPumpSection(
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "   Poloha není dostupná – povol přístup k poloze.",
+                    "   Nedostupná poloha",
                     color = OnoRed,
                     fontSize = 12.sp
                 )

@@ -112,6 +112,15 @@ object WidgetRenderer {
         context: Context,
         settingsStore: SettingsStore
     ): Pair<PumpEntity, Double>? {
+        // NOVÉ: Zkontrolujeme, zda má aplikace reálné oprávnění k poloze
+        val hasLoc = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                     androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasLoc) {
+            AppLogger.w("Widget: Chybí oprávnění k poloze, nenačítám stanici z cache.")
+            return null // Vracíme null, takže se ve widgetu ukáže "Zjišťuji polohu..." (nebo se řádek skryje)
+        }
+
         // 1. Zkusíme zjistit polohu (fresh nebo lastLocation)
         var loc = LocationProvider.getCurrentLocation(context)
         
@@ -120,7 +129,7 @@ object WidgetRenderer {
             settingsStore.saveCachedLocation(loc.first, loc.second)
             AppLogger.d("Widget: Poloha získána (${"%.4f".format(loc.first)}, ${"%.4f".format(loc.second)})")
         } else {
-            // 2. Selhalo, zkusíme cache
+            // 2. Selhalo (např. vypnutá GPS), zkusíme cache
             loc = settingsStore.getCachedLocation()
             if (loc != null) {
                 AppLogger.w("Widget: Aktuální poloha selhala, používám cache (${"%.4f".format(loc.first)}, ${"%.4f".format(loc.second)})")
