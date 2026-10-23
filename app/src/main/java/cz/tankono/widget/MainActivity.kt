@@ -1254,7 +1254,8 @@ private fun SettingsScreen(
 
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.55f),
-                                fontSize = 9.sp
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
                             )) {
                                 append("Aplikace odeslala hash tohoto zařízení")
                             }
@@ -1286,7 +1287,8 @@ private fun SettingsScreen(
                             
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.55f),
-                                fontSize = 9.sp
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
                             )) {
                                 append("pro statistiku stažení")
                             }
@@ -1294,12 +1296,12 @@ private fun SettingsScreen(
 
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.75f),
-                                fontSize = 11.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )) {
                                 append("Nic jiného se neposílá.")
                             }
-                            append("\n\n")                            
+                            append("\n")                            
                         },
                         color = OnoRed,
                         modifier = Modifier
@@ -1320,7 +1322,6 @@ private fun SettingsScreen(
                         lineHeight = 13.sp
                     )
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
     }
