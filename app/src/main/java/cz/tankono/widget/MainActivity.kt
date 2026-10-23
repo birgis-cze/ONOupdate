@@ -1200,6 +1200,7 @@ private fun SettingsScreen(
 
                 // Zjistíme, zda je k dispozici nová verze (pro zvýraznění tlačítka)
                 val isUpdateAvailable = updateState == UpdateState.IDLE && updateInfo != null
+                val isDownloading = updateState == UpdateState.DOWNLOADING
 
                 // ---- Chytré tlačítko pro aktualizaci s progress barem ----
                 OutlinedButton(
@@ -1207,7 +1208,6 @@ private fun SettingsScreen(
                         when (updateState) {
                             UpdateState.IDLE -> {
                                 if (updateInfo != null) {
-                                    // Už známe novou verzi (z auto-checku) → rovnou stáhnout
                                     scope.launch {
                                         updateState = UpdateState.DOWNLOADING
                                         downloadProgress = 0
@@ -1233,7 +1233,6 @@ private fun SettingsScreen(
                                         }
                                     }
                                 } else {
-                                    // Nic neznáme → kompletní proces (kontrola + stažení + instalace)
                                     startUpdateProcess()
                                 }
                             }
@@ -1257,29 +1256,28 @@ private fun SettingsScreen(
                         containerColor = if (isUpdateAvailable) OnoRed else Color.Transparent,
                         contentColor = if (isUpdateAvailable) OnoYellow else OnoRed
                     ),
-                    // ZDE BYL PROBLÉM: Odstraněn parametr 'border', aby tlačítko vypadalo naprosto stejně jako ostatní
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    contentPadding = PaddingValues(0.dp),
+                    // ZDE JE ZMĚNA: Výšku a okraje měníme POUZE při stahování
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (isDownloading) Modifier.height(48.dp) else Modifier),
+                    contentPadding = if (isDownloading) PaddingValues(0.dp) else ButtonDefaults.ContentPadding,
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
-                    if (updateState == UpdateState.DOWNLOADING) {
+                    if (isDownloading) {
                         // Zobrazení progress baru
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Barevný pruh na pozadí podle procent
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .fillMaxWidth(downloadProgress / 100f)
                                     .background(OnoRed.copy(alpha = 0.2f))
                             )
-                            // Text přes pruh (barva musí být čitelná na světlém pozadí)
                             Text("Stahuji… $downloadProgress %", fontWeight = FontWeight.Bold, color = OnoRed)
                         }
                     } else {
-                        // Normální texty
                         val rawVersion = updateInfo?.version ?: pendingVersion
                         val displayVersion = rawVersion?.removePrefix("v")
                         
@@ -1291,7 +1289,8 @@ private fun SettingsScreen(
                                 UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
                                 else -> ""
                             },
-                            fontWeight = if (isUpdateAvailable) FontWeight.Bold else FontWeight.Normal
+                            // ZDE JE ZMĚNA: Tučné písmo máme jen když je nová verze. Jinak necháme výchozí styl (Medium).
+                            fontWeight = if (isUpdateAvailable) FontWeight.Bold else null
                         )
                     }
                 }
