@@ -127,6 +127,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.app.Activity
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -167,6 +170,27 @@ fun checkPendingUpdate(context: Context): File? {
     return null
 }
 
+/**
+ * Zavibruje 2 sekundy (pro potvrzení tajné akce).
+ */
+private fun vibrateLong(context: Context) {
+    val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    }
+
+    if (vibrator.hasVibrator()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(2000, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(2000)
+        }
+    }
+}
 
 class MainActivity : ComponentActivity() {
 
@@ -517,6 +541,7 @@ private fun SettingsScreen(
 
     // Tajné odemknutí exportu logu
     var footerTapCount by remember { mutableIntStateOf(0) }
+    var showLogFlash by remember { mutableStateOf(false) }
 
     // Nainstalované navigační appky
     val installedNavApps = remember {
@@ -1173,6 +1198,9 @@ private fun SettingsScreen(
                     Text("Aktualizovat data")
                 }
 
+                // Zjistíme, zda je k dispozici nová verze (pro zvýraznění tlačítka)
+                val isUpdateAvailable = updateState == UpdateState.IDLE && updateInfo != null
+
                 // ---- Chytré tlačítko pro aktualizaci s progress barem ----
                 OutlinedButton(
                     onClick = {
@@ -1225,9 +1253,13 @@ private fun SettingsScreen(
                             UpdateState.CHECKING, UpdateState.DOWNLOADING -> {}
                         }
                     },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                    modifier = Modifier.fillMaxWidth().height(48.dp), // Pevná výška pro pěkný progress bar
-                    contentPadding = PaddingValues(0.dp), // Zrušíme vnitřní okraje
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (isUpdateAvailable) OnoRed else Color.Transparent,
+                        contentColor = if (isUpdateAvailable) OnoYellow else OnoRed
+                    ),
+                    border = if (isUpdateAvailable) null else BorderStroke(1.dp, OnoRed),
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    contentPadding = PaddingValues(0.dp),
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
                     if (updateState == UpdateState.DOWNLOADING) {
@@ -1240,11 +1272,11 @@ private fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .fillMaxWidth(downloadProgress / 100f) // 0.0 až 1.0
+                                    .fillMaxWidth(downloadProgress / 100f)
                                     .background(OnoRed.copy(alpha = 0.2f))
                             )
-                            // Text přes pruh
-                            Text("Stahuji… $downloadProgress %", fontWeight = FontWeight.Bold)
+                            // Text přes pruh (barva musí být čitelná na světlém pozadí)
+                            Text("Stahuji… $downloadProgress %", fontWeight = FontWeight.Bold, color = OnoRed)
                         }
                     } else {
                         // Normální texty
@@ -1257,8 +1289,9 @@ private fun SettingsScreen(
                                 UpdateState.CHECKING -> "Kontroluji…"
                                 UpdateState.READY_TO_INSTALL -> "Spustit instalaci (v$displayVersion)"
                                 UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
-                                else -> "" // DOWNLOADING je ošetřen výše
-                            }
+                                else -> ""
+                            },
+                            fontWeight = if (isUpdateAvailable) FontWeight.Bold else FontWeight.Normal
                         )
                     }
                 }
@@ -1394,8 +1427,15 @@ private fun SettingsScreen(
                                 footerTapCount++
                                 if (footerTapCount >= 10) {
                                     footerTapCount = 0
-                                    Toast.makeText(context, "Exportuji log…", Toast.LENGTH_SHORT).show()
-                                    onExportLog()
+                                    showLogFlash = true
+                                    vibrateLong(context) // Zavibruje 2s
+                                    
+                                    // Spustíme odpočet 2s, než otevřeme sdílení
+                                    scope.launch {
+                                        delay(2000)
+                                        showLogFlash = false
+                                        onExportLog()
+                                    }
                                 }
                             },
                         textAlign = TextAlign.Center,
@@ -1429,6 +1469,34 @@ private fun SettingsScreen(
                 s.preferredNavigation.navigate(context, lat, lng, pump.name)
             }
             navTargetPump = null
+        }
+    }
+
+    // Tajný 2s Flash při generování logu
+    if (showLogFlash) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { /* Nedovolíme zavřít kliknutím mimo */ },
+            properties = androidx.compose.ui.window.DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(OnoRed.copy(alpha = 0.95f))
+                    .clickable(enabled = false) {}, // Zablokuje prokliknutí
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "GENERUJI LOG\nPRO EXPORT",
+                    color = OnoYellow,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 34.sp
+                )
+            }
         }
     }
 }
