@@ -488,8 +488,7 @@ private fun SettingsScreen(
     var navTargetPump by remember { mutableStateOf<PumpEntity?>(null) }
     var showQrDialog by remember { mutableStateOf(false) }
 
-    // Tajné odemknutí exportu logu a stavy
-    var showExportLog by remember { mutableStateOf(false) }
+    // Tajné odemknutí exportu logu
     var footerTapCount by remember { mutableIntStateOf(0) }
 
     // Nainstalované navigační appky
@@ -680,7 +679,7 @@ private fun SettingsScreen(
 
                 // ---- Poslední aktualizace + nejbližší ----
                 SettingsCard {
-                    SectionTitle("Poslední aktualizace")
+                    SectionTitle("Poslední aktualizace:")
                     Text(
                         "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(lastPublished) ?: "--"),
                         color = OnoRed,
@@ -741,7 +740,7 @@ private fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Zobrazit na widgetu:",
+                            "Zobrazit nejbližší na widgetu:",
                             color = OnoRed,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
@@ -912,7 +911,7 @@ private fun SettingsScreen(
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Text(
-                                "Text widgetu:",
+                                "Velikost textu na w.:",
                                 color = OnoRed,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
@@ -958,7 +957,7 @@ private fun SettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "Vzhled: ",
+                                    "Vzhled widgetu: ",
                                     color = OnoRed,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
@@ -1128,17 +1127,6 @@ private fun SettingsScreen(
                     }
                 }
 
-                // ---- Skryté tlačítko Exportovat log ----
-                if (showExportLog) {
-                    OutlinedButton(
-                        onClick = onExportLog,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Exportovat log")
-                    }
-                }
-
                 // ---- ZÁPATÍ (jeden blok textu) ----
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -1231,16 +1219,16 @@ private fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp)
-                            // Tajné odemknutí 10x kliknutím na zápatí
+                            // Tajné odemknutí 10x kliknutím na zápatí (nyní rovnou spustí export)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
                             ) {
                                 footerTapCount++
                                 if (footerTapCount >= 10) {
-                                    showExportLog = true
                                     footerTapCount = 0
-                                    Toast.makeText(context, "Debug režim odemčen", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Exportuji log…", Toast.LENGTH_SHORT).show()
+                                    onExportLog()
                                 }
                             },
                         textAlign = TextAlign.Center,
@@ -1303,7 +1291,7 @@ private fun NavigationRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Navigace: ",
+                    "Navigovat přes: ",
                     color = OnoRed,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
@@ -1390,7 +1378,7 @@ private fun NearestPumpSection(
         when {
             nearestPump != null && distanceKm != null -> {
                 Text(
-                    "Nejbližší:",
+                    "Nejbližší stanice:",
                     color = OnoRed,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
