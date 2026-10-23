@@ -90,7 +90,7 @@ object WidgetRenderer {
                 val nearestPump: Pair<PumpEntity, Double>? =
                     if (settings.showNearestPump) {
                         withContext(Dispatchers.IO) {
-                            resolveNearestPumpWithCache(context, settingsStore) // ← OPRAVENO
+                            resolveNearestPumpWithCache(context, settingsStore)
                         }
                     } else null
 
@@ -113,12 +113,12 @@ object WidgetRenderer {
         settingsStore: SettingsStore
     ): Pair<PumpEntity, Double>? {
         // NOVÉ: Zkontrolujeme, zda má aplikace reálné oprávnění k poloze
-        val hasLoc = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-                     androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val hasLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
         if (!hasLoc) {
             AppLogger.w("Widget: Chybí oprávnění k poloze, nenačítám stanici z cache.")
-            return null // Vracíme null, takže se ve widgetu ukáže "Zjišťuji polohu..." (nebo se řádek skryje)
+            return null // Vracíme null, takže se ve widgetu ukáže "Zjišťuji polohu..."
         }
 
         // 1. Zkusíme zjistit polohu (fresh nebo lastLocation)
@@ -158,7 +158,13 @@ object WidgetRenderer {
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
         val views = RemoteViews(context.packageName, R.layout.widget_tankono)
-        views.setInt(R.id.widget_root, "setBackgroundColor", bg)
+        
+        // Dynamické nastavení pozadí podle režimu (světlý/tmavý) - ZMĚNA PRO ZAOBLENÍ
+        if (night) {
+            views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_dark)
+        } else {
+            views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_light)
+        }
 
         val pi = buildRefreshPendingIntent(context)
         views.setOnClickPendingIntent(R.id.widget_root, pi)
@@ -274,6 +280,7 @@ object WidgetRenderer {
         val night = isNight(context, settings.themeMode)
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
+        // NOVÉ: Nastavení barvy oddělovače (červená ve světlém, žlutá v tmavém)
         views.setInt(R.id.nearest_divider, "setBackgroundColor", fg)
 
         // Když opravdu nic neznáme (první render, cache prázdná)
