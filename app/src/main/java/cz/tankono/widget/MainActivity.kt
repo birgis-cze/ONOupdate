@@ -123,6 +123,8 @@ import java.util.Locale
 import android.app.Activity
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -1574,7 +1576,7 @@ private fun AllPumpsSheet(
             }
         }
     }
-    
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -1921,14 +1923,12 @@ private fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
     return bitmap.asImageBitmap()
 }
 
-/**
- * Dialog zobrazující QR kód pro sdílení aplikace.
- */
 @Composable
 private fun QrCodeDialog(
     onDismiss: () -> Unit
 ) {
     val qrBitmap = remember { generateQrCode(GITHUB_URL) }
+    val uriHandler = LocalUriHandler.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1963,12 +1963,23 @@ private fun QrCodeDialog(
                         .padding(8.dp)
                 )
                 Spacer(Modifier.height(16.dp))
+                // NOVÉ: Klikatelný odkaz
                 Text(
                     text = GITHUB_URL,
                     color = OnoRed,
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    textDecoration = TextDecoration.Underline,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            try {
+                                uriHandler.openUri(GITHUB_URL)
+                            } catch (_: Throwable) {
+                                // Pokud prohlížeč selže, ignorujeme
+                            }
+                        }
                 )
             }
         },

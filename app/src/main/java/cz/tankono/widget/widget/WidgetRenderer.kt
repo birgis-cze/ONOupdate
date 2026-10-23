@@ -319,9 +319,10 @@ object WidgetRenderer {
         views.setImageViewResource(R.id.nearest_icon, iconRes)
         views.setInt(R.id.nearest_icon, "setColorFilter", fg)
 
-        // Klik → navigace
+        // Klik → navigace (nastaveno na všechny vrstvy pro 100% funkčnost)
         val pi = buildNavigationPendingIntent(context, pump, settings.preferredNavigation)
         views.setOnClickPendingIntent(R.id.nearest_container, pi)
+        views.setOnClickPendingIntent(R.id.nearest_row, pi)
         views.setOnClickPendingIntent(R.id.nearest_icon, pi)
         views.setOnClickPendingIntent(R.id.nearest_distance, pi)
         views.setOnClickPendingIntent(R.id.nearest_text, pi)

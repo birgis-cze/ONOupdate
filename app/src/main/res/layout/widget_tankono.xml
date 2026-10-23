@@ -70,7 +70,6 @@
     </FrameLayout>
 
     <!-- ========== ŘÁDKY PRODUKTŮ ========== -->
-
     <LinearLayout android:id="@+id/row_0" style="@style/WidgetRow">
         <TextView android:id="@+id/row_0_name"  style="@style/WidgetRowName"/>
         <TextView android:id="@+id/row_0_old"   style="@style/WidgetRowOld"/>
@@ -165,16 +164,20 @@
             android:background="@color/ono_red"
             android:contentDescription="@null"/>
 
+        <!-- NOVÉ: přidáno ID a clickable, aby klik fungoval na celý řádek -->
         <LinearLayout
+            android:id="@+id/nearest_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:clickable="true"
+            android:focusable="true">
 
             <ImageView
                 android:id="@+id/nearest_icon"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
                 android:layout_marginEnd="6dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_nav_system"
