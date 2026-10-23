@@ -1332,7 +1332,6 @@ private fun SettingsScreen(
                             )) {
                                 append("Nic jiného se neposílá.")
                             }
-                            append("\n")                            
                         },
                         color = OnoRed,
                         modifier = Modifier
