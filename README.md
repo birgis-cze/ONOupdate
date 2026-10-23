@@ -2,7 +2,7 @@
 
 ![AI Generated](https://img.shields.io/badge/100%25_Vytvo%C5%99eno_s_AI-8A2BE2?style=for-the-badge&logo=google&logoColor=white)
 
-Elegantní a rychlý widget pro plochu vašeho telefonu, který vám vždy ukáže aktuální ceny pohonných hmot na čerpacích stanicích **Tank ONO**. Už nikdy nemusíte otevírat aplikaci nebo prohlížeč, abyste zjistili, kolik dnes stojí benzín nebo nafta.
+Elegantní a rychlý widget pro plochu vašeho telefonu, který vám vždy ukáže aktuální ceny pohonných hmot na čerpacích stanicích **Tank ONO**. Už nikdy nemusíte otevírat prohlížeč, abyste zjistili, kolik dnes stojí benzín nebo nafta.
 
 ## ✨ Hlavní funkce
 
