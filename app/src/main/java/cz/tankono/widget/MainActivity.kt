@@ -1256,27 +1256,10 @@ private fun SettingsScreen(
                                 color = OnoRed.copy(alpha = 0.55f),
                                 fontSize = 9.sp
                             )) {
-                                append("Aplikace odeslala hash tohoto zařízení pouze pro statistiku počtu instalací.\n")
-                            }
-                            withStyle(SpanStyle(
-                                color = OnoRed.copy(alpha = 0.75f),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            )) {
-                                append("Nic jiného se neposílá.")
-                            }
-                            append("\n\n")
-
-                            withStyle(SpanStyle(
-                                color = OnoRed.copy(alpha = 0.5f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp
-                            )) {
-                                append("ODESLANÝ HASH:")
+                                append("Aplikace odeslala hash tohoto zařízení")
                             }
                             append("\n")
-
+                            
                             val hash = deviceHash
                             if (hash != null) {
                                 val half = (hash.length + 1) / 2
@@ -1299,6 +1282,24 @@ private fun SettingsScreen(
                                     append("(nedostupné)")
                                 }
                             }
+                            append("\n")
+                            
+                            withStyle(SpanStyle(
+                                color = OnoRed.copy(alpha = 0.55f),
+                                fontSize = 9.sp
+                            )) {
+                                append("pro statistiku stažení")
+                            }
+                            append("\n\n")
+
+                            withStyle(SpanStyle(
+                                color = OnoRed.copy(alpha = 0.75f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )) {
+                                append("Nic jiného se neposílá.")
+                            }
+                            append("\n\n")                            
                         },
                         color = OnoRed,
                         modifier = Modifier
@@ -1318,8 +1319,6 @@ private fun SettingsScreen(
                         textAlign = TextAlign.Center,
                         lineHeight = 13.sp
                     )
-
-                    Spacer(Modifier.height(8.dp))
                 }
                 Spacer(Modifier.height(8.dp))
             }

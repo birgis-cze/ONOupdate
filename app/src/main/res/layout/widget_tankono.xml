@@ -176,9 +176,9 @@
 
             <ImageView
                 android:id="@+id/nearest_icon"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="6dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginEnd="4dp"
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_nav_system"
                 android:contentDescription="@null"/>
