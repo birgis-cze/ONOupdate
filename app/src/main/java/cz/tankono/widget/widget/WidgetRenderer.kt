@@ -274,6 +274,8 @@ object WidgetRenderer {
         val night = isNight(context, settings.themeMode)
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
+        views.setInt(R.id.nearest_divider, "setBackgroundColor", fg)
+
         // Když opravdu nic neznáme (první render, cache prázdná)
         if (nearestPump == null) {
             views.setImageViewResource(R.id.nearest_icon, R.drawable.ic_nav_system)
