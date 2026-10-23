@@ -146,15 +146,13 @@ fun checkPendingUpdate(context: Context): File? {
     val files = context.cacheDir.listFiles { file -> file.name.startsWith("update_v") && file.name.endsWith(".apk") } ?: return null
     
     for (file in files) {
-        // OČIŠTĚNÍ: Odstraníme "update_v" a případné "v" navíc, ať už je název "update_v5.32" nebo "update_vv5.32"
+        // OČIŠTĚNÍ: Odstraníme "update_v" a případné "v" navíc
         val fileVersion = file.name.removePrefix("update_v").removeSuffix(".apk").removePrefix("v")
         
         if (fileVersion == BuildConfig.VERSION_NAME) {
-            // Verze v souboru je stejná jako aktuální verze aplikace -> instalace proběhla, mažeme.
             file.delete()
             AppLogger.i("Úklid: Smazán úspěšně nainstalovaný balíček $fileVersion")
         } else {
-            // Verze je jiná (obvykle novější) -> čeká na instalaci.
             AppLogger.i("Nalezen čekající balíček k instalaci: $fileVersion")
             return file
         }
@@ -252,6 +250,7 @@ class MainActivity : ComponentActivity() {
                     onExportLog = { exportLog() },
                     onOpenBatterySettings = { openBatterySettings() },
                     onRequestLocation = { requestLocationPermissionIfNeeded() },
+                    onRequestNotification = { requestNotificationPermissionIfNeeded() },
                     onInstallApk = { file -> installApk(file) },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
@@ -462,6 +461,7 @@ private fun SettingsScreen(
     onExportLog: () -> Unit,
     onOpenBatterySettings: () -> Unit,
     onRequestLocation: () -> Unit,
+    onRequestNotification: () -> Unit,
     onInstallApk: (File) -> Boolean,
     isConfiguring: Boolean
 ) {
@@ -531,6 +531,19 @@ private fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // --- OKAMŽITÉ NAČTENÍ Z CACHE (aby text "Nedostupná poloha" neproblikával) ---
+    LaunchedEffect(Unit) {
+        val cachedLoc = SettingsStore(context).getCachedLocation()
+        if (cachedLoc != null && locationGranted) {
+            userLocation = cachedLoc // Tím se hasLocation v NearestPumpSection změní na true
+            val sorted = pumpRepo.getAllSortedByDistance(cachedLoc.first, cachedLoc.second)
+            if (sorted.isNotEmpty()) {
+                nearestPump = sorted.first().first
+                nearestDistanceKm = sorted.first().second
+            }
+        }
+    }
+
     // Načtení uloženého stavu
     LaunchedEffect(loaded) {
         val loadedLocal = loaded ?: return@LaunchedEffect
@@ -561,7 +574,6 @@ private fun SettingsScreen(
         val pendingFile = checkPendingUpdate(context)
         if (pendingFile != null) {
             downloadedFile = pendingFile
-            // OČIŠTĚNÍ: Odstraníme "v" z názvu souboru pro zobrazení
             pendingVersion = pendingFile.name.removePrefix("update_v").removeSuffix(".apk").removePrefix("v")
             updateState = UpdateState.READY_TO_INSTALL
         }
@@ -665,7 +677,6 @@ private fun SettingsScreen(
             
             updateInfo = info
             updateState = UpdateState.DOWNLOADING
-            // Předáme info.version do downloadApk, aby se ošetřilo "v"
             val file = UpdateChecker.downloadApk(context, info.downloadApiUrl, info.version)
             
             if (file == null) {
@@ -675,14 +686,11 @@ private fun SettingsScreen(
             }
             
             downloadedFile = file
-            // OČIŠTĚNÍ: Odstraníme "v" z názvu verze pro zobrazení
             pendingVersion = info.version.removePrefix("v")
             updateState = UpdateState.READY_TO_INSTALL
             
-            // Rovnou otevřít instalátor
             val success = onInstallApk(file)
             if (!success) {
-                // Pokud se nezdařilo, installApk už soubor smazal
                 downloadedFile = null
                 pendingVersion = null
                 updateState = UpdateState.IDLE
@@ -731,7 +739,6 @@ private fun SettingsScreen(
                         fontSize = 13.sp
                     )
 
-                    // Progress bar zobrazíme POUZE při stahování seznamu stanic z webu.
                     if (progress is PumpRefreshProgress.FetchingList) {
                         Spacer(Modifier.height(1.dp))
                         Text("Stahuji seznam stanic…", color = OnoRed, fontSize = 11.sp)
@@ -764,20 +771,19 @@ private fun SettingsScreen(
                 // --- DYNAMICKÁ KARTA PRO SYSTÉMOVÁ NASTAVENÍ ---
                 if (!hasLoc || !hasNotif || !batteryOk) {
                     SettingsCard {
-                        SectionTitle("Doporučená nastavení:")
+                        SectionTitle("Jsou potřeba povolení:")
                         if (!hasLoc) {
                             OutlinedButton(
                                 onClick = onRequestLocation,
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Povolit přístup k poloze")
+                                Text("Poloha")
                             }
                         }
                         if (!hasNotif) {
                             OutlinedButton(
                                 onClick = {
-                                    // Otevře přímo nastavení notifikací pro tuto aplikaci
                                     val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                                         putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                                     }
@@ -786,7 +792,7 @@ private fun SettingsScreen(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Povolit notifikace")
+                                Text("Notifikace")
                             }
                         }
                         if (!batteryOk) {
@@ -795,7 +801,7 @@ private fun SettingsScreen(
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text("Nastavení baterie (Neomezený běh)")
+                                Text("Napájení (bez omezení)")
                             }
                         }
                     }
@@ -1131,11 +1137,9 @@ private fun SettingsScreen(
                     onClick = {
                         when (updateState) {
                             UpdateState.IDLE, UpdateState.UP_TO_DATE -> {
-                                // Spustí celý cyklus (kontrola + stažení + instalace)
                                 startUpdateProcess()
                             }
                             UpdateState.READY_TO_INSTALL -> {
-                                // Pokud se instalátor předtím zavřel, tady ho můžeme znovu otevřít
                                 if (downloadedFile != null) {
                                     val success = onInstallApk(downloadedFile!!)
                                     if (!success) {
@@ -1156,7 +1160,6 @@ private fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
-                    // OČIŠTĚNÍ: Odstraníme "v" z verze, aby se nezobrazovalo "vv5.32"
                     val rawVersion = updateInfo?.version ?: pendingVersion
                     val displayVersion = rawVersion?.removePrefix("v")
                     
@@ -1221,7 +1224,7 @@ private fun SettingsScreen(
                         text = buildAnnotatedString {
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.6f),
-                                fontSize = 11.sp,
+                                fontSize = 10.sp, 
                                 fontWeight = FontWeight.Bold
                             )) {
                                 append("Tank ONO widget v${BuildConfig.VERSION_NAME}\nAutor: Jirka Zeman pomocí GEMINI AI")
@@ -1231,7 +1234,7 @@ private fun SettingsScreen(
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.85f),
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.SemiBold
                             )) {
                                 append(when {
                                     installCountLoading -> "Počet instalací: …"
@@ -1258,7 +1261,7 @@ private fun SettingsScreen(
 
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.5f),
-                                fontSize = 8.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.5.sp
                             )) {
@@ -1293,7 +1296,6 @@ private fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp)
-                            // Tajné odemknutí 10x kliknutím na zápatí (nyní rovnou spustí export)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
