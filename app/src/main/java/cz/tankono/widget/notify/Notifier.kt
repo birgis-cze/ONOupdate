@@ -2,7 +2,9 @@ package cz.tankono.widget.notify
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import cz.tankono.widget.R
 
@@ -10,8 +12,11 @@ object Notifier {
 
     private const val CHANNEL_ID = "tankono_prices"
     private const val CHANNEL_SILENT_ID = "tankono_silent_v2"
+    private const val CHANNEL_UPDATE_ID = "tankono_update_available"
+    
     private const val NOTIF_ID_NEW = 1001
     private const val NOTIF_ID_PROGRESS = 1002
+    private const val NOTIF_ID_UPDATE = 1003
 
     /** Kanál pro nový ceník (normální notifikace). */
     fun ensureChannel(ctx: Context) {
@@ -39,13 +44,34 @@ object Notifier {
             val channel = NotificationChannel(
                 CHANNEL_SILENT_ID,
                 "Aktualizace na pozadí",
-                NotificationManager.IMPORTANCE_DEFAULT   // ← DEFAULT (ikona v liště)
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
                 description = "Tiché upozornění na probíhající aktualizaci"
-                setSound(null, null)                     // ← TICHO
+                setSound(null, null)
                 enableVibration(false)
                 enableLights(false)
                 setShowBadge(false)
+            }
+            mgr.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * Kanál pro upozornění na novou verzi aplikace (tichý, ale viditelný).
+     */
+    private fun ensureUpdateChannel(ctx: Context) {
+        val mgr = ctx.getSystemService(NotificationManager::class.java)
+        if (mgr.getNotificationChannel(CHANNEL_UPDATE_ID) == null) {
+            val channel = NotificationChannel(
+                CHANNEL_UPDATE_ID,
+                "Nová verze aplikace",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Tiché upozornění na dostupnou novou verzi aplikace"
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
+                setShowBadge(true)
             }
             mgr.createNotificationChannel(channel)
         }
@@ -56,7 +82,7 @@ object Notifier {
         ensureChannel(ctx)
 
         val notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notif_station)   // ← NOVÁ IKONA
+            .setSmallIcon(R.drawable.ic_notif_station)
             .setContentTitle("Tank ONO")
             .setContentText("Byl zveřejněn nový ceník.")
             .setAutoCancel(true)
@@ -72,7 +98,7 @@ object Notifier {
         ensureSilentChannel(ctx)
 
         val notification = NotificationCompat.Builder(ctx, CHANNEL_SILENT_ID)
-            .setSmallIcon(R.drawable.ic_notif_station)   // ← NOVÁ IKONA
+            .setSmallIcon(R.drawable.ic_notif_station)
             .setContentTitle("Tank ONO")
             .setContentText("Aktualizuji data…")
             .setOngoing(true)
@@ -91,30 +117,6 @@ object Notifier {
         mgr.cancel(NOTIF_ID_PROGRESS)
     }
 
-    private const val CHANNEL_UPDATE_ID = "tankono_update_available"
-    private const val NOTIF_ID_UPDATE = 1003
-
-    /**
-     * Kanál pro upozornění na novou verzi aplikace (tichý, ale viditelný).
-     */
-    private fun ensureUpdateChannel(ctx: Context) {
-        val mgr = ctx.getSystemService(NotificationManager::class.java)
-        if (mgr.getNotificationChannel(CHANNEL_UPDATE_ID) == null) {
-            val channel = NotificationChannel(
-                CHANNEL_UPDATE_ID,
-                "Nová verze aplikace",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Tiché upozornění na dostupnou novou verzi aplikace"
-                setSound(null, null)          // Ticho
-                enableVibration(false)         // Bez vibrací
-                enableLights(false)
-                setShowBadge(true)            // Ale tečka na ikoně ano
-            }
-            mgr.createNotificationChannel(channel)
-        }
-    }
-
     /**
      * Tiché upozornění, že je dostupná nová verze aplikace.
      * Kliknutím se otevře aplikace, kde je připravené tlačítko "Stáhnout verzi".
@@ -127,9 +129,9 @@ object Notifier {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         val pendingIntent = if (intent != null) {
-            android.app.PendingIntent.getActivity(
+            PendingIntent.getActivity(
                 ctx, 0, intent,
-                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         } else null
 
