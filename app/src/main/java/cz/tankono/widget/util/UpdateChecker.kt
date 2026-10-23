@@ -94,7 +94,7 @@ object UpdateChecker {
      * Stáhne APK z GitHub API URL (s tokenem) do cache.
      * Vrací File, nebo null při chybě.
      */
-    suspend fun downloadApk(context: Context, apiUrl: String): File? = withContext(Dispatchers.IO) {
+    suspend fun downloadApk(context: Context, apiUrl: String, versionName: String): File? = withContext(Dispatchers.IO) {
         try {
             val url = URL(apiUrl)
             val connection = url.openConnection() as HttpURLConnection
@@ -117,10 +117,12 @@ object UpdateChecker {
                 return@withContext null
             }
 
-            val file = File(context.cacheDir, "update.apk")
-            // Smazat starý soubor, pokud existuje
-            if (file.exists()) file.delete()
+            // ÚKLID: Před stažením smažeme VŠECHNY staré update soubory
+            context.cacheDir.listFiles { file -> file.name.startsWith("update_v") }?.forEach { it.delete() }
 
+            // Nový název souboru s verzí
+            val file = File(context.cacheDir, "update_v$versionName.apk")
+            
             connection.inputStream.use { input ->
                 file.outputStream().use { output ->
                     input.copyTo(output)

@@ -2,6 +2,7 @@ package cz.tankono.widget
 
 import android.Manifest
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -120,12 +121,41 @@ private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 private val OnoYellow = Color(0xFFFFD600)
 private val OnoRed    = Color(0xFFC92200)
 
+enum class UpdateState {
+    IDLE, CHECKING, DOWNLOADING, READY_TO_INSTALL, UP_TO_DATE
+}
+
 /**
  * Ořeže "ČS " prefix z názvu stanice pro zobrazení.
  * V DB zůstává plný název.
  */
 private fun pumpDisplayName(fullName: String): String =
     fullName.removePrefix("ČS ").trim()
+
+/**
+ * Zkontroluje cache, zda tam neleží stažený balíček.
+ * Pokud najde balíček, který má stejnou verzi jako aktuální aplikace, smaže ho (již proběhla instalace).
+ * Pokud najde balíček s jinou (novější) verzí, vrátí ho jako připravený k instalaci.
+ */
+fun checkPendingUpdate(context: Context): File? {
+    val files = context.cacheDir.listFiles { file -> file.name.startsWith("update_v") && file.name.endsWith(".apk") } ?: return null
+    
+    for (file in files) {
+        // Z názvu "update_v5.30.apk" vytáhneme jen "5.30"
+        val fileVersion = file.name.removePrefix("update_v").removeSuffix(".apk")
+        
+        if (fileVersion == BuildConfig.VERSION_NAME) {
+            // Verze v souboru je stejná jako aktuální verze aplikace -> instalace proběhla, mažeme.
+            file.delete()
+            AppLogger.i("Úklid: Smazán úspěšně nainstalovaný balíček $fileVersion")
+        } else {
+            // Verze je jiná (obvykle novější) -> čeká na instalaci.
+            AppLogger.i("Nalezen čekající balíček k instalaci: $fileVersion")
+            return file
+        }
+    }
+    return null
+}
 
 
 class MainActivity : ComponentActivity() {
@@ -163,6 +193,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Pročistíme cache od starých/nainstalovaných balíčků
+        checkPendingUpdate(this)
 
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
@@ -272,7 +305,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun installApk(file: File) {
+    private fun installApk(file: File): Boolean {
         try {
             val uri = FileProvider.getUriForFile(
                 this, "$packageName.fileprovider", file
@@ -284,9 +317,12 @@ class MainActivity : ComponentActivity() {
             }
             startActivity(intent)
             AppLogger.i("installApk: instalátor otevřen")
+            return true
         } catch (t: Throwable) {
             AppLogger.e("installApk: chyba", t)
             Toast.makeText(this, "Nelze otevřít instalátor: ${t.message}", Toast.LENGTH_LONG).show()
+            file.delete() // Smažeme špatný balíček
+            return false
         }
     }
 
@@ -297,7 +333,6 @@ class MainActivity : ComponentActivity() {
 
             SettingsStore(this@MainActivity).save(settings)
 
-            // Pokud uživatel vypnul zobrazení nejbližší pumpy, smažeme cache
             if (!settings.showNearestPump) {
                 SettingsStore(this@MainActivity).clearCachedLocation()
             }
@@ -417,7 +452,7 @@ private fun SettingsScreen(
     onRefresh: () -> Unit,
     onExportLog: () -> Unit,
     onOpenBatterySettings: () -> Unit,
-    onInstallApk: (File) -> Unit,
+    onInstallApk: (File) -> Boolean,
     isConfiguring: Boolean
 ) {
     val context = LocalContext.current
@@ -431,13 +466,15 @@ private fun SettingsScreen(
     var lastPublished by remember { mutableStateOf<String?>(null) }
     var lastFetched by remember { mutableStateOf<Long?>(null) }
 
-    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
-    var isChecking by remember { mutableStateOf(false) }
-    var isDownloading by remember { mutableStateOf(false) }
-
     var installCount by remember { mutableStateOf<Int?>(null) }
     var installCountLoading by remember { mutableStateOf(false) }   
     var deviceHash by remember { mutableStateOf<String?>(null) }
+
+    // Stavy pro chytré tlačítko
+    var updateState by remember { mutableStateOf(UpdateState.IDLE) }
+    var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
+    var downloadedFile by remember { mutableStateOf<File?>(null) }
+    var pendingVersion by remember { mutableStateOf<String?>(null) }
 
     // Pumpy / poloha / progress
     val pumpRepo = remember { PumpRepository(context) }
@@ -485,19 +522,13 @@ private fun SettingsScreen(
         } catch (_: Throwable) {}
     }
 
-    // Auto-check aktualizací
+    // Zkontrolujeme, zda nezůstal viset stažený balíček z minula
     LaunchedEffect(Unit) {
-        try {
-            AppLogger.d("Auto-check: kontroluji aktualizace…")
-            val info = UpdateChecker.checkForUpdate()
-            if (info != null) {
-                updateInfo = info
-                AppLogger.i("Auto-check: nalezena novější verze ${info.version}")
-            } else {
-                AppLogger.d("Auto-check: máš nejnovější verzi")
-            }
-        } catch (t: Throwable) {
-            AppLogger.e("Auto-check: chyba", t)
+        val pendingFile = checkPendingUpdate(context)
+        if (pendingFile != null) {
+            downloadedFile = pendingFile
+            pendingVersion = pendingFile.name.removePrefix("update_v").removeSuffix(".apk")
+            updateState = UpdateState.READY_TO_INSTALL
         }
     }
 
@@ -585,6 +616,43 @@ private fun SettingsScreen(
         return
     }
 
+    // Funkce, která provede celý cyklus najednou
+    fun startUpdateProcess() {
+        scope.launch {
+            updateState = UpdateState.CHECKING
+            val info = UpdateChecker.checkForUpdate()
+            
+            if (info == null) {
+                updateState = UpdateState.UP_TO_DATE
+                Toast.makeText(context, "Máš nejnovější verzi", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+            
+            updateInfo = info
+            updateState = UpdateState.DOWNLOADING
+            val file = UpdateChecker.downloadApk(context, info.downloadApiUrl, info.version)
+            
+            if (file == null) {
+                updateState = UpdateState.IDLE
+                Toast.makeText(context, "Stahování selhalo.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            
+            downloadedFile = file
+            pendingVersion = info.version
+            updateState = UpdateState.READY_TO_INSTALL
+            
+            // Rovnou otevřít instalátor
+            val success = onInstallApk(file)
+            if (!success) {
+                // Pokud se nezdařilo, installApk už soubor smazal
+                downloadedFile = null
+                pendingVersion = null
+                updateState = UpdateState.IDLE
+            }
+        }
+    }
+
     Surface(color = OnoYellow, modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -627,7 +695,6 @@ private fun SettingsScreen(
                     )
 
                     // Progress bar zobrazíme POUZE při stahování seznamu stanic z webu.
-                    // Běžná aktualizace GPS polohy na pozadí se zde nezobrazuje.
                     if (progress is PumpRefreshProgress.FetchingList) {
                         Spacer(Modifier.height(1.dp))
                         Text("Stahuji seznam stanic…", color = OnoRed, fontSize = 11.sp)
@@ -979,54 +1046,49 @@ private fun SettingsScreen(
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Aktualizovat data") // <-- Odebráno emoji ↻
+                    Text("Aktualizovat data")
                 }
 
+                // ---- Chytré tlačítko pro aktualizaci ----
                 OutlinedButton(
                     onClick = {
-                        isChecking = true
-                        updateInfo = null
-                        scope.launch {
-                            val info = UpdateChecker.checkForUpdate()
-                            updateInfo = info
-                            isChecking = false
-                            if (info == null) {
-                                Toast.makeText(context, "Máš nejnovější verzi", Toast.LENGTH_SHORT).show()
+                        when (updateState) {
+                            UpdateState.IDLE, UpdateState.UP_TO_DATE -> {
+                                // Spustí celý cyklus (kontrola + stažení + instalace)
+                                startUpdateProcess()
+                            }
+                            UpdateState.READY_TO_INSTALL -> {
+                                // Pokud se instalátor předtím zavřel, tady ho můžeme znovu otevřít
+                                if (downloadedFile != null) {
+                                    val success = onInstallApk(downloadedFile!!)
+                                    if (!success) {
+                                        downloadedFile = null
+                                        pendingVersion = null
+                                        updateState = UpdateState.IDLE
+                                    }
+                                } else {
+                                    updateState = UpdateState.IDLE
+                                }
+                            }
+                            UpdateState.CHECKING, UpdateState.DOWNLOADING -> {
+                                // Během procesu nic neděláme
                             }
                         }
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !isChecking && !isDownloading
+                    enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
-                    Text(if (isChecking) "Kontroluji…" else "Zkontrolovat aktualizace")
-                }
-
-                updateInfo?.let { info ->
-                    Button(
-                        onClick = {
-                            isDownloading = true
-                            scope.launch {
-                                Toast.makeText(context, "Stahuji…", Toast.LENGTH_SHORT).show()
-                                val file = UpdateChecker.downloadApk(context, info.downloadApiUrl)
-                                isDownloading = false
-                                if (file != null) {
-                                    Toast.makeText(context, "Staženo, otevírám instalátor…", Toast.LENGTH_SHORT).show()
-                                    onInstallApk(file)
-                                } else {
-                                    Toast.makeText(context, "Stahování selhalo", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = OnoRed,
-                            contentColor = OnoYellow
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isDownloading
-                    ) {
-                        Text(if (isDownloading) "Stahuji…" else "Stáhnout ${info.version}")
-                    }
+                    val displayVersion = updateInfo?.version ?: pendingVersion
+                    Text(
+                        when (updateState) {
+                            UpdateState.IDLE -> "Zkontrolovat aktualizace"
+                            UpdateState.CHECKING -> "Kontroluji…"
+                            UpdateState.DOWNLOADING -> "Stahuji a připravuji…"
+                            UpdateState.READY_TO_INSTALL -> "Spustit instalaci (v$displayVersion)"
+                            UpdateState.UP_TO_DATE -> "Zkontrolovat znovu"
+                        }
+                    )
                 }
 
                 OutlinedButton(
