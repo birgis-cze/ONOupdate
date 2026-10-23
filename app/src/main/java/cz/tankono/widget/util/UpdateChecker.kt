@@ -117,11 +117,14 @@ object UpdateChecker {
                 return@withContext null
             }
 
+            // OČIŠTĚNÍ: Odstraníme "v" z názvu verze (např. z "v5.32" uděláme "5.32")
+            val cleanVersion = versionName.removePrefix("v")
+
             // ÚKLID: Před stažením smažeme VŠECHNY staré update soubory
             context.cacheDir.listFiles { file -> file.name.startsWith("update_v") }?.forEach { it.delete() }
 
-            // Nový název souboru s verzí
-            val file = File(context.cacheDir, "update_v$versionName.apk")
+            // Nový název souboru s verzí (bude update_v5.32.apk)
+            val file = File(context.cacheDir, "update_v$cleanVersion.apk")
             
             connection.inputStream.use { input ->
                 file.outputStream().use { output ->

@@ -141,8 +141,8 @@ fun checkPendingUpdate(context: Context): File? {
     val files = context.cacheDir.listFiles { file -> file.name.startsWith("update_v") && file.name.endsWith(".apk") } ?: return null
     
     for (file in files) {
-        // Z názvu "update_v5.30.apk" vytáhneme jen "5.30"
-        val fileVersion = file.name.removePrefix("update_v").removeSuffix(".apk")
+        // OČIŠTĚNÍ: Odstraníme "update_v" a případné "v" navíc, ať už je název "update_v5.32" nebo "update_vv5.32"
+        val fileVersion = file.name.removePrefix("update_v").removeSuffix(".apk").removePrefix("v")
         
         if (fileVersion == BuildConfig.VERSION_NAME) {
             // Verze v souboru je stejná jako aktuální verze aplikace -> instalace proběhla, mažeme.
@@ -526,7 +526,8 @@ private fun SettingsScreen(
         val pendingFile = checkPendingUpdate(context)
         if (pendingFile != null) {
             downloadedFile = pendingFile
-            pendingVersion = pendingFile.name.removePrefix("update_v").removeSuffix(".apk")
+            // OČIŠTĚNÍ: Odstraníme "v" z názvu souboru pro zobrazení
+            pendingVersion = pendingFile.name.removePrefix("update_v").removeSuffix(".apk").removePrefix("v")
             updateState = UpdateState.READY_TO_INSTALL
         }
     }
@@ -629,6 +630,7 @@ private fun SettingsScreen(
             
             updateInfo = info
             updateState = UpdateState.DOWNLOADING
+            // Předáme info.version do downloadApk, aby se ošetřilo "v"
             val file = UpdateChecker.downloadApk(context, info.downloadApiUrl, info.version)
             
             if (file == null) {
@@ -638,7 +640,8 @@ private fun SettingsScreen(
             }
             
             downloadedFile = file
-            pendingVersion = info.version
+            // OČIŠTĚNÍ: Odstraníme "v" z názvu verze pro zobrazení
+            pendingVersion = info.version.removePrefix("v")
             updateState = UpdateState.READY_TO_INSTALL
             
             // Rovnou otevřít instalátor
@@ -911,7 +914,7 @@ private fun SettingsScreen(
                             contentAlignment = Alignment.CenterStart
                         ) {
                             Text(
-                                "Velikost textu na w.:",
+                                "Velikost textu:",
                                 color = OnoRed,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
@@ -1078,7 +1081,10 @@ private fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
-                    val displayVersion = updateInfo?.version ?: pendingVersion
+                    // OČIŠTĚNÍ: Odstraníme "v" z verze, aby se nezobrazovalo "vv5.32"
+                    val rawVersion = updateInfo?.version ?: pendingVersion
+                    val displayVersion = rawVersion?.removePrefix("v")
+                    
                     Text(
                         when (updateState) {
                             UpdateState.IDLE -> "Zkontrolovat aktualizace"
