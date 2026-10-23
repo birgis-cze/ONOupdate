@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -63,6 +64,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -90,6 +92,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.google.zxing.BarcodeFormat
@@ -199,9 +204,6 @@ class MainActivity : ComponentActivity() {
 
         // Pročistíme cache od starých/nainstalovaných balíčků
         checkPendingUpdate(this)
-        
-        // Pročistíme cache od starých/nainstalovaných balíčků
-        checkPendingUpdate(this)
 
         AppLogger.init(this)
         AppLogger.i("=== Aplikace spuštěna ===")
@@ -249,6 +251,8 @@ class MainActivity : ComponentActivity() {
                     onRefresh = { refreshNow() },
                     onExportLog = { exportLog() },
                     onOpenBatterySettings = { openBatterySettings() },
+                    onRequestLocation = { requestLocationPermissionIfNeeded() },
+                    onRequestNotification = { requestNotificationPermissionIfNeeded() },
                     onInstallApk = { file -> installApk(file) },
                     isConfiguring = configWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID
                 )
@@ -458,6 +462,8 @@ private fun SettingsScreen(
     onRefresh: () -> Unit,
     onExportLog: () -> Unit,
     onOpenBatterySettings: () -> Unit,
+    onRequestLocation: () -> Unit,
+    onRequestNotification: () -> Unit,
     onInstallApk: (File) -> Boolean,
     isConfiguring: Boolean
 ) {
@@ -482,6 +488,11 @@ private fun SettingsScreen(
     var downloadedFile by remember { mutableStateOf<File?>(null) }
     var pendingVersion by remember { mutableStateOf<String?>(null) }
 
+    // Stavy pro kontrolu systému (Poloha, Notifikace, Baterie)
+    var hasLoc by remember { mutableStateOf(false) }
+    var hasNotif by remember { mutableStateOf(false) }
+    var batteryOk by remember { mutableStateOf(false) }
+
     // Pumpy / poloha / progress
     val pumpRepo = remember { PumpRepository(context) }
     val progress by pumpRepo.progress.collectAsStateWithLifecycle()
@@ -500,6 +511,26 @@ private fun SettingsScreen(
     // Nainstalované navigační appky
     val installedNavApps = remember {
         NavigationApp.installed(context)
+    }
+
+    // --- ŽIVÁ KONTROLA SYSTÉMOVÝCH NASTAVENÍ ---
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                
+                hasNotif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                } else true
+                
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                batteryOk = pm.isIgnoringBatteryOptimizations(context.packageName)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // Načtení uloženého stavu
@@ -730,6 +761,40 @@ private fun SettingsScreen(
                         onShowAll = { showAllPumpsSheet = true },
                         onNavigate = { pump -> navTargetPump = pump }
                     )
+                }
+
+                // --- DYNAMICKÁ KARTA PRO SYSTÉMOVÁ NASTAVENÍ ---
+                if (!hasLoc || !hasNotif || !batteryOk) {
+                    SettingsCard {
+                        SectionTitle("Doporučená nastavení:")
+                        if (!hasLoc) {
+                            OutlinedButton(
+                                onClick = onRequestLocation,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Povolit přístup k poloze")
+                            }
+                        }
+                        if (!hasNotif) {
+                            OutlinedButton(
+                                onClick = onRequestNotification,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Povolit notifikace")
+                            }
+                        }
+                        if (!batteryOk) {
+                            OutlinedButton(
+                                onClick = onOpenBatterySettings,
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Nastavení baterie (Neomezený běh)")
+                            }
+                        }
+                    }
                 }
 
                 // ---- Navigace ----
@@ -1100,14 +1165,6 @@ private fun SettingsScreen(
                             UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
                         }
                     )
-                }
-
-                OutlinedButton(
-                    onClick = onOpenBatterySettings,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Nastavení baterie")
                 }
 
                 // ---- Sdílení aplikace a QR kód (vedle sebe) ----
