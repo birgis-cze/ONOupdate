@@ -94,7 +94,12 @@ object UpdateChecker {
      * Stáhne APK z GitHub API URL (s tokenem) do cache.
      * Vrací File, nebo null při chybě.
      */
-    suspend fun downloadApk(context: Context, apiUrl: String, versionName: String): File? = withContext(Dispatchers.IO) {
+    suspend fun downloadApk(
+        context: Context, 
+        apiUrl: String, 
+        versionName: String,
+        onProgress: ((Int) -> Unit)? = null // <-- NOVÝ PARAMETR
+    ): File? = withContext(Dispatchers.IO) {
         try {
             val url = URL(apiUrl)
             val connection = url.openConnection() as HttpURLConnection
@@ -117,18 +122,29 @@ object UpdateChecker {
                 return@withContext null
             }
 
-            // OČIŠTĚNÍ: Odstraníme "v" z názvu verze (např. z "v5.32" uděláme "5.32")
             val cleanVersion = versionName.removePrefix("v")
-
-            // ÚKLID: Před stažením smažeme VŠECHNY staré update soubory
             context.cacheDir.listFiles { file -> file.name.startsWith("update_v") }?.forEach { it.delete() }
-
-            // Nový název souboru s verzí (bude update_v5.32.apk)
             val file = File(context.cacheDir, "update_v$cleanVersion.apk")
             
+            val totalSize = connection.contentLengthLong
+            var downloadedSize = 0L
+
             connection.inputStream.use { input ->
                 file.outputStream().use { output ->
-                    input.copyTo(output)
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+                    while (input.read(buffer).also { bytesRead = it } != -1) {
+                        output.write(buffer, 0, bytesRead)
+                        downloadedSize += bytesRead
+                        
+                        // Hlášení průběhu (pouze pokud známe celkovou velikost)
+                        if (totalSize > 0 && onProgress != null) {
+                            val progress = ((downloadedSize * 100) / totalSize).toInt()
+                            withContext(Dispatchers.Main) {
+                                onProgress(progress)
+                            }
+                        }
+                    }
                 }
             }
 

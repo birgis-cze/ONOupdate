@@ -37,10 +37,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -73,6 +75,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -90,6 +93,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
@@ -121,10 +127,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.app.Activity
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextDecoration
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -493,6 +495,7 @@ private fun SettingsScreen(
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var downloadedFile by remember { mutableStateOf<File?>(null) }
     var pendingVersion by remember { mutableStateOf<String?>(null) }
+    var downloadProgress by remember { mutableIntStateOf(0) }
 
     // Stavy pro kontrolu systému (Poloha, Notifikace, Baterie)
     var hasLoc by remember { mutableStateOf(false) }
@@ -685,7 +688,15 @@ private fun SettingsScreen(
             
             updateInfo = info
             updateState = UpdateState.DOWNLOADING
-            val file = UpdateChecker.downloadApk(context, info.downloadApiUrl, info.version)
+            downloadProgress = 0 // Reset
+            
+            // PŘEDÁNÍ CALLBACKU
+            val file = UpdateChecker.downloadApk(
+                context = context, 
+                apiUrl = info.downloadApiUrl, 
+                versionName = info.version,
+                onProgress = { progress -> downloadProgress = progress }
+            )
             
             if (file == null) {
                 updateState = UpdateState.IDLE
@@ -1140,7 +1151,7 @@ private fun SettingsScreen(
                     Text("Aktualizovat data")
                 }
 
-                // ---- Chytré tlačítko pro aktualizaci ----
+                // ---- Chytré tlačítko pro aktualizaci s progress barem ----
                 OutlinedButton(
                     onClick = {
                         when (updateState) {
@@ -1165,21 +1176,41 @@ private fun SettingsScreen(
                         }
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().height(48.dp), // Pevná výška pro pěkný progress bar
+                    contentPadding = PaddingValues(0.dp), // Zrušíme vnitřní okraje
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
-                    val rawVersion = updateInfo?.version ?: pendingVersion
-                    val displayVersion = rawVersion?.removePrefix("v")
-                    
-                    Text(
-                        when (updateState) {
-                            UpdateState.IDLE -> "Zkontrolovat aktualizace"
-                            UpdateState.CHECKING -> "Kontroluji…"
-                            UpdateState.DOWNLOADING -> "Stahuji a připravuji…"
-                            UpdateState.READY_TO_INSTALL -> "Spustit instalaci (v$displayVersion)"
-                            UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
+                    if (updateState == UpdateState.DOWNLOADING) {
+                        // Zobrazení progress baru
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Barevný pruh na pozadí podle procent
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(downloadProgress / 100f) // 0.0 až 1.0
+                                    .background(OnoRed.copy(alpha = 0.2f))
+                            )
+                            // Text přes pruh
+                            Text("Stahuji… $downloadProgress %", fontWeight = FontWeight.Bold)
                         }
-                    )
+                    } else {
+                        // Normální texty
+                        val rawVersion = updateInfo?.version ?: pendingVersion
+                        val displayVersion = rawVersion?.removePrefix("v")
+                        
+                        Text(
+                            when (updateState) {
+                                UpdateState.IDLE -> "Zkontrolovat aktualizace"
+                                UpdateState.CHECKING -> "Kontroluji…"
+                                UpdateState.READY_TO_INSTALL -> "Spustit instalaci (v$displayVersion)"
+                                UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
+                                else -> "" // DOWNLOADING je ošetřen výše
+                            }
+                        )
+                    }
                 }
 
                 // ---- Sdílení aplikace a QR kód (vedle sebe) ----
