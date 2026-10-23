@@ -120,6 +120,9 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.app.Activity
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -197,8 +200,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Vynutíme tmavé (černé) ikony v horní stavové liště, protože pozadí je vždy žluté
-        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+        // Vynutíme tmavé (černé) ikony v horní stavové liště i ve spodním navigačním panelu
+        val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        
+        windowInsetsController.isAppearanceLightStatusBars = true
+        windowInsetsController.isAppearanceLightNavigationBars = true
 
         // Pročistíme cache od starých/nainstalovaných balíčků
         checkPendingUpdate(this)
@@ -1556,7 +1562,19 @@ private fun AllPumpsSheet(
     onPick: (PumpEntity) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
+    // Vynutíme černé ikony i při otevřeném BottomSheetu
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as? android.app.Activity)?.window
+            if (window != null) {
+                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.isAppearanceLightStatusBars = true
+                insetsController.isAppearanceLightNavigationBars = true
+            }
+        }
+    }
+    
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
