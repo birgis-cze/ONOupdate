@@ -590,6 +590,27 @@ private fun SettingsScreen(
         }
     }
 
+    // Tichá kontrola aktualizací na pozadí při otevření nastavení
+    LaunchedEffect(Unit) {
+        // Spustíme kontrolu POUZE pokud zrovna nemáme stažený balíček k instalaci
+        // (aby nedošlo k přepsání stavu READY_TO_INSTALL)
+        if (downloadedFile == null && updateState == UpdateState.IDLE) {
+            try {
+                AppLogger.d("Auto-check: tichá kontrola aktualizací…")
+                val info = UpdateChecker.checkForUpdate()
+                if (info != null) {
+                    updateInfo = info
+                    updateState = UpdateState.IDLE // Zůstává IDLE, ale tlačítko se změní podle updateInfo
+                    AppLogger.i("Auto-check: nalezena novější verze ${info.version}")
+                } else {
+                    AppLogger.d("Auto-check: máš nejnovější verzi")
+                }
+            } catch (t: Throwable) {
+                AppLogger.e("Auto-check: chyba", t)
+            }
+        }
+    }
+
     // Načtení počtu evidovaných zařízení + hashe tohoto zařízení
     LaunchedEffect(Unit) {
         deviceHash = InstallReporter.getDeviceHash(context)
@@ -1155,9 +1176,39 @@ private fun SettingsScreen(
                 OutlinedButton(
                     onClick = {
                         when (updateState) {
-                            UpdateState.IDLE, UpdateState.UP_TO_DATE -> {
-                                startUpdateProcess()
+                            UpdateState.IDLE -> {
+                                if (updateInfo != null) {
+                                    // Už známe novou verzi (z auto-checku) → rovnou stáhnout
+                                    scope.launch {
+                                        updateState = UpdateState.DOWNLOADING
+                                        downloadProgress = 0
+                                        val file = UpdateChecker.downloadApk(
+                                            context = context,
+                                            apiUrl = updateInfo!!.downloadApiUrl,
+                                            versionName = updateInfo!!.version,
+                                            onProgress = { progress -> downloadProgress = progress }
+                                        )
+                                        if (file == null) {
+                                            updateState = UpdateState.IDLE
+                                            Toast.makeText(context, "Stahování selhalo.", Toast.LENGTH_LONG).show()
+                                            return@launch
+                                        }
+                                        downloadedFile = file
+                                        pendingVersion = updateInfo!!.version.removePrefix("v")
+                                        updateState = UpdateState.READY_TO_INSTALL
+                                        val success = onInstallApk(file)
+                                        if (!success) {
+                                            downloadedFile = null
+                                            pendingVersion = null
+                                            updateState = UpdateState.IDLE
+                                        }
+                                    }
+                                } else {
+                                    // Nic neznáme → kompletní proces (kontrola + stažení + instalace)
+                                    startUpdateProcess()
+                                }
                             }
+                            UpdateState.UP_TO_DATE -> startUpdateProcess()
                             UpdateState.READY_TO_INSTALL -> {
                                 if (downloadedFile != null) {
                                     val success = onInstallApk(downloadedFile!!)
@@ -1170,9 +1221,7 @@ private fun SettingsScreen(
                                     updateState = UpdateState.IDLE
                                 }
                             }
-                            UpdateState.CHECKING, UpdateState.DOWNLOADING -> {
-                                // Během procesu nic neděláme
-                            }
+                            UpdateState.CHECKING, UpdateState.DOWNLOADING -> {}
                         }
                     },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -1203,7 +1252,7 @@ private fun SettingsScreen(
                         
                         Text(
                             when (updateState) {
-                                UpdateState.IDLE -> "Zkontrolovat aktualizace"
+                                UpdateState.IDLE -> if (updateInfo != null) "Stáhnout verzi (v$displayVersion)" else "Zkontrolovat aktualizace"
                                 UpdateState.CHECKING -> "Kontroluji…"
                                 UpdateState.READY_TO_INSTALL -> "Spustit instalaci (v$displayVersion)"
                                 UpdateState.UP_TO_DATE -> "Zkontrolovat aktualizace"
