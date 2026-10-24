@@ -16,7 +16,7 @@ import java.util.Calendar
  * - Spustí se 1× denně kolem 15:00.
  * - NOCNÍ POJISTKA: Pokud se z nějakého důvodu probudí v noci (mezi 21:00 a 08:00),
  *   notifikaci NEPOŠLE a raději si naplánuje nový běh na 15:00.
- * - Upozornění posílá až po 5 dnech ignorování a jen jednou pro danou verzi.
+ * - Upozornění posílá až po X (proměnná MIN_DAYS_BEFORE_NOTIFY) dnech ignorování a jen jednou pro danou verzi.
  */
 class UpdateCheckWorker(
     context: Context,
@@ -25,7 +25,7 @@ class UpdateCheckWorker(
 
     companion object {
         /** Po kolika dnech čekání poslat upozornění */
-        private const val MIN_DAYS_BEFORE_NOTIFY = 5
+        private const val MIN_DAYS_BEFORE_NOTIFY = 3
         
         /** Kolik ms je jeden den */
         private const val DAY_MS = 24L * 60 * 60 * 1000
@@ -59,7 +59,7 @@ class UpdateCheckWorker(
             val now = System.currentTimeMillis()
 
             if (pending == null || pending.first != info.version) {
-                AppLogger.i("UpdateCheckWorker: nová verze ${info.version} detekována, začínám počítat 5 dní.")
+                AppLogger.i("UpdateCheckWorker: nová verze ${info.version} detekována, začínám počítat $MIN_DAYS_BEFORE_NOTIFY dny.")
                 SettingsStore(applicationContext).savePendingUpdateInfo(info.version, now)
             } else {
                 val elapsedMs = now - pending.second
