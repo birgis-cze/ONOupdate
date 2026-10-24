@@ -546,7 +546,7 @@ private fun SettingsScreen(
     var downloadProgress by remember { mutableIntStateOf(0) }
 
     var hasLoc by remember { mutableStateOf(false) }
-    var hasBgLoc by remember { mutableStateOf(true) }
+    var hasBgLoc by remember { mutableStateOf(BackgroundLocationHelper.hasBackground(context)) }    
     var hasNotif by remember { mutableStateOf(false) }
     var batteryOk by remember { mutableStateOf(false) }
 
