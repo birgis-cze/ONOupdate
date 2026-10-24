@@ -1,6 +1,8 @@
 package cz.tankono.widget.util
 
 import android.content.Context
+import android.media.MediaDrm
+import android.os.Build
 import android.provider.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,13 +14,14 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import java.util.UUID
 
 /**
  * Odešle jednorázově hash zařízení na Google Apps Script endpoint.
  * Slouží pouze pro orientační statistiku počtu instalací.
  *
  * - Odesílá se POUZE JEDNOU za život aplikace (flag v SharedPreferences).
- * - Posílá se hash (SHA-256 z Android ID + sůl), nikdy surové ID.
+ * - Posílá se hash (SHA-256 z MediaDrm ID / Android ID + sůl), nikdy surové ID.
  * - Pokud odeslání selže, zkusí to znovu při dalším spuštění.
  */
 object InstallReporter {
@@ -144,28 +147,53 @@ object InstallReporter {
     }
 
     /**
-     * Vytvoří hash ze zařízení: SHA-256(ANDROID_ID + SALT).
-     * Vrací null, pokud se nepodaří ID získat.
+     * Vytvoří hash ze zařízení.
+     * Primárně používá stabilní MediaDrm ID, fallback na ANDROID_ID.
+     * Formát výsledku: "ID_" + SHA-256(deviceId + SALT)
      */
     private fun buildDeviceHash(context: Context): String? {
         return try {
-            val androidId = Settings.Secure.getString(
-                context.contentResolver,
-                Settings.Secure.ANDROID_ID
-            ) ?: return null
+            var deviceId = getMediaDrmId()
+            
+            if (deviceId.isNullOrBlank()) {
+                AppLogger.d("InstallReporter: MediaDrm ID nedostupné, zkouším ANDROID_ID")
+                deviceId = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ANDROID_ID
+                )
+            }
 
-            if (androidId.isBlank() || androidId == "9774d56d682e549c") {
+            if (deviceId.isNullOrBlank() || deviceId == "9774d56d682e549c") {
                 return null
             }
 
-            val input = (androidId + SALT).toByteArray(Charsets.UTF_8)
+            val input = (deviceId + SALT).toByteArray(Charsets.UTF_8)
             val digest = MessageDigest.getInstance("SHA-256")
             val bytes = digest.digest(input)
-            bytes.joinToString("") { "%02x".format(it) }
+            
+            // Přidáme prefix "ID_" před plný hex hash
+            "ID_" + bytes.joinToString("") { "%02x".format(it) }
         } catch (t: Throwable) {
             // Raritní (emulátory, poškozený Android ID) = [W], ne [E]
             AppLogger.w("InstallReporter: hash error: ${t.message}")
             null
+        }
+    }
+
+    /**
+     * Získá stabilní ID zařízení přes MediaDrm (Widevine).
+     * Přežije vymazání dat aplikace i přeinstalaci.
+     */
+    private fun getMediaDrmId(): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2) return null
+        try {
+            val widevineUuid = UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed")
+            val mediaDrm = MediaDrm(widevineUuid)
+            val deviceUniqueIdArray = mediaDrm.getPropertyByteArray(MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
+            mediaDrm.close()
+            return deviceUniqueIdArray.joinToString("") { "%02x".format(it) }
+        } catch (t: Throwable) {
+            return null
         }
     }
 }

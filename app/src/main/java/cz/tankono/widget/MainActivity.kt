@@ -141,15 +141,25 @@ enum class UpdateState {
     IDLE, CHECKING, DOWNLOADING, READY_TO_INSTALL, UP_TO_DATE
 }
 
+/**
+ * Ořeže "ČS " prefix z názvu stanice pro zobrazení.
+ * V DB zůstává plný název.
+ */
 private fun pumpDisplayName(fullName: String): String =
     fullName.removePrefix("ČS ").trim()
 
+/**
+ * Zkontroluje cache, zda tam neleží stažený balíček.
+ * Pokud najde balíček, který má stejnou verzi jako aktuální aplikace, smaže ho (již proběhla instalace).
+ * Pokud najde balíček s jinou (novější) verzí, vrátí ho jako připravený k instalaci.
+ */
 fun checkPendingUpdate(context: Context): File? {
     val files = context.cacheDir.listFiles { file -> file.name.startsWith("update_v") && file.name.endsWith(".apk") } ?: return null
-
+    
     for (file in files) {
+        // OČIŠTĚNÍ: Odstraníme "update_v" a případné "v" navíc
         val fileVersion = file.name.removePrefix("update_v").removeSuffix(".apk").removePrefix("v")
-
+        
         if (fileVersion == BuildConfig.VERSION_NAME) {
             file.delete()
             AppLogger.i("Úklid: Smazán úspěšně nainstalovaný balíček $fileVersion")
@@ -161,6 +171,9 @@ fun checkPendingUpdate(context: Context): File? {
     return null
 }
 
+/**
+ * Zavibruje 2 sekundy (pro potvrzení tajné akce).
+ */
 private fun vibrateLong(context: Context) {
     val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -536,20 +549,23 @@ private fun SettingsScreen(
     var lastFetched by remember { mutableStateOf<Long?>(null) }
 
     var installCount by remember { mutableStateOf<Int?>(null) }
-    var installCountLoading by remember { mutableStateOf(false) }
+    var installCountLoading by remember { mutableStateOf(false) }   
     var deviceHash by remember { mutableStateOf<String?>(null) }
 
+    // Stavy pro chytré tlačítko
     var updateState by remember { mutableStateOf(UpdateState.IDLE) }
     var updateInfo by remember { mutableStateOf<UpdateChecker.UpdateInfo?>(null) }
     var downloadedFile by remember { mutableStateOf<File?>(null) }
     var pendingVersion by remember { mutableStateOf<String?>(null) }
     var downloadProgress by remember { mutableIntStateOf(0) }
 
+    // Stavy pro kontrolu systému (Poloha, Notifikace, Baterie)
     var hasLoc by remember { mutableStateOf(false) }
-    var hasBgLoc by remember { mutableStateOf(BackgroundLocationHelper.hasBackground(context)) }    
+    var hasBgLoc by remember { mutableStateOf(BackgroundLocationHelper.hasBackground(context)) }
     var hasNotif by remember { mutableStateOf(false) }
     var batteryOk by remember { mutableStateOf(false) }
 
+    // Pumpy / poloha / progress
     val pumpRepo = remember { PumpRepository(context) }
     val progress by pumpRepo.progress.collectAsStateWithLifecycle()
 
@@ -561,9 +577,11 @@ private fun SettingsScreen(
     var navTargetPump by remember { mutableStateOf<PumpEntity?>(null) }
     var showQrDialog by remember { mutableStateOf(false) }
 
+    // Tajné odemknutí exportu logu
     var footerTapCount by remember { mutableIntStateOf(0) }
     var showLogFlash by remember { mutableStateOf(false) }
 
+    // Nainstalované navigační appky
     val installedNavApps = remember {
         NavigationApp.installed(context)
     }
@@ -575,13 +593,13 @@ private fun SettingsScreen(
             if (event == Lifecycle.Event.ON_RESUME) {
                 hasLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
                          ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
-
+                
                 hasBgLoc = BackgroundLocationHelper.hasBackground(context)
 
                 hasNotif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
                 } else true
-
+                
                 val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 batteryOk = pm.isIgnoringBatteryOptimizations(context.packageName)
             }
@@ -590,10 +608,11 @@ private fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    // --- OKAMŽITÉ NAČTENÍ Z CACHE (aby text "Nedostupná poloha" neproblikával) ---
     LaunchedEffect(Unit) {
         val cachedLoc = SettingsStore(context).getCachedLocation()
         if (cachedLoc != null && locationGranted) {
-            userLocation = cachedLoc
+            userLocation = cachedLoc // Tím se hasLocation v NearestPumpSection změní na true
             val sorted = pumpRepo.getAllSortedByDistance(cachedLoc.first, cachedLoc.second)
             if (sorted.isNotEmpty()) {
                 nearestPump = sorted.first().first
@@ -602,6 +621,7 @@ private fun SettingsScreen(
         }
     }
 
+    // Načtení uloženého stavu
     LaunchedEffect(loaded) {
         val loadedLocal = loaded ?: return@LaunchedEffect
 
@@ -626,6 +646,7 @@ private fun SettingsScreen(
         } catch (_: Throwable) {}
     }
 
+    // Zkontrolujeme, zda nezůstal viset stažený balíček z minula
     LaunchedEffect(Unit) {
         val pendingFile = checkPendingUpdate(context)
         if (pendingFile != null) {
@@ -635,14 +656,17 @@ private fun SettingsScreen(
         }
     }
 
+    // Tichá kontrola aktualizací na pozadí při otevření nastavení
     LaunchedEffect(Unit) {
+        // Spustíme kontrolu POUZE pokud zrovna nemáme stažený balíček k instalaci
+        // (aby nedošlo k přepsání stavu READY_TO_INSTALL)
         if (downloadedFile == null && updateState == UpdateState.IDLE) {
             try {
                 AppLogger.d("Auto-check: tichá kontrola aktualizací…")
                 val info = UpdateChecker.checkForUpdate()
                 if (info != null) {
                     updateInfo = info
-                    updateState = UpdateState.IDLE
+                    updateState = UpdateState.IDLE // Zůstává IDLE, ale tlačítko se změní podle updateInfo
                     AppLogger.i("Auto-check: nalezena novější verze ${info.version}")
                 } else {
                     AppLogger.d("Auto-check: máš nejnovější verzi")
@@ -653,6 +677,7 @@ private fun SettingsScreen(
         }
     }
 
+    // Načtení počtu evidovaných zařízení + hashe tohoto zařízení
     LaunchedEffect(Unit) {
         deviceHash = InstallReporter.getDeviceHash(context)
         installCountLoading = true
@@ -675,6 +700,7 @@ private fun SettingsScreen(
         WorkScheduler.schedule(context)
     }
 
+    // Načtení pump + polohy
     LaunchedEffect(locationGranted) {
         try {
             val settingsStore = SettingsStore(context)
@@ -735,38 +761,40 @@ private fun SettingsScreen(
         return
     }
 
+    // Funkce, která provede celý cyklus najednou
     fun startUpdateProcess() {
         scope.launch {
             updateState = UpdateState.CHECKING
             val info = UpdateChecker.checkForUpdate(force = true)
-
+            
             if (info == null) {
                 updateState = UpdateState.UP_TO_DATE
                 Toast.makeText(context, "Máš nejnovější verzi", Toast.LENGTH_SHORT).show()
                 return@launch
             }
-
+            
             updateInfo = info
             updateState = UpdateState.DOWNLOADING
-            downloadProgress = 0
-
+            downloadProgress = 0 // Reset
+            
+            // PŘEDÁNÍ CALLBACKU
             val file = UpdateChecker.downloadApk(
-                context = context,
-                apiUrl = info.downloadApiUrl,
+                context = context, 
+                apiUrl = info.downloadApiUrl, 
                 versionName = info.version,
                 onProgress = { progress -> downloadProgress = progress }
             )
-
+            
             if (file == null) {
                 updateState = UpdateState.IDLE
                 Toast.makeText(context, "Stahování selhalo.", Toast.LENGTH_LONG).show()
                 return@launch
             }
-
+            
             downloadedFile = file
             pendingVersion = info.version.removePrefix("v")
             updateState = UpdateState.READY_TO_INSTALL
-
+            
             val success = onInstallApk(file)
             if (!success) {
                 downloadedFile = null
@@ -801,6 +829,7 @@ private fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
+                // ---- Poslední aktualizace + nejbližší ----
                 SettingsCard {
                     SectionTitle("Poslední aktualizace:")
                     Text(
@@ -840,6 +869,7 @@ private fun SettingsScreen(
                         nearestPump = nearestPump,
                         distanceKm = nearestDistanceKm,
                         hasLocation = userLocation != null,
+                        pumpProgress = progress,
                         onShowAll = { showAllPumpsSheet = true },
                         onNavigate = { pump -> navTargetPump = pump }
                     )
@@ -893,6 +923,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Navigace ----
                 SettingsCard {
                     if (installedNavApps.size >= 2) {
                         NavigationRow(
@@ -932,6 +963,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Produkty ----
                 SettingsCard {
                     SectionTitle("Zobrazované produkty")
                     ProductGroup("Paliva:",
@@ -945,6 +977,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Krátké názvy ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -974,6 +1007,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Měna ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -998,6 +1032,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Špička ----
                 SettingsCard {
                     SectionTitle("Špička (aktualizace cen)")
                     TwoSteppersRow(
@@ -1030,6 +1065,7 @@ private fun SettingsScreen(
                     )
                 }
 
+                // ---- Interval ----
                 SettingsCard {
                     SectionTitle("Interval aktualizací špička/mimo")
                     TwoSteppersRow(
@@ -1062,6 +1098,7 @@ private fun SettingsScreen(
                     )
                 }
 
+                // ---- Text widgetu ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -1106,6 +1143,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Vzhled (Tmavý režim) ----
                 SettingsCard {
                     var themeExpanded by remember { mutableStateOf(false) }
 
@@ -1210,9 +1248,11 @@ private fun SettingsScreen(
                     Text("Aktualizovat data")
                 }
 
+                // Zjistíme, zda je k dispozici nová verze (pro zvýraznění tlačítka)
                 val isUpdateAvailable = updateState == UpdateState.IDLE && updateInfo != null
                 val isDownloading = updateState == UpdateState.DOWNLOADING
 
+                // ---- Chytré tlačítko pro aktualizaci s progress barem ----
                 OutlinedButton(
                     onClick = {
                         when (updateState) {
@@ -1266,6 +1306,7 @@ private fun SettingsScreen(
                         containerColor = if (isUpdateAvailable) OnoRed else Color.Transparent,
                         contentColor = if (isUpdateAvailable) OnoYellow else OnoRed
                     ),
+                    // ZDE JE ZMĚNA: Výšku a okraje měníme POUZE při stahování
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(if (isDownloading) Modifier.height(48.dp) else Modifier),
@@ -1273,6 +1314,7 @@ private fun SettingsScreen(
                     enabled = updateState != UpdateState.CHECKING && updateState != UpdateState.DOWNLOADING
                 ) {
                     if (isDownloading) {
+                        // Zobrazení progress baru
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -1288,7 +1330,7 @@ private fun SettingsScreen(
                     } else {
                         val rawVersion = updateInfo?.version ?: pendingVersion
                         val displayVersion = rawVersion?.removePrefix("v")
-
+                        
                         Text(
                             when (updateState) {
                                 UpdateState.IDLE -> if (updateInfo != null) "Stáhnout verzi (v$displayVersion)" else "Zkontrolovat aktualizace"
@@ -1302,6 +1344,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- Sdílení aplikace a QR kód (vedle sebe) ----
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -1330,6 +1373,7 @@ private fun SettingsScreen(
                     }
                 }
 
+                // ---- ZÁPATÍ (jeden blok textu) ----
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -1350,7 +1394,7 @@ private fun SettingsScreen(
                         text = buildAnnotatedString {
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.6f),
-                                fontSize = 10.sp,
+                                fontSize = 10.sp, 
                                 fontWeight = FontWeight.Bold
                             )) {
                                 append("Tank ONO widget v${BuildConfig.VERSION_NAME}\nAutor: Jirka Zeman pomocí GEMINI AI")
@@ -1378,7 +1422,7 @@ private fun SettingsScreen(
                                 append("Aplikace odeslala hash tohoto zařízení")
                             }
                             append("\n")
-
+                            
                             val hash = deviceHash
                             if (hash != null) {
                                 val half = (hash.length + 1) / 2
@@ -1402,7 +1446,7 @@ private fun SettingsScreen(
                                 }
                             }
                             append("\n")
-
+                            
                             withStyle(SpanStyle(
                                 color = OnoRed.copy(alpha = 0.55f),
                                 fontSize = 10.sp,
@@ -1432,8 +1476,9 @@ private fun SettingsScreen(
                                 if (footerTapCount >= 10) {
                                     footerTapCount = 0
                                     showLogFlash = true
-                                    vibrateLong(context)
-
+                                    vibrateLong(context) // Zavibruje 2s
+                                    
+                                    // Spustíme odpočet 2s, než otevřeme sdílení
                                     scope.launch {
                                         delay(2000)
                                         showLogFlash = false
@@ -1475,9 +1520,10 @@ private fun SettingsScreen(
         }
     }
 
+    // Tajný 2s Flash při generování logu
     if (showLogFlash) {
         androidx.compose.ui.window.Dialog(
-            onDismissRequest = { },
+            onDismissRequest = { /* Nedovolíme zavřít kliknutím mimo */ },
             properties = androidx.compose.ui.window.DialogProperties(
                 dismissOnBackPress = false,
                 dismissOnClickOutside = false
@@ -1487,7 +1533,7 @@ private fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(OnoRed.copy(alpha = 0.95f))
-                    .clickable(enabled = false) {},
+                    .clickable(enabled = false) {}, // Zablokuje prokliknutí
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -1505,7 +1551,7 @@ private fun SettingsScreen(
 
 
 // =============================================================================
-// NAVIGACE
+// NAVIGACE – jednořádková s dropdown tlačítkem
 // =============================================================================
 @Composable
 private fun NavigationRow(
@@ -1605,20 +1651,59 @@ private fun NearestPumpSection(
     nearestPump: PumpEntity?,
     distanceKm: Double?,
     hasLocation: Boolean,
+    pumpProgress: PumpRefreshProgress,
     onShowAll: () -> Unit,
     onNavigate: (PumpEntity) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        when {
-            nearestPump != null && distanceKm != null -> {
-                Text(
-                    "Nejbližší stanice:",
-                    color = OnoRed,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(4.dp))
+        Text(
+            "Nejbližší stanice:",
+            color = OnoRed,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(4.dp))
 
+        when {
+            // 1. STAHOVÁNÍ SEZNAMU (ještě neznáme celkový počet)
+            pumpProgress is PumpRefreshProgress.FetchingList -> {
+                Column(modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 4.dp, end = 16.dp)) {
+                    Text(
+                        "Stahuji seznam stanic…",
+                        color = OnoRed,
+                        fontSize = 12.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        color = OnoRed,
+                        trackColor = OnoRed.copy(alpha = 0.2f),
+                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                    )
+                }
+            }
+            // 2. STAHOVÁNÍ GPS (známe done / total)
+            pumpProgress is PumpRefreshProgress.FetchingGps -> {
+                Column(modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 4.dp, end = 16.dp)) {
+                    Text(
+                        "Stahuji GPS: ${pumpProgress.done} / ${pumpProgress.total}",
+                        color = OnoRed,
+                        fontSize = 12.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    val fraction = if (pumpProgress.total > 0) {
+                        pumpProgress.done.toFloat() / pumpProgress.total
+                    } else 0f
+                    
+                    LinearProgressIndicator(
+                        progress = { fraction },
+                        color = OnoRed,
+                        trackColor = OnoRed.copy(alpha = 0.2f),
+                        modifier = Modifier.fillMaxWidth().height(4.dp)
+                    )
+                }
+            }
+            // 3. MÁME DATA
+            nearestPump != null && distanceKm != null -> {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1651,32 +1736,22 @@ private fun NearestPumpSection(
                     }
                 }
             }
+            // 4. CHYBÍ OPRÁVNĚNÍ
             !hasLocation -> {
-                Text(
-                    "Nejbližší stanice:",
-                    color = OnoRed,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(4.dp))
                 Text(
                     "   Nedostupná poloha",
                     color = OnoRed,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 2.dp)
                 )
             }
+            // 5. ZJIŠŤUJEME (ale ještě se nestahují data)
             else -> {
-                Text(
-                    "Nejbližší stanice:",
-                    color = OnoRed,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(Modifier.height(4.dp))
                 Text(
                     "   Zjišťuji…",
                     color = OnoRed,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 16.dp, top = 2.dp)
                 )
             }
         }
@@ -1714,6 +1789,7 @@ private fun AllPumpsSheet(
     onPick: (PumpEntity) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // Vynutíme černé ikony i při otevřeném BottomSheetu
     val view = LocalView.current
     if (!view.isInEditMode) {
         androidx.compose.runtime.SideEffect {
@@ -2058,6 +2134,9 @@ private fun formatTime(minutes: Int): String {
 // QR KÓD A SDÍLENÍ
 // =============================================================================
 
+/**
+ * Vygeneruje QR kód jako ImageBitmap.
+ */
 private fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
     val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -2109,6 +2188,7 @@ private fun QrCodeDialog(
                         .padding(8.dp)
                 )
                 Spacer(Modifier.height(16.dp))
+                // NOVÉ: Klikatelný odkaz
                 Text(
                     text = GITHUB_URL,
                     color = OnoRed,
@@ -2121,6 +2201,7 @@ private fun QrCodeDialog(
                             try {
                                 uriHandler.openUri(GITHUB_URL)
                             } catch (_: Throwable) {
+                                // Pokud prohlížeč selže, ignorujeme
                             }
                         }
                 )
