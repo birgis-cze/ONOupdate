@@ -82,7 +82,6 @@ object PumpScraper {
             AppLogger.i("PumpScraper: nalezeno ${pumps.size} pump")
             pumps.values.sortedBy { it.id }
         } catch (e: HttpStatusException) {
-            // HTTP 4xx/5xx – server blokuje / chyba
             if (e.statusCode == 429 || e.statusCode == 503) {
                 AppLogger.w("PumpScraper: server vrátil ${e.statusCode} – přeskočeno (zkusí se za 24 h)")
             } else {
@@ -97,14 +96,6 @@ object PumpScraper {
 
     /**
      * Stáhne detail pumpy a extrahuje GPS souřadnice.
-     *
-     * Postup:
-     * 1. Stáhne HTML detailu (např. index.php?page=pumpcard&pump=28)
-     * 2. Najde odkaz na Google Maps (např. https://goo.gl/maps/zcNw1)
-     * 3. Následuje přesměrování → získá plnou URL
-     * 4. Extrahuje GPS z URL (regex @lat,lng)
-     *
-     * Vrací Pair(lat, lng) nebo null při chybě.
      */
     suspend fun fetchGpsForPump(pump: PumpEntity): Pair<Double, Double>? =
         withContext(Dispatchers.IO) {
@@ -117,8 +108,8 @@ object PumpScraper {
                     .timeout(TIMEOUT_MS)
                     .get()
 
-                // 2. Najít odkaz na Google Maps
-                val mapsLink = doc.select("a[href*=goo.gl/maps], a[href*=maps.google], a[href*=google.com/maps]")
+                // 2. Najít odkaz na Google Maps (PŘIDÁNO maps.app.goo.gl)
+                val mapsLink = doc.select("a[href*=goo.gl/maps], a[href*=maps.app.goo.gl], a[href*=maps.google], a[href*=google.com/maps]")
                     .firstOrNull()
                     ?.attr("href")
                     ?.trim()
