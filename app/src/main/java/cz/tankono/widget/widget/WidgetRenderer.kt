@@ -33,15 +33,19 @@ import cz.tankono.widget.data.repo.PriceRepository
 import cz.tankono.widget.data.repo.PumpRepository
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 
 object WidgetRenderer {
 
@@ -53,6 +57,9 @@ object WidgetRenderer {
 
     private const val REQUEST_CODE_REFRESH = 0
     private const val REQUEST_CODE_NAV     = 1
+
+    /** Debounce mezi po sobě jdoucími rendery stejného widgetu. */
+    private const val RENDER_DEBOUNCE_MS = 200L
 
     private val ROW_IDS = intArrayOf(
         R.id.row_0, R.id.row_1, R.id.row_2, R.id.row_3, R.id.row_4,
@@ -78,10 +85,20 @@ object WidgetRenderer {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Aktuální render job pro každý widgetId (pro debounce). */
+    private val renderJobs = ConcurrentHashMap<Int, Job>()
+
     fun render(context: Context, mgr: AppWidgetManager, widgetId: Int) {
         AppLogger.d("=== RENDER widgetId=$widgetId ===")
-        scope.launch {
+
+        // Zrušit předchozí render stejného widgetu (pokud ještě běží)
+        renderJobs[widgetId]?.cancel()
+
+        renderJobs[widgetId] = scope.launch {
             try {
+                // Debounce: pokud do 200 ms přijde další render, tento se zruší
+                delay(RENDER_DEBOUNCE_MS)
+
                 val settingsStore = SettingsStore(context)
                 val settings = settingsStore.settings.first()
                 val state = PriceRepository(context).loadState()
@@ -99,8 +116,18 @@ object WidgetRenderer {
                     mgr.updateAppWidget(widgetId, views)
                 }
                 AppLogger.i("Widget $widgetId úspěšně vykreslen")
+            } catch (t: CancellationException) {
+                AppLogger.d("Render widgetu $widgetId zrušen (přišel novější požadavek)")
+                throw t
             } catch (t: Throwable) {
                 AppLogger.e("Chyba při renderu widgetu $widgetId", t)
+            } finally {
+                // Odstranit ze seznamu, pokud jsme stále aktuální job
+                // (ConcurrentHashMap.remove(key, value) odstraní jen pokud value == current)
+                val myJob = coroutineContext[Job]
+                if (myJob != null) {
+                    renderJobs.remove(widgetId, myJob)
+                }
             }
         }
     }
@@ -123,7 +150,7 @@ object WidgetRenderer {
 
         // 1. Zkusíme zjistit polohu (fresh nebo lastLocation)
         var loc = LocationProvider.getCurrentLocation(context)
-        
+
         if (loc != null) {
             // Úspěch, uložíme si ji pro příště
             settingsStore.saveCachedLocation(loc.first, loc.second)
@@ -158,7 +185,7 @@ object WidgetRenderer {
         val fg = if (night) COLOR_DARK_FG else COLOR_LIGHT_FG
 
         val views = RemoteViews(context.packageName, R.layout.widget_tankono)
-        
+
         // Dynamické nastavení pozadí podle režimu (světlý/tmavý) - ZMĚNA PRO ZAOBLENÍ
         if (night) {
             views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.bg_widget_dark)

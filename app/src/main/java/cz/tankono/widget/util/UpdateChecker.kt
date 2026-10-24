@@ -3,6 +3,8 @@ package cz.tankono.widget.util
 import android.content.Context
 import cz.tankono.widget.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -14,7 +16,17 @@ object UpdateChecker {
 
     private const val OWNER = "birgis-cze"
     private const val REPO = "ONOupdate"
-    
+
+    /** Minimální interval mezi kontrolami (60 s). */
+    private const val MIN_CHECK_INTERVAL_MS = 60_000L
+
+    /** Čas poslední kontroly (ms since epoch). 0 = ještě neproběhla. */
+    @Volatile
+    private var lastCheckAt = 0L
+
+    /** Mutex, aby se paralelní volání nespustila 2× za sebou. */
+    private val checkMutex = Mutex()
+
     @Immutable
     data class UpdateInfo(
         val version: String,
@@ -24,71 +36,83 @@ object UpdateChecker {
 
     /**
      * Zkontroluje GitHub Releases a vrátí info o novější verzi, nebo null.
-     * Pro privátní repo používá token z BuildConfig.
+     *
+     * @param force true = ignorovat 60s debounce (pro manuální tlačítko v UI).
+     *              false = použít debounce (pro auto-check na pozadí).
      */
-    suspend fun checkForUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
-        try {
-            val url = URL("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
-            val connection = url.openConnection() as HttpURLConnection
+    suspend fun checkForUpdate(force: Boolean = false): UpdateInfo? = checkMutex.withLock {
+        val now = System.currentTimeMillis()
+        if (!force && lastCheckAt > 0 && now - lastCheckAt < MIN_CHECK_INTERVAL_MS) {
+            val elapsed = (now - lastCheckAt) / 1000
+            AppLogger.d("UpdateChecker: přeskočeno (proběhlo ${elapsed}s zpět, min. interval ${MIN_CHECK_INTERVAL_MS / 1000}s)")
+            return@withLock null
+        }
+        lastCheckAt = now
 
-            connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
-            connection.setRequestProperty("User-Agent", "TankONO-Widget")
+        withContext(Dispatchers.IO) {
+            try {
+                val url = URL("https://api.github.com/repos/$OWNER/$REPO/releases/latest")
+                val connection = url.openConnection() as HttpURLConnection
 
-            val token = BuildConfig.GH_TOKEN
-            if (token.isNotEmpty()) {
-                connection.setRequestProperty("Authorization", "Bearer $token")
-                AppLogger.d("UpdateChecker: token použit")
-            } else {
-                AppLogger.w("UpdateChecker: token NENÍ k dispozici")
-            }
+                connection.setRequestProperty("Accept", "application/vnd.github.v3+json")
+                connection.setRequestProperty("User-Agent", "TankONO-Widget")
 
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 15_000
-
-            val responseCode = connection.responseCode
-            AppLogger.d("UpdateChecker: HTTP $responseCode")
-
-            if (responseCode != 200) {
-                AppLogger.w("UpdateChecker: neočekávaný kód $responseCode")
-                return@withContext null
-            }
-
-            val response = connection.inputStream.bufferedReader().readText()
-            val json = JSONObject(response)
-
-            val latestVersion = json.getString("tag_name")
-            val releaseNotes = if (json.has("body")) json.getString("body") else null
-
-            // Najít APK asset – použít API URL (funguje s tokenem)
-            val assets = json.getJSONArray("assets")
-            var downloadApiUrl: String? = null
-            for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
-                val name = asset.getString("name")
-                if (name.endsWith(".apk")) {
-                    downloadApiUrl = asset.getString("url")   // API URL, ne browser_download_url
-                    break
+                val token = BuildConfig.GH_TOKEN
+                if (token.isNotEmpty()) {
+                    connection.setRequestProperty("Authorization", "Bearer $token")
+                    AppLogger.d("UpdateChecker: token použit")
+                } else {
+                    AppLogger.w("UpdateChecker: token NENÍ k dispozici")
                 }
-            }
 
-            if (downloadApiUrl == null) {
-                AppLogger.w("UpdateChecker: APK asset nenalezen")
-                return@withContext null
-            }
+                connection.connectTimeout = 15_000
+                connection.readTimeout = 15_000
 
-            val currentVersion = BuildConfig.VERSION_NAME
-            val isNewer = isNewerVersion(latestVersion, currentVersion)
+                val responseCode = connection.responseCode
+                AppLogger.d("UpdateChecker: HTTP $responseCode")
 
-            AppLogger.d("UpdateChecker: latest=$latestVersion, current=$currentVersion, isNewer=$isNewer")
+                if (responseCode != 200) {
+                    AppLogger.w("UpdateChecker: neočekávaný kód $responseCode")
+                    return@withContext null
+                }
 
-            if (isNewer) {
-                UpdateInfo(latestVersion, downloadApiUrl, releaseNotes)
-            } else {
+                val response = connection.inputStream.bufferedReader().readText()
+                val json = JSONObject(response)
+
+                val latestVersion = json.getString("tag_name")
+                val releaseNotes = if (json.has("body")) json.getString("body") else null
+
+                // Najít APK asset – použít API URL (funguje s tokenem)
+                val assets = json.getJSONArray("assets")
+                var downloadApiUrl: String? = null
+                for (i in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(i)
+                    val name = asset.getString("name")
+                    if (name.endsWith(".apk")) {
+                        downloadApiUrl = asset.getString("url")   // API URL, ne browser_download_url
+                        break
+                    }
+                }
+
+                if (downloadApiUrl == null) {
+                    AppLogger.w("UpdateChecker: APK asset nenalezen")
+                    return@withContext null
+                }
+
+                val currentVersion = BuildConfig.VERSION_NAME
+                val isNewer = isNewerVersion(latestVersion, currentVersion)
+
+                AppLogger.d("UpdateChecker: latest=$latestVersion, current=$currentVersion, isNewer=$isNewer")
+
+                if (isNewer) {
+                    UpdateInfo(latestVersion, downloadApiUrl, releaseNotes)
+                } else {
+                    null
+                }
+            } catch (t: Throwable) {
+                AppLogger.e("UpdateChecker: chyba", t)
                 null
             }
-        } catch (t: Throwable) {
-            AppLogger.e("UpdateChecker: chyba", t)
-            null
         }
     }
 
@@ -97,10 +121,10 @@ object UpdateChecker {
      * Vrací File, nebo null při chybě.
      */
     suspend fun downloadApk(
-        context: Context, 
-        apiUrl: String, 
+        context: Context,
+        apiUrl: String,
         versionName: String,
-        onProgress: ((Int) -> Unit)? = null // <-- NOVÝ PARAMETR
+        onProgress: ((Int) -> Unit)? = null
     ): File? = withContext(Dispatchers.IO) {
         try {
             val url = URL(apiUrl)
@@ -127,7 +151,7 @@ object UpdateChecker {
             val cleanVersion = versionName.removePrefix("v")
             context.cacheDir.listFiles { file -> file.name.startsWith("update_v") }?.forEach { it.delete() }
             val file = File(context.cacheDir, "update_v$cleanVersion.apk")
-            
+
             val totalSize = connection.contentLengthLong
             var downloadedSize = 0L
 
@@ -138,7 +162,7 @@ object UpdateChecker {
                     while (input.read(buffer).also { bytesRead = it } != -1) {
                         output.write(buffer, 0, bytesRead)
                         downloadedSize += bytesRead
-                        
+
                         // Hlášení průběhu (pouze pokud známe celkovou velikost)
                         if (totalSize > 0 && onProgress != null) {
                             val progress = ((downloadedSize * 100) / totalSize).toInt()

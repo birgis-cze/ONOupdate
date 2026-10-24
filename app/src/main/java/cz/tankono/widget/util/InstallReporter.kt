@@ -95,7 +95,8 @@ object InstallReporter {
                 null
             }
         } catch (t: Throwable) {
-            AppLogger.e("InstallReporter.fetchTotalCount: chyba", t)
+            // Statistika není kritická – selhání sítě = [W], ne [E]
+            AppLogger.w("InstallReporter.fetchTotalCount: chyba: ${t.message}")
             null
         }
     }
@@ -136,7 +137,8 @@ object InstallReporter {
                 false
             }
         } catch (t: Throwable) {
-            AppLogger.e("InstallReporter: chyba", t)
+            // Selhání sítě = [W], zkusí se příště
+            AppLogger.w("InstallReporter: odeslání selhalo: ${t.message}")
             false
         }
     }
@@ -161,7 +163,8 @@ object InstallReporter {
             val bytes = digest.digest(input)
             bytes.joinToString("") { "%02x".format(it) }
         } catch (t: Throwable) {
-            AppLogger.e("InstallReporter: hash error", t)
+            // Raritní (emulátory, poškozený Android ID) = [W], ne [E]
+            AppLogger.w("InstallReporter: hash error: ${t.message}")
             null
         }
     }

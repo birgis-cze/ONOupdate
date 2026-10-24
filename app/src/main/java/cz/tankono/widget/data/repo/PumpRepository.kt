@@ -9,6 +9,8 @@ import cz.tankono.widget.util.AppLogger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -40,6 +42,13 @@ class PumpRepository(private val context: Context) {
     companion object {
         /** TTL pro GPS – po 30 dnech se GPS znovu stáhne. */
         private const val GPS_TTL_MS = 30L * 24 * 60 * 60 * 1000
+
+        /**
+         * Statický Mutex – serializuje zápisové operace (syncWithWeb, refreshGpsForAllPumps)
+         * napříč VŠEMI instancemi PumpRepository. Zabrání race condition, kdy
+         * MainActivity + PumpSyncWorker volají refresh paralelně.
+         */
+        private val writeMutex = Mutex()
     }
 
     private val dao = AppDatabase.getInstance(context).pumpDao()
@@ -64,11 +73,12 @@ class PumpRepository(private val context: Context) {
 
     /**
      * Synchronizuje DB se seznamem z webu.
+     * Serializováno přes writeMutex – souběžné volání čeká, až předchozí doběhne.
      */
-    suspend fun syncWithWeb(): SyncResult {
-        return try {
+    suspend fun syncWithWeb(): SyncResult = writeMutex.withLock {
+        try {
             val webPumps = fetchWebList()
-                ?: return SyncResult(0, 0, 0, failed = true)
+                ?: return@withLock SyncResult(0, 0, 0, failed = true)
 
             val webIds = webPumps.map { it.id }.toSet()
             val dbPumps = dao.getAll()
@@ -113,10 +123,12 @@ class PumpRepository(private val context: Context) {
      * - pumpy, které GPS nemají
      * - pumpy, jejichž GPS je starší než 30 dní (TTL)
      *
+     * Serializováno přes writeMutex – souběžné volání čeká, až předchozí doběhne.
+     *
      * @return počet úspěšně stažených GPS
      */
-    suspend fun refreshGpsForAllPumps(): Int {
-        return try {
+    suspend fun refreshGpsForAllPumps(): Int = writeMutex.withLock {
+        try {
             // 1. Pumpy bez GPS
             val withoutGps = dao.getPumpsWithoutGps()
 
@@ -129,7 +141,7 @@ class PumpRepository(private val context: Context) {
 
             if (toFetch.isEmpty()) {
                 AppLogger.d("PumpRepository: všechny pumpy mají aktuální GPS")
-                return 0
+                return@withLock 0
             }
 
             AppLogger.i(

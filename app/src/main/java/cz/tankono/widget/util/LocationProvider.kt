@@ -15,6 +15,9 @@ import kotlin.coroutines.resume
  */
 object LocationProvider {
 
+    /** Timeout pro fresh fix. Po 5 s se použije cache. */
+    private const val FRESH_FIX_TIMEOUT_MS = 5_000L
+
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(context: Context): Pair<Double, Double>? {
         val client = LocationServices.getFusedLocationProviderClient(context)
@@ -39,10 +42,10 @@ object LocationProvider {
             AppLogger.d("LocationProvider: lastLocation null, zkouším fresh fix")
         }
 
-        // 2. Zkusit čerstvý fix s timeoutem 10 sekund
-        val freshLoc = withTimeoutOrNull(10_000L) {
+        // 2. Zkusit čerstvý fix s timeoutem 5 sekund
+        val freshLoc = withTimeoutOrNull(FRESH_FIX_TIMEOUT_MS) {
             suspendCancellableCoroutine<android.location.Location?> { cont ->
-                // OPRAVA: Android 12+ striktně vyžaduje CancellationToken
+                // Android 12+ striktně vyžaduje CancellationToken
                 val cancellationTokenSource = CancellationTokenSource()
                 cont.invokeOnCancellation { cancellationTokenSource.cancel() }
 
@@ -58,7 +61,9 @@ object LocationProvider {
                         }
                     }
                     .addOnFailureListener { t ->
-                        AppLogger.e("LocationProvider: fresh location selhalo", t)
+                        // Selhání fresh fixu není chyba aplikace – je to normální stav
+                        // (uvnitř budovy, GPS vypnutá, chybí background permission).
+                        AppLogger.w("LocationProvider: fresh location selhalo: ${t.message}")
                         if (cont.isActive) cont.resume(null)
                     }
             }
@@ -68,7 +73,7 @@ object LocationProvider {
             return freshLoc.latitude to freshLoc.longitude
         }
 
-        // 3. Fallback: Když fresh selže, vezmeme si alespoň tu starou
+        // 3. Fallback: Když fresh selže (nebo timeout), vezmeme si alespoň tu starou
         if (lastLoc != null) {
             AppLogger.w("LocationProvider: fresh fix selhal, používám starou lastLocation")
             return lastLoc.latitude to lastLoc.longitude
