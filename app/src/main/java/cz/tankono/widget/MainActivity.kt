@@ -2298,12 +2298,9 @@ private fun SoundSelectionSheet(
     
     var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
     
-    // Úklid přehrávače při zavření sheetu
     DisposableEffect(Unit) {
         onDispose {
-            try {
-                mediaPlayer?.release()
-            } catch (_: Throwable) { }
+            try { mediaPlayer?.release() } catch (_: Throwable) { }
             mediaPlayer = null
         }
     }
@@ -2357,25 +2354,22 @@ private fun SoundSelectionSheet(
                         border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
+                        // PŘESNĚ STEJNÝ PADDING JAKO U STANIC
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Název a délka - kliknutím se přehraje
+                            // Název a délka (kliknutím se přehraje)
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
                                         try {
-                                            // Bezpečné uvolnění předchozího přehrávače
-                                            try {
-                                                mediaPlayer?.release()
-                                            } catch (_: Throwable) { }
+                                            try { mediaPlayer?.release() } catch (_: Throwable) { }
                                             mediaPlayer = null
 
-                                            // Vytvoření nového přehrávače a načtení souboru přímo
                                             val mp = android.media.MediaPlayer()
                                             context.resources.openRawResourceFd(sound.resId).use { afd ->
                                                 mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
@@ -2383,12 +2377,10 @@ private fun SoundSelectionSheet(
                                                 mp.start()
                                             }
                                             
-                                            // Po dohrání automaticky uvolníme paměť
                                             mp.setOnCompletionListener {
                                                 it.release()
                                                 if (mediaPlayer == it) mediaPlayer = null
                                             }
-                                            
                                             mediaPlayer = mp
                                         } catch (t: Throwable) {
                                             cz.tankono.widget.util.AppLogger.e("Chyba při přehrávání zvuku ${sound.fileName}", t)
@@ -2407,22 +2399,26 @@ private fun SoundSelectionSheet(
                                 Text(
                                     "(${sound.durationSec}s)",
                                     color = OnoRed.copy(alpha = 0.7f),
-                                    fontSize = 12.sp
+                                    fontSize = 13.sp // Stejná velikost jako vzdálenost u stanic
                                 )
                             }
                             
-                            // Checkbox pro výběr
-                            androidx.compose.material3.Checkbox(
-                                checked = currentSound == sound.fileName,
-                                onCheckedChange = { 
-                                    onSelect(sound.fileName) 
-                                },
-                                colors = androidx.compose.material3.CheckboxDefaults.colors(
-                                    checkedColor = OnoRed,
-                                    uncheckedColor = OnoRed,
-                                    checkmarkColor = OnoYellow
-                                )
-                            )
+                            // Malý vlastní čtvereček (22dp), aby netlačil na výšku řádku
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .border(2.dp, OnoRed, RoundedCornerShape(4.dp))
+                                    .background(
+                                        if (currentSound == sound.fileName) OnoRed else Color.Transparent, 
+                                        RoundedCornerShape(4.dp)
+                                    )
+                                    .clickable { onSelect(sound.fileName) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (currentSound == sound.fileName) {
+                                    Text("✓", color = OnoYellow, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
                         }
                     }
                 }
