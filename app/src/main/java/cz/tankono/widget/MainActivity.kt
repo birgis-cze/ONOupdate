@@ -699,6 +699,13 @@ private fun SettingsScreen(
 
         AppLogger.i("Auto-save: ukládám nastavení (font=${current.fontSizeSp}, nav=${current.preferredNavigation})")
         SettingsStore(context).save(current)
+
+        // --- NOVÉ: Pokud se změnil zvuk, pročistíme staré notifikační kanály ---
+        if (current.notificationSound != loadedLocal.notificationSound) {
+            AppLogger.i("Zvuk změněn, čistím staré notifikační kanály...")
+            Notifier.cleanupUnusedPriceChannels(context, current.notificationSound)
+        }
+
         WorkScheduler.schedule(context)
     }
 
@@ -2296,12 +2303,35 @@ private fun SoundSelectionSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sounds = remember { SoundHelper.getAvailableSounds(context) }
     
-    var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
-    
+    // SoundPool pro přehrávání náhledu
+    var soundPool by remember { mutableStateOf<android.media.SoundPool?>(null) }
+    var loadedSounds by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) } // resId -> soundId
+
     DisposableEffect(Unit) {
+        // Vytvoříme SoundPool
+        val audioAttributes = android.media.AudioAttributes.Builder()
+            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+            
+        val sp = android.media.SoundPool.Builder()
+            .setMaxStreams(1)
+            .setAudioAttributes(audioAttributes)
+            .build()
+            
+        soundPool = sp
+
+        // Přednačteme všechny zvuky do paměti
+        val map = mutableMapOf<Int, Int>()
+        sounds.forEach { sound ->
+            val id = sp.load(context, sound.resId, 1)
+            map[sound.resId] = id
+        }
+        loadedSounds = map
+
         onDispose {
-            try { mediaPlayer?.release() } catch (_: Throwable) { }
-            mediaPlayer = null
+            sp.release()
+            soundPool = null
         }
     }
 
@@ -2354,7 +2384,6 @@ private fun SoundSelectionSheet(
                         border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // PŘESNĚ STEJNÝ PADDING JAKO U STANIC
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -2367,21 +2396,13 @@ private fun SoundSelectionSheet(
                                     .weight(1f)
                                     .clickable {
                                         try {
-                                            try { mediaPlayer?.release() } catch (_: Throwable) { }
-                                            mediaPlayer = null
-
-                                            val mp = android.media.MediaPlayer()
-                                            context.resources.openRawResourceFd(sound.resId).use { afd ->
-                                                mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                                                mp.prepare()
-                                                mp.start()
+                                            val soundId = loadedSounds[sound.resId]
+                                            if (soundId != null && soundId != 0) {
+                                                // Přehrát přes SoundPool (hlasitost 1f, priorita 1, loop 0, rychlost 1f)
+                                                soundPool?.play(soundId, 1f, 1f, 1, 0, 1f)
+                                            } else {
+                                                android.widget.Toast.makeText(context, "Zvuk se ještě načítá…", android.widget.Toast.LENGTH_SHORT).show()
                                             }
-                                            
-                                            mp.setOnCompletionListener {
-                                                it.release()
-                                                if (mediaPlayer == it) mediaPlayer = null
-                                            }
-                                            mediaPlayer = mp
                                         } catch (t: Throwable) {
                                             cz.tankono.widget.util.AppLogger.e("Chyba při přehrávání zvuku ${sound.fileName}", t)
                                             android.widget.Toast.makeText(context, "Tento zvuk nelze přehrát", android.widget.Toast.LENGTH_SHORT).show()
@@ -2399,11 +2420,11 @@ private fun SoundSelectionSheet(
                                 Text(
                                     "(${sound.durationSec}s)",
                                     color = OnoRed.copy(alpha = 0.7f),
-                                    fontSize = 13.sp // Stejná velikost jako vzdálenost u stanic
+                                    fontSize = 13.sp
                                 )
                             }
                             
-                            // Malý vlastní čtvereček (22dp), aby netlačil na výšku řádku
+                            // Malý vlastní čtvereček (22dp)
                             Box(
                                 modifier = Modifier
                                     .size(22.dp)
