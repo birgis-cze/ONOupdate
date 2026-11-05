@@ -23,6 +23,11 @@ object SoundHelper {
                     val resId = field.getInt(null)
                     val rawName = field.name
                     
+                    val lowerName = rawName.lowercase()
+                    if (!lowerName.endsWith(".mp3") && !lowerName.endsWith(".ogg")) {
+                        continue
+                    }
+
                     // Vždy nastavíme výchozí délku, aby se soubor zobrazil
                     var duration = 1 
                     try {
