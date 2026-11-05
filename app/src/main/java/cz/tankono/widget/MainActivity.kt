@@ -761,6 +761,14 @@ private fun SettingsScreen(
         return
     }
 
+    // --- NOVÉ: Dynamické načtení zvuků pro UI ---
+    val availableSounds = remember { cz.tankono.widget.util.SoundHelper.getAvailableSounds(context) }
+    val defaultSoundFile = availableSounds.firstOrNull()?.fileName ?: ""
+    
+    // Zjistíme, který zvuk se má reálně zobrazit (uložený, nebo dynamicky první)
+    val actualSoundFile = if (s.notificationSound.isBlank()) defaultSoundFile else s.notificationSound
+    val actualSoundDisplayName = availableSounds.find { it.fileName == actualSoundFile }?.displayName ?: "Žádný zvuk"
+
     // Funkce, která provede celý cyklus najednou
     fun startUpdateProcess() {
         scope.launch {
@@ -1140,6 +1148,62 @@ private fun SettingsScreen(
                                 onMax = { state.value = s.copy(fontSizeSp = 30) }
                             )
                         }
+                    }
+                }
+
+                // ---- Zvuk při aktualizaci ceníku ----
+                SettingsCard {
+                    var soundExpanded by remember { mutableStateOf(false) }
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Zvuk při aktualizaci ceníku: ",
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    actualSoundDisplayName, // <-- POUŽIJEME DYNAMICKÝ NÁZEV
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .border(2.dp, OnoRed, RoundedCornerShape(8.dp))
+                                    .clickable { soundExpanded = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "▼",
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    
+                    if (soundExpanded) {
+                        SoundSelectionSheet(
+                            currentSound = actualSoundFile, // <-- PŘEDÁME REÁLNÝ SOUBOR
+                            onDismiss = { soundExpanded = false },
+                            onSelect = { soundName ->
+                                state.value = s.copy(notificationSound = soundName)
+                                soundExpanded = false
+                            }
+                        )
                     }
                 }
 
@@ -2214,4 +2278,131 @@ private fun QrCodeDialog(
         },
         containerColor = OnoYellow
     )
+}
+
+// =============================================================================
+// VÝBĚR ZVUKU (BottomSheet)
+// =============================================================================
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SoundSelectionSheet(
+    currentSound: String,
+    onDismiss: () -> Unit,
+    onSelect: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sounds = remember { SoundHelper.getAvailableSounds(context) }
+    
+    // Přehrávač pro náhled
+    var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
+    
+    // Úklid přehrávače při zavření sheetu
+    DisposableEffect(Unit) {
+        onDispose {
+            mediaPlayer?.release()
+            mediaPlayer = null
+        }
+    }
+
+    // Vynutíme černé ikony i při otevřeném BottomSheetu
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as? android.app.Activity)?.window
+            if (window != null) {
+                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.isAppearanceLightStatusBars = true
+                insetsController.isAppearanceLightNavigationBars = true
+            }
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = OnoYellow
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp)
+        ) {
+            Text(
+                "Zvuk při aktualizaci ceníku",
+                color = OnoRed,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(OnoRed)
+            )
+            Spacer(Modifier.height(12.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(sounds, key = { it.fileName }) { sound ->
+                    Surface(
+                        color = Color.White,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Název a délka - kliknutím se přehraje
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        mediaPlayer?.release() // Zastavíme předchozí
+                                        mediaPlayer = android.media.MediaPlayer.create(context, sound.resId)
+                                        mediaPlayer?.start()
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    sound.displayName,
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "(${sound.durationSec}s)",
+                                    color = OnoRed.copy(alpha = 0.7f),
+                                    fontSize = 12.sp
+                                )
+                            }
+                            
+                            // Checkbox pro výběr
+                            androidx.compose.material3.Checkbox(
+                                checked = currentSound == sound.fileName
+
+                                onCheckedChange = { 
+                                    onSelect(sound.fileName) 
+                                },
+                                colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                    checkedColor = OnoRed,
+                                    uncheckedColor = OnoRed,
+                                    checkmarkColor = OnoYellow
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

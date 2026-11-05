@@ -105,19 +105,59 @@ object Notifier {
         }
     }
 
-    /** Notifikace o novém ceníku (používá nový kanál se zvukem). */
-    fun notifyNewPrices(ctx: Context) {
-        ensureChannel(ctx) // Vytvoří kanál, pokud ještě není
+    /**
+     * Notifikace o novém ceníku s vybraným zvukem.
+     * Pokud je preferredSound prázdný, dynamicky vybere první dostupný zvuk.
+     */
+    fun notifyNewPrices(ctx: Context, preferredSound: String) {
+        // Zjistíme, jaký zvuk se má reálně přehrát
+        val soundToPlay = if (preferredSound.isBlank() || ctx.resources.getIdentifier(preferredSound, "raw", ctx.packageName) == 0) {
+            // Pokud je prázdný, nebo soubor neexistuje, vezmeme první z abecedního seznamu
+            cz.tankono.widget.util.SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
+        } else {
+            preferredSound
+        }
 
-        val notification = NotificationCompat.Builder(ctx, CHANNEL_ID_NEW_PRICES)
+        if (soundToPlay.isEmpty()) {
+            AppLogger.w("Notifier: V res/raw nejsou žádné zvuky, notifikace bude bez zvuku.")
+        }
+
+        // Vytvoříme unikátní ID kanálu pro každý zvuk
+        val safeSoundName = soundToPlay.replace(" ", "_").lowercase()
+        val dynamicChannelId = "tankono_prices_$safeSoundName"
+        
+        val mgr = ctx.getSystemService(NotificationManager::class.java)
+        
+        if (mgr.getNotificationChannel(dynamicChannelId) == null) {
+            val channel = NotificationChannel(
+                dynamicChannelId,
+                "Změna ceníku",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Upozornění na nový ceník Tank ONO"
+                
+                // Najdeme resource ID zvuku podle jeho názvu
+                val resId = ctx.resources.getIdentifier(soundToPlay, "raw", ctx.packageName)
+                if (resId != 0) {
+                    val soundUri = android.net.Uri.parse("android.resource://${ctx.packageName}/$resId")
+                    val audioAttributes = android.media.AudioAttributes.Builder()
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                        .build()
+                    setSound(soundUri, audioAttributes)
+                }
+            }
+            mgr.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(ctx, dynamicChannelId)
             .setSmallIcon(R.drawable.ic_notif_station)
             .setContentTitle("Tank ONO")
             .setContentText("Byl zveřejněn nový ceník.")
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        val mgr = ctx.getSystemService(NotificationManager::class.java)
         mgr.notify(NOTIF_ID_NEW, notification)
     }
 

@@ -37,6 +37,7 @@ data class WidgetSettings(
     val preferredNavigation: NavigationApp = NavigationApp.SYSTEM,
     val showNearestPump: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM
+    val notificationSound: String = "" // Výchozí hodnota
 ) {
     val effectiveIntervalMin: Int
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
@@ -70,6 +71,7 @@ class SettingsStore(private val context: Context) {
         val PREFERRED_NAV     = stringPreferencesKey("preferred_navigation")
         val SHOW_NEAREST_PUMP = booleanPreferencesKey("show_nearest_pump")
         val THEME_MODE        = stringPreferencesKey("theme_mode")
+        val NOTIFICATION_SOUND = stringPreferencesKey("notification_sound")
 
         // Cache poslední známé polohy
         val CACHED_LAT = stringPreferencesKey("cached_lat")
@@ -99,6 +101,7 @@ class SettingsStore(private val context: Context) {
             preferredNavigation = NavigationApp.fromId(p[Keys.PREFERRED_NAV]),
             showNearestPump   = p[Keys.SHOW_NEAREST_PUMP] ?: false,
             themeMode         = ThemeMode.entries.find { it.id == p[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM
+            notificationSound = p[Keys.NOTIFICATION_SOUND] ?: "",
         )
     }
 
@@ -116,6 +119,7 @@ class SettingsStore(private val context: Context) {
                 p[Keys.PREFERRED_NAV]    = s.preferredNavigation.id
                 p[Keys.SHOW_NEAREST_PUMP]= s.showNearestPump
                 p[Keys.THEME_MODE]       = s.themeMode.id
+                p[Keys.NOTIFICATION_SOUND] = s.notificationSound
             }
         } catch (t: Throwable) {
             AppLogger.e("SettingsStore: Uložení nastavení selhalo", t)

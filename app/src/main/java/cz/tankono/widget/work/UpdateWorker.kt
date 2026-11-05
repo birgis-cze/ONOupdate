@@ -9,6 +9,7 @@ import cz.tankono.widget.notify.Notifier
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
 import cz.tankono.widget.widget.TankOnoWidget
+import kotlinx.coroutines.flow.first
 
 class UpdateWorker(
     context: Context,
@@ -47,7 +48,9 @@ class UpdateWorker(
 
             if (changed) {
                 AppLogger.i("Nový ceník – notifikace")
-                Notifier.notifyNewPrices(applicationContext)
+                // Získáme nastavení a předáme zvuk
+                val settings = cz.tankono.widget.data.prefs.SettingsStore(applicationContext).settings.first()
+                Notifier.notifyNewPrices(applicationContext, settings.notificationSound)
             } else {
                 AppLogger.d("Ceník beze změny")
             }
