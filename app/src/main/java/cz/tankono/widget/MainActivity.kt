@@ -1165,13 +1165,13 @@ private fun SettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "Zvuk při aktualizaci ceníku: ",
+                                    "Zvuk notifikace: ",
                                     color = OnoRed,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    actualSoundDisplayName, // <-- POUŽIJEME DYNAMICKÝ NÁZEV
+                                    actualSoundDisplayName,
                                     color = OnoRed,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Normal
@@ -1197,7 +1197,7 @@ private fun SettingsScreen(
                     
                     if (soundExpanded) {
                         SoundSelectionSheet(
-                            currentSound = actualSoundFile, // <-- PŘEDÁME REÁLNÝ SOUBOR
+                            currentSound = actualSoundFile,
                             onDismiss = { soundExpanded = false },
                             onSelect = { soundName ->
                                 state.value = s.copy(notificationSound = soundName)
@@ -2294,10 +2294,8 @@ private fun SoundSelectionSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sounds = remember { SoundHelper.getAvailableSounds(context) }
     
-    // Přehrávač pro náhled
     var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
     
-    // Úklid přehrávače při zavření sheetu
     DisposableEffect(Unit) {
         onDispose {
             mediaPlayer?.release()
@@ -2305,7 +2303,6 @@ private fun SoundSelectionSheet(
         }
     }
 
-    // Vynutíme černé ikony i při otevřeném BottomSheetu
     val view = LocalView.current
     if (!view.isInEditMode) {
         androidx.compose.runtime.SideEffect {
@@ -2366,7 +2363,7 @@ private fun SoundSelectionSheet(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
-                                        mediaPlayer?.release() // Zastavíme předchozí
+                                        mediaPlayer?.release()
                                         mediaPlayer = android.media.MediaPlayer.create(context, sound.resId)
                                         mediaPlayer?.start()
                                     },
@@ -2388,8 +2385,7 @@ private fun SoundSelectionSheet(
                             
                             // Checkbox pro výběr
                             androidx.compose.material3.Checkbox(
-                                checked = currentSound == sound.fileName
-
+                                checked = currentSound == sound.fileName,
                                 onCheckedChange = { 
                                     onSelect(sound.fileName) 
                                 },

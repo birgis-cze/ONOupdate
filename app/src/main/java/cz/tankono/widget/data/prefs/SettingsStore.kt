@@ -36,8 +36,8 @@ data class WidgetSettings(
     val fontSizeSp: Int = 15,
     val preferredNavigation: NavigationApp = NavigationApp.SYSTEM,
     val showNearestPump: Boolean = false,
-    val themeMode: ThemeMode = ThemeMode.SYSTEM
-    val notificationSound: String = "" // Výchozí hodnota
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val notificationSound: String = ""
 ) {
     val effectiveIntervalMin: Int
         get() = minOf(intervalPeakMin, intervalOffPeakMin).coerceAtLeast(15)
@@ -100,8 +100,8 @@ class SettingsStore(private val context: Context) {
             fontSizeSp        = p[Keys.FONT_SIZE]       ?: 15,
             preferredNavigation = NavigationApp.fromId(p[Keys.PREFERRED_NAV]),
             showNearestPump   = p[Keys.SHOW_NEAREST_PUMP] ?: false,
-            themeMode         = ThemeMode.entries.find { it.id == p[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM
-            notificationSound = p[Keys.NOTIFICATION_SOUND] ?: "",
+            themeMode         = ThemeMode.entries.find { it.id == p[Keys.THEME_MODE] } ?: ThemeMode.SYSTEM,
+            notificationSound = p[Keys.NOTIFICATION_SOUND] ?: ""
         )
     }
 
