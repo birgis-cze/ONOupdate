@@ -3,21 +3,16 @@ package cz.tankono.widget.notify
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
-import android.media.AudioAttributes
-import android.net.Uri
 import androidx.core.app.NotificationCompat
 import cz.tankono.widget.R
 import cz.tankono.widget.util.AppLogger
+import cz.tankono.widget.util.SoundHelper
 
 object Notifier {
 
-    // Nový ID kanálu pro ceník se zvukem. 
-    // Změna ID je nutná, protože Android nedovolí změnit zvuk u existujícího kanálu.
-    private const val CHANNEL_ID_NEW_PRICES = "tankono_prices_sound_v3"
-    
+    private const val CHANNEL_ID = "tankono_prices"
     private const val CHANNEL_SILENT_ID = "tankono_silent_v2"
     private const val CHANNEL_UPDATE_ID = "tankono_update_available"
     
@@ -25,37 +20,16 @@ object Notifier {
     private const val NOTIF_ID_PROGRESS = 1002
     private const val NOTIF_ID_UPDATE = 1003
 
-    /** 
-     * Kanál pro nový ceník – SE ZVUKEM. 
-     */
+    /** Kanál pro nový ceník (normální notifikace). */
     fun ensureChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
-        
-        // Pokud kanál ještě neexistuje, vytvoříme ho
-        if (mgr.getNotificationChannel(CHANNEL_ID_NEW_PRICES) == null) {
+        if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
             val channel = NotificationChannel(
-                CHANNEL_ID_NEW_PRICES,
-                "Změna ceníku (se zvukem)",
-                NotificationManager.IMPORTANCE_HIGH // HIGH zaručí zobrazení jako heads-up (vyskočí na obrazovce)
+                CHANNEL_ID,
+                "Změna ceníku",
+                NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Upozornění na nový ceník Tank ONO s vlastním zvukem"
-                
-                // Nastavení vlastního zvuku z res/raw/tank_ono_notify.mp3
-                try {
-                    val soundUri = Uri.parse(
-                        ContentResolver.SCHEME_ANDROID_RESOURCE + "://" +
-                        ctx.packageName + "/" + R.raw.tank_ono_notify
-                    )
-                    val audioAttributes = AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                        .build()
-                    
-                    setSound(soundUri, audioAttributes)
-                    enableVibration(true) // Necháme vibrace, ať to uživatel cítí
-                } catch (t: Throwable) {
-                    AppLogger.e("Notifier: Nepodařilo se nastavit vlastní zvuk", t)
-                }
+                description = "Upozornění na nový ceník Tank ONO"
             }
             mgr.createNotificationChannel(channel)
         }
@@ -63,8 +37,6 @@ object Notifier {
 
     /**
      * Kanál pro tichou notifikaci během update.
-     * IMPORTANCE_DEFAULT = viditelná v horní liště (ikona).
-     * setSound(null) = ticho.
      */
     private fun ensureSilentChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
@@ -85,7 +57,7 @@ object Notifier {
     }
 
     /**
-     * Kanál pro upozornění na novou verzi aplikace (tichý, ale viditelný).
+     * Kanál pro upozornění na novou verzi aplikace.
      */
     private fun ensureUpdateChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
@@ -112,8 +84,7 @@ object Notifier {
     fun notifyNewPrices(ctx: Context, preferredSound: String) {
         // Zjistíme, jaký zvuk se má reálně přehrát
         val soundToPlay = if (preferredSound.isBlank() || ctx.resources.getIdentifier(preferredSound, "raw", ctx.packageName) == 0) {
-            // Pokud je prázdný, nebo soubor neexistuje, vezmeme první z abecedního seznamu
-            cz.tankono.widget.util.SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
+            SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
         } else {
             preferredSound
         }
@@ -122,7 +93,7 @@ object Notifier {
             AppLogger.w("Notifier: V res/raw nejsou žádné zvuky, notifikace bude bez zvuku.")
         }
 
-        // Vytvoříme unikátní ID kanálu pro každý zvuk
+        // Vytvoříme unikátní ID kanálu pro každý zvuk (Android nedovolí měnit zvuk u existujícího)
         val safeSoundName = soundToPlay.replace(" ", "_").lowercase()
         val dynamicChannelId = "tankono_prices_$safeSoundName"
         
@@ -161,7 +132,7 @@ object Notifier {
         mgr.notify(NOTIF_ID_NEW, notification)
     }
 
-    /** Tichá notifikace "Aktualizuji data…" – zobrazí se, dokud update běží. */
+    /** Tichá notifikace "Aktualizuji data…" */
     fun showUpdateInProgress(ctx: Context) {
         ensureSilentChannel(ctx)
 
@@ -179,20 +150,16 @@ object Notifier {
         mgr.notify(NOTIF_ID_PROGRESS, notification)
     }
 
-    /** Skryje tichou notifikaci (po dokončení update). */
+    /** Skryje tichou notifikaci */
     fun hideUpdateInProgress(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         mgr.cancel(NOTIF_ID_PROGRESS)
     }
 
-    /**
-     * Tiché upozornění, že je dostupná nová verze aplikace.
-     * Kliknutím se otevře aplikace, kde je připravené tlačítko "Stáhnout verzi".
-     */
+    /** Tiché upozornění na novou verzi aplikace */
     fun notifyUpdateAvailable(ctx: Context, version: String) {
         ensureUpdateChannel(ctx)
 
-        // Klik otevře aplikaci
         val intent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }

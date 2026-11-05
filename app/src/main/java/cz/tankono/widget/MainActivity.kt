@@ -131,6 +131,8 @@ import android.app.Activity
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import cz.tankono.widget.util.SoundHelper
+import cz.tankono.widget.util.SoundItem
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
