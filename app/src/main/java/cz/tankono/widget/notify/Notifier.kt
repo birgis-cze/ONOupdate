@@ -82,7 +82,6 @@ object Notifier {
      * Pokud je preferredSound prázdný, dynamicky vybere první dostupný zvuk.
      */
     fun notifyNewPrices(ctx: Context, preferredSound: String) {
-        // Zjistíme, který zvuk se má reálně přehrát
         val soundToPlay = if (preferredSound.isBlank() || ctx.resources.getIdentifier(preferredSound, "raw", ctx.packageName) == 0) {
             SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
         } else preferredSound
@@ -92,12 +91,11 @@ object Notifier {
         
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         
-        // KLÍČOVÁ OPRAVA: Smažeme starý kanál, pokud existuje, abychom vynutili nové nastavení zvuku
+        // Smažeme starý kanál, abychom vynutili nové nastavení zvuku
         if (mgr.getNotificationChannel(dynamicChannelId) != null) {
             mgr.deleteNotificationChannel(dynamicChannelId)
         }
 
-        // Vytvoříme kanál znovu a čistý
         val channel = NotificationChannel(
             dynamicChannelId,
             "Změna ceníku",
@@ -113,7 +111,6 @@ object Notifier {
                     .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
                     .build()
                 setSound(soundUri, audioAttributes)
-                enableVibration(true) // Volitelně: povolit vibrace pro notifikaci
             }
         }
         mgr.createNotificationChannel(channel)

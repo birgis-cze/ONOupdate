@@ -23,7 +23,8 @@ object SoundHelper {
                     val resId = field.getInt(null)
                     val rawName = field.name
                     
-                    var duration = 1 // Výchozí hodnota, aby se zvuk vždy zobrazil
+                    // Vždy nastavíme výchozí délku, aby se soubor zobrazil
+                    var duration = 1 
                     try {
                         val mp = MediaPlayer.create(context, resId)
                         if (mp != null) {
@@ -31,9 +32,7 @@ object SoundHelper {
                             if (realDuration > 0) duration = realDuration
                             mp.release()
                         }
-                    } catch (t: Throwable) {
-                        AppLogger.w("SoundHelper: Nepodařilo se zjistit délku pro $rawName, použiji výchozí.")
-                    }
+                    } catch (_: Throwable) { }
 
                     val displayName = rawName.replace(".", " ").replace("_", " ")
                         .split(" ")
