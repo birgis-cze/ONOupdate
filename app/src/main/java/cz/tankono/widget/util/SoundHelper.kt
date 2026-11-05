@@ -23,22 +23,16 @@ object SoundHelper {
                     val resId = field.getInt(null)
                     val rawName = field.name
                     
-                    var duration = -1
-                    // Zjištění délky přes MediaPlayer (spolehlivější pro OGG)
+                    var duration = 1 // Výchozí hodnota, aby se zvuk vždy zobrazil
                     try {
                         val mp = MediaPlayer.create(context, resId)
                         if (mp != null) {
-                            duration = mp.duration / 1000 // v sekundách
+                            val realDuration = mp.duration / 1000
+                            if (realDuration > 0) duration = realDuration
                             mp.release()
                         }
                     } catch (t: Throwable) {
-                        AppLogger.e("SoundHelper: Chyba při čtení délky pro $rawName", t)
-                    }
-
-                    // Pokud se délku nepodařilo zjistit, zvuk ignorujeme
-                    if (duration <= 0) {
-                        AppLogger.w("SoundHelper: Přeskakuji zvuk s neznámou délkou: $rawName")
-                        continue
+                        AppLogger.w("SoundHelper: Nepodařilo se zjistit délku pro $rawName, použiji výchozí.")
                     }
 
                     val displayName = rawName.replace(".", " ").replace("_", " ")
