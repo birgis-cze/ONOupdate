@@ -1430,7 +1430,7 @@ private fun SettingsScreen(
                 // ---- Sdílení aplikace a QR kód (spojené tlačítko) ----
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp) // Žádná mezera mezi tlačítky
+                    horizontalArrangement = Arrangement.spacedBy(4.dp) // Žádná mezera mezi tlačítky
                 ) {
                     OutlinedButton(
                         onClick = {

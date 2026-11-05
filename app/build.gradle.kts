@@ -87,6 +87,7 @@ android {
 
     androidResources {
         noCompress += listOf("ogg", "mp3", "wav")
+    }
 }
 
 dependencies {
