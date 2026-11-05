@@ -1,7 +1,9 @@
 package cz.tankono.widget.util
 
 import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
+import android.net.Uri
 import cz.tankono.widget.R
 
 data class SoundItem(
@@ -13,32 +15,43 @@ data class SoundItem(
 
 object SoundHelper {
 
-    /**
-     * Projde složku res/raw a vrátí seznam všech zvuků s jejich délkou.
-     * Seřazeno abecedně.
-     */
     fun getAvailableSounds(context: Context): List<SoundItem> {
         val sounds = mutableListOf<SoundItem>()
-        
-        // Získáme všechna ID z R.raw pomocí reflexe
         val fields = R.raw::class.java.fields
+        
         for (field in fields) {
             if (field.type == Int::class.java) {
                 try {
                     val resId = field.getInt(null)
                     val rawName = field.name
                     
-                    // Zjištění délky zvuku
-                    var duration = 0
+                    var duration = -1
+                    // Zkusíme nejdřív MediaMetadataRetriever, ten je bezpečnější
                     try {
-                        val mp = MediaPlayer.create(context, resId)
-                        if (mp != null) {
-                            duration = mp.duration / 1000 // převod na sekundy
-                            mp.release()
-                        }
-                    } catch (_: Throwable) { }
+                        val retriever = MediaMetadataRetriever()
+                        val uri = Uri.parse("android.resource://${context.packageName}/$resId")
+                        retriever.setDataSource(context, uri)
+                        val timeStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                        val timeMs = timeStr?.toLongOrNull() ?: 0L
+                        duration = (timeMs / 1000).toInt()
+                        retriever.release()
+                    } catch (t: Throwable) {
+                        // Fallback na MediaPlayer
+                        try {
+                            val mp = MediaPlayer.create(context, resId)
+                            if (mp != null) {
+                                duration = mp.duration / 1000
+                                mp.release()
+                            }
+                        } catch (_: Throwable) { }
+                    }
 
-                    // Formátování názvu: "Audi.welcome" -> "Audi welcome"
+                    // Pokud se délku nepodařilo zjistit, zvuk ignorujeme
+                    if (duration <= 0) {
+                        AppLogger.w("SoundHelper: Přeskakuji zvuk s neznámou délkou: $rawName")
+                        continue
+                    }
+
                     val displayName = rawName.replace(".", " ").replace("_", " ")
                         .split(" ")
                         .joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
@@ -47,8 +60,6 @@ object SoundHelper {
                 } catch (_: Throwable) { }
             }
         }
-        
-        // Seřadíme podle názvu
         return sounds.sortedBy { it.displayName }
     }
 }

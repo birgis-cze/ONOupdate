@@ -1430,7 +1430,7 @@ private fun SettingsScreen(
                 // ---- Sdílení aplikace a QR kód (spojené tlačítko) ----
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(0.dp) // Žádná mezera mezi tlačítky
+                    horizontalArrangement = Arrangement.spacedBy(6.dp) // Žádná mezera mezi tlačítky
                 ) {
                     OutlinedButton(
                         onClick = {
@@ -2315,14 +2315,27 @@ private fun SoundSelectionSheet(
 ) {
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val sounds = remember { SoundHelper.getAvailableSounds(context) }
     
-    // SoundPool pro přehrávání náhledu
+    // Stavy pro asynchronní načtení
+    var sounds by remember { mutableStateOf<List<SoundItem>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    
     var soundPool by remember { mutableStateOf<android.media.SoundPool?>(null) }
-    var loadedSounds by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) } // resId -> soundId
+    var loadedSounds by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
 
+    // 1. Načtení zvuků na pozadí (aby aplikace nezamrzla a nespadla)
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val list = SoundHelper.getAvailableSounds(context)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                sounds = list
+                isLoading = false
+            }
+        }
+    }
+
+    // 2. Inicializace SoundPoolu
     DisposableEffect(Unit) {
-        // Vytvoříme SoundPool
         val audioAttributes = android.media.AudioAttributes.Builder()
             .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
             .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -2334,30 +2347,21 @@ private fun SoundSelectionSheet(
             .build()
             
         soundPool = sp
-
-        // Přednačteme všechny zvuky do paměti
-        val map = mutableMapOf<Int, Int>()
-        sounds.forEach { sound ->
-            val id = sp.load(context, sound.resId, 1)
-            map[sound.resId] = id
-        }
-        loadedSounds = map
-
         onDispose {
             sp.release()
             soundPool = null
         }
     }
 
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        androidx.compose.runtime.SideEffect {
-            val window = (view.context as? android.app.Activity)?.window
-            if (window != null) {
-                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = true
-                insetsController.isAppearanceLightNavigationBars = true
+    // 3. Přednačtení zvuků do SoundPoolu, jakmile jsou k dispozici
+    LaunchedEffect(sounds) {
+        if (sounds.isNotEmpty() && soundPool != null) {
+            val map = mutableMapOf<Int, Int>()
+            sounds.forEach { sound ->
+                val id = soundPool?.load(context, sound.resId, 1) ?: 0
+                map[sound.resId] = id
             }
+            loadedSounds = map
         }
     }
 
