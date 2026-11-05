@@ -526,7 +526,7 @@ private fun OnoHeader(modifier: Modifier = Modifier) {
 // SETTINGS SCREEN
 // =============================================================================
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun SettingsScreen(
     locationGranted: Boolean,
@@ -1170,8 +1170,17 @@ private fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
+                                                        Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .combinedClickable(
+                                        onClick = { soundExpanded = true },
+                                        onLongClick = {
+                                            // Zkušební notifikace
+                                            cz.tankono.widget.notify.Notifier.notifyNewPrices(context, actualSoundFile)
+                                            Toast.makeText(context, "Zkušební notifikace odeslána", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -1418,10 +1427,10 @@ private fun SettingsScreen(
                     }
                 }
 
-                // ---- Sdílení aplikace a QR kód (vedle sebe) ----
+                // ---- Sdílení aplikace a QR kód (spojené tlačítko) ----
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(0.dp) // Žádná mezera mezi tlačítky
                 ) {
                     OutlinedButton(
                         onClick = {
@@ -1433,6 +1442,8 @@ private fun SettingsScreen(
                             context.startActivity(Intent.createChooser(shareIntent, "Sdílet aplikaci"))
                         },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                        // Levá část: levé rohy zakulacené, pravé rovné
+                        shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 0.dp, bottomEnd = 0.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Sdílet")
@@ -1441,6 +1452,8 @@ private fun SettingsScreen(
                     OutlinedButton(
                         onClick = { showQrDialog = true },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                        // Pravá část: levé rohy rovné, pravé zakulacené
+                        shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 24.dp, bottomEnd = 24.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("QR kód")
