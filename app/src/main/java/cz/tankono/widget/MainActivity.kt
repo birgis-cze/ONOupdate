@@ -2304,7 +2304,7 @@ private fun QrCodeDialog(
 }
 
 // =============================================================================
-// VÝBĚR ZVUKU (BottomSheet)
+//  VÝBĚR ZVUKU
 // =============================================================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2316,14 +2316,12 @@ private fun SoundSelectionSheet(
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
-    // Stavy pro asynchronní načtení
     var sounds by remember { mutableStateOf<List<SoundItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     
-    var soundPool by remember { mutableStateOf<android.media.SoundPool?>(null) }
-    var loadedSounds by remember { mutableStateOf<Map<Int, Int>>(emptyMap()) }
+    var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
 
-    // 1. Načtení zvuků na pozadí (aby aplikace nezamrzla a nespadla)
+    // Načtení zvuků na pozadí
     LaunchedEffect(Unit) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             val list = SoundHelper.getAvailableSounds(context)
@@ -2334,34 +2332,22 @@ private fun SoundSelectionSheet(
         }
     }
 
-    // 2. Inicializace SoundPoolu
     DisposableEffect(Unit) {
-        val audioAttributes = android.media.AudioAttributes.Builder()
-            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
-            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_MUSIC)
-            .build()
-            
-        val sp = android.media.SoundPool.Builder()
-            .setMaxStreams(1)
-            .setAudioAttributes(audioAttributes)
-            .build()
-            
-        soundPool = sp
         onDispose {
-            sp.release()
-            soundPool = null
+            try { mediaPlayer?.release() } catch (_: Throwable) { }
+            mediaPlayer = null
         }
     }
 
-    // 3. Přednačtení zvuků do SoundPoolu, jakmile jsou k dispozici
-    LaunchedEffect(sounds) {
-        if (sounds.isNotEmpty() && soundPool != null) {
-            val map = mutableMapOf<Int, Int>()
-            sounds.forEach { sound ->
-                val id = soundPool?.load(context, sound.resId, 1) ?: 0
-                map[sound.resId] = id
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        androidx.compose.runtime.SideEffect {
+            val window = (view.context as? android.app.Activity)?.window
+            if (window != null) {
+                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.isAppearanceLightStatusBars = true
+                insetsController.isAppearanceLightNavigationBars = true
             }
-            loadedSounds = map
         }
     }
 
@@ -2391,71 +2377,81 @@ private fun SoundSelectionSheet(
             )
             Spacer(Modifier.height(12.dp))
 
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(sounds, key = { it.fileName }) { sound ->
-                    Surface(
-                        color = Color.White,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+            if (isLoading) {
+                CircularProgressIndicator(color = OnoRed, modifier = Modifier.align(Alignment.CenterHorizontally))
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(sounds, key = { it.fileName }) { sound ->
+                        Surface(
+                            color = Color.White,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Název a délka (kliknutím se přehraje)
                             Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .clickable {
-                                        try {
-                                            val soundId = loadedSounds[sound.resId]
-                                            if (soundId != null && soundId != 0) {
-                                                // Přehrát přes SoundPool (hlasitost 1f, priorita 1, loop 0, rychlost 1f)
-                                                soundPool?.play(soundId, 1f, 1f, 1, 0, 1f)
-                                            } else {
-                                                android.widget.Toast.makeText(context, "Zvuk se ještě načítá…", android.widget.Toast.LENGTH_SHORT).show()
-                                            }
-                                        } catch (t: Throwable) {
-                                            cz.tankono.widget.util.AppLogger.e("Chyba při přehrávání zvuku ${sound.fileName}", t)
-                                            android.widget.Toast.makeText(context, "Tento zvuk nelze přehrát", android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    sound.displayName,
-                                    color = OnoRed,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(Modifier.width(8.dp))
-                                Text(
-                                    "(${sound.durationSec}s)",
-                                    color = OnoRed.copy(alpha = 0.7f),
-                                    fontSize = 13.sp
-                                )
-                            }
-                            
-                            // Malý vlastní čtvereček (22dp)
-                            Box(
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .border(2.dp, OnoRed, RoundedCornerShape(4.dp))
-                                    .background(
-                                        if (currentSound == sound.fileName) OnoRed else Color.Transparent, 
-                                        RoundedCornerShape(4.dp)
+                                // Přehrání přes MediaPlayer
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable {
+                                            try {
+                                                try { mediaPlayer?.release() } catch (_: Throwable) { }
+                                                mediaPlayer = null
+
+                                                val mp = android.media.MediaPlayer.create(context, sound.resId)
+                                                if (mp != null) {
+                                                    mp.setOnCompletionListener {
+                                                        it.release()
+                                                        if (mediaPlayer == it) mediaPlayer = null
+                                                    }
+                                                    mediaPlayer = mp
+                                                    mp.start()
+                                                } else {
+                                                    android.widget.Toast.makeText(context, "Zvuk nelze přehrát", android.widget.Toast.LENGTH_SHORT).show()
+                                                }
+                                            } catch (t: Throwable) {
+                                                cz.tankono.widget.util.AppLogger.e("Chyba při přehrávání zvuku ${sound.fileName}", t)
+                                            }
+                                        },
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        sound.displayName,
+                                        color = OnoRed,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
-                                    .clickable { onSelect(sound.fileName) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (currentSound == sound.fileName) {
-                                    Text("✓", color = OnoYellow, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        "(${sound.durationSec}s)",
+                                        color = OnoRed.copy(alpha = 0.7f),
+                                        fontSize = 13.sp
+                                    )
+                                }
+                                
+                                // Checkbox
+                                Box(
+                                    modifier = Modifier
+                                        .size(22.dp)
+                                        .border(2.dp, OnoRed, RoundedCornerShape(4.dp))
+                                        .background(
+                                            if (currentSound == sound.fileName) OnoRed else Color.Transparent, 
+                                            RoundedCornerShape(4.dp)
+                                        )
+                                        .clickable { onSelect(sound.fileName) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (currentSound == sound.fileName) {
+                                        Text("✓", color = OnoYellow, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }

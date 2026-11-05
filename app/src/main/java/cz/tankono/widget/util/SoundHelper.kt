@@ -1,9 +1,7 @@
 package cz.tankono.widget.util
 
 import android.content.Context
-import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
-import android.net.Uri
 import cz.tankono.widget.R
 
 data class SoundItem(
@@ -26,24 +24,15 @@ object SoundHelper {
                     val rawName = field.name
                     
                     var duration = -1
-                    // Zkusíme nejdřív MediaMetadataRetriever, ten je bezpečnější
+                    // Zjištění délky přes MediaPlayer (spolehlivější pro OGG)
                     try {
-                        val retriever = MediaMetadataRetriever()
-                        val uri = Uri.parse("android.resource://${context.packageName}/$resId")
-                        retriever.setDataSource(context, uri)
-                        val timeStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-                        val timeMs = timeStr?.toLongOrNull() ?: 0L
-                        duration = (timeMs / 1000).toInt()
-                        retriever.release()
+                        val mp = MediaPlayer.create(context, resId)
+                        if (mp != null) {
+                            duration = mp.duration / 1000 // v sekundách
+                            mp.release()
+                        }
                     } catch (t: Throwable) {
-                        // Fallback na MediaPlayer
-                        try {
-                            val mp = MediaPlayer.create(context, resId)
-                            if (mp != null) {
-                                duration = mp.duration / 1000
-                                mp.release()
-                            }
-                        } catch (_: Throwable) { }
+                        AppLogger.e("SoundHelper: Chyba při čtení délky pro $rawName", t)
                     }
 
                     // Pokud se délku nepodařilo zjistit, zvuk ignorujeme

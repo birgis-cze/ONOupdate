@@ -84,6 +84,9 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    androidResources {
+        noCompress += listOf("ogg", "mp3", "wav")
 }
 
 dependencies {
