@@ -2298,9 +2298,12 @@ private fun SoundSelectionSheet(
     
     var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
     
+    // Úklid přehrávače při zavření sheetu
     DisposableEffect(Unit) {
         onDispose {
-            mediaPlayer?.release()
+            try {
+                mediaPlayer?.release()
+            } catch (_: Throwable) { }
             mediaPlayer = null
         }
     }
@@ -2365,9 +2368,32 @@ private fun SoundSelectionSheet(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
-                                        mediaPlayer?.release()
-                                        mediaPlayer = android.media.MediaPlayer.create(context, sound.resId)
-                                        mediaPlayer?.start()
+                                        try {
+                                            // Bezpečné uvolnění předchozího přehrávače
+                                            try {
+                                                mediaPlayer?.release()
+                                            } catch (_: Throwable) { }
+                                            mediaPlayer = null
+
+                                            // Vytvoření nového přehrávače a načtení souboru přímo
+                                            val mp = android.media.MediaPlayer()
+                                            context.resources.openRawResourceFd(sound.resId).use { afd ->
+                                                mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                                                mp.prepare()
+                                                mp.start()
+                                            }
+                                            
+                                            // Po dohrání automaticky uvolníme paměť
+                                            mp.setOnCompletionListener {
+                                                it.release()
+                                                if (mediaPlayer == it) mediaPlayer = null
+                                            }
+                                            
+                                            mediaPlayer = mp
+                                        } catch (t: Throwable) {
+                                            cz.tankono.widget.util.AppLogger.e("Chyba při přehrávání zvuku ${sound.fileName}", t)
+                                            android.widget.Toast.makeText(context, "Tento zvuk nelze přehrát", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
                                     },
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
