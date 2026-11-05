@@ -409,10 +409,10 @@ object WidgetRenderer {
         val trendWidthPx = trendWidthDp * density
 
         val oldFontSize = (fontSize - 2).coerceAtLeast(8f)
-        val oldWidthDp = (oldFontSize * 3.5f).coerceIn(55f, 90f)
+        val oldWidthDp = (oldFontSize * 3.5f).coerceIn(65f, 105f)
         val oldWidthPx = oldWidthDp * density
 
-        val priceWidthDp = (fontSize * 3.2f).coerceIn(50f, 85f)
+        val priceWidthDp = (fontSize * 3.2f).coerceIn(60f, 100f)
         val priceWidthPx = priceWidthDp * density
 
         TREND_IDS.forEach { id ->

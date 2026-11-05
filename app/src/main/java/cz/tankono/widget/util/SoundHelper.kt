@@ -23,8 +23,7 @@ object SoundHelper {
                     val resId = field.getInt(null)
                     val rawName = field.name
                     
-                    val lowerName = rawName.lowercase()
-                    if (!lowerName.endsWith(".mp3") && !lowerName.endsWith(".ogg")) {
+                    if (rawName == "keep") {
                         continue
                     }
 
