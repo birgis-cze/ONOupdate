@@ -1,6 +1,8 @@
 package cz.tankono.widget.work
 
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -20,17 +22,28 @@ class UpdateWorker(
     override suspend fun doWork(): Result {
         AppLogger.i("=== UpdateWorker START (id=${id}) ===")
 
-        // Vytvoříme ForegroundInfo. Android tuto notifikaci zobrazí 
-        // a sám ji smaže, jakmile Worker skončí.
+        // Vytvoříme ForegroundInfo s explicitním typem služby (nutné pro Android 14+)
         try {
             val notification = Notifier.getUpdateInProgressNotification(applicationContext)
-            val foregroundInfo = ForegroundInfo(1002, notification)
+            
+            val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ForegroundInfo(
+                    1002, 
+                    notification, 
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else {
+                ForegroundInfo(1002, notification)
+            }
+            
             setForeground(foregroundInfo)
             AppLogger.d("Foreground notifikace nastavena")
         } catch (t: Throwable) {
-            // Pokud se nepodaří nastavit foreground (např. chybí oprávnění), 
-            // nespadneme, jen zalogujeme chybu a budeme pokračovat.
             AppLogger.w("Nelze nastavit foreground notifikaci: ${t.message}")
+            // Pokud selže setForeground, zkusíme alespoň manuální notifikaci
+            try {
+                Notifier.showUpdateInProgress(applicationContext)
+            } catch (_: Throwable) {}
         }
 
         return try {
@@ -42,11 +55,7 @@ class UpdateWorker(
                 val loc = LocationProvider.getCurrentLocation(applicationContext)
                 if (loc != null) {
                     SettingsStore(applicationContext).saveCachedLocation(loc.first, loc.second)
-                    AppLogger.d(
-                        "UpdateWorker: cache polohy aktualizována (${"%.4f".format(loc.first)}, ${"%.4f".format(loc.second)})"
-                    )
-                } else {
-                    AppLogger.d("UpdateWorker: polohu nezískáno, použije se cache")
+                    AppLogger.d("UpdateWorker: cache polohy aktualizována")
                 }
             } catch (t: Throwable) {
                 AppLogger.w("UpdateWorker: získání polohy selhalo: ${t.message}")
@@ -54,23 +63,20 @@ class UpdateWorker(
 
             if (changed) {
                 AppLogger.i("Nový ceník – notifikace")
-                // Získáme nastavení a předáme zvuk
                 val settings = SettingsStore(applicationContext).settings.first()
                 Notifier.notifyNewPrices(applicationContext, settings.notificationSound)
             } else {
                 AppLogger.d("Ceník beze změny")
             }
 
-            // Překreslit widget
             TankOnoWidget.requestUpdate(applicationContext)
             AppLogger.d("Požadavek na překreslení widgetu odeslán")
 
-            // TADY UŽ NENÍ POTŘEBA hideUpdateInProgress.
-            // Android notifikaci smaže sám, jakmile tato funkce vrátí Result.success()
+            // Notifikace se smaže automaticky po dokončení Workera
             Result.success()
         } catch (t: Throwable) {
             AppLogger.e("Chyba v UpdateWorker", t)
-            // Android notifikaci smaže i při Result.retry()
+            // Notifikace se smaže automaticky i při Result.retry()
             Result.retry()
         }
     }
