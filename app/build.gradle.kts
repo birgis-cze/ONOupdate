@@ -102,7 +102,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.5")
 
     // Jsoup (scraping)
     implementation("org.jsoup:jsoup:1.18.1")

@@ -23,7 +23,7 @@ class UpdateWorker(
     override suspend fun doWork(): Result {
         AppLogger.i("=== UpdateWorker START (id=${id}) ===")
 
-        // Pokus o foreground notifikaci (nesmí shodit Worker)
+        // 1. Bezpečné nastavení foreground notifikace
         try {
             val notification = Notifier.getUpdateInProgressNotification(applicationContext)
             val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -34,13 +34,13 @@ class UpdateWorker(
             setForeground(foregroundInfo)
             AppLogger.d("Foreground notifikace nastavena")
         } catch (t: Throwable) {
-            // Foreground selhal (např. Job was cancelled) – pokračujeme bez něj
+            // Pokud selže foreground (např. Job was cancelled), pokračujeme bez něj
             AppLogger.w("Nelze nastavit foreground notifikaci: ${t.message}")
         }
 
-        // KLÍČOVÉ: Pokud byl Worker zrušen, nepokračujeme
+        // 2. Kontrola, zda systém Workera nezrušil
         if (isStopped) {
-            AppLogger.w("UpdateWorker: Worker byl zrušen, končím.")
+            AppLogger.w("UpdateWorker: Worker byl zrušen před začátkem práce, končím.")
             return Result.failure()
         }
 
@@ -53,7 +53,7 @@ class UpdateWorker(
                 return Result.failure()
             }
 
-            // Zkusit obnovit polohu do cache.
+            // Zkusit obnovit polohu do cache
             try {
                 val loc = LocationProvider.getCurrentLocation(applicationContext)
                 if (loc != null) {
@@ -75,9 +75,11 @@ class UpdateWorker(
             TankOnoWidget.requestUpdate(applicationContext)
             AppLogger.d("Požadavek na překreslení widgetu odeslán")
 
+            // WorkManager sám smaže notifikaci, jakmile vrátíme Result.success()
             Result.success()
+            
         } catch (e: CancellationException) {
-            // Worker byl zrušen – není to chyba, jen ukončení
+            // Toto je normální ukončení, ne chyba
             AppLogger.w("UpdateWorker: zrušen (CancellationException)")
             Result.failure()
         } catch (t: Throwable) {

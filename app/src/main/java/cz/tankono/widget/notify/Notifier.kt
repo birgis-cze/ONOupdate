@@ -20,7 +20,6 @@ object Notifier {
     private const val NOTIF_ID_PROGRESS = 1002
     private const val NOTIF_ID_UPDATE = 1003
 
-    /** Kanál pro nový ceník (normální notifikace). */
     fun ensureChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
@@ -35,9 +34,6 @@ object Notifier {
         }
     }
 
-    /**
-     * Kanál pro tichou notifikaci během update.
-     */
     private fun ensureSilentChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         if (mgr.getNotificationChannel(CHANNEL_SILENT_ID) == null) {
@@ -56,9 +52,6 @@ object Notifier {
         }
     }
 
-    /**
-     * Kanál pro upozornění na novou verzi aplikace.
-     */
     private fun ensureUpdateChannel(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         if (mgr.getNotificationChannel(CHANNEL_UPDATE_ID) == null) {
@@ -77,10 +70,6 @@ object Notifier {
         }
     }
 
-    /**
-     * Notifikace o novém ceníku s vybraným zvukem.
-     * Pokud je preferredSound prázdný, dynamicky vybere první dostupný zvuk.
-     */
     fun notifyNewPrices(ctx: Context, preferredSound: String) {
         val soundToPlay = if (preferredSound.isBlank() || ctx.resources.getIdentifier(preferredSound, "raw", ctx.packageName) == 0) {
             SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
@@ -91,7 +80,6 @@ object Notifier {
         
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         
-        // Smažeme starý kanál, abychom vynutili nové nastavení zvuku
         if (mgr.getNotificationChannel(dynamicChannelId) != null) {
             mgr.deleteNotificationChannel(dynamicChannelId)
         }
@@ -142,31 +130,11 @@ object Notifier {
             .build()
     }
 
-    /** Tichá notifikace "Aktualizuji data…" (zůstává pro případ potřeby) */
-    fun showUpdateInProgress(ctx: Context) {
-        ensureSilentChannel(ctx)
-
-        val notification = NotificationCompat.Builder(ctx, CHANNEL_SILENT_ID)
-            .setSmallIcon(R.drawable.ic_notif_station)
-            .setContentTitle("Tank ONO")
-            .setContentText("Aktualizuji data…")
-            .setOngoing(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-            .build()
-
-        val mgr = ctx.getSystemService(NotificationManager::class.java)
-        mgr.notify(NOTIF_ID_PROGRESS, notification)
-    }
-
-    /** Skryje tichou notifikaci (pro případ ručního volání) */
     fun hideUpdateInProgress(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         mgr.cancel(NOTIF_ID_PROGRESS)
     }
 
-    /** Tiché upozornění na novou verzi aplikace */
     fun notifyUpdateAvailable(ctx: Context, version: String) {
         ensureUpdateChannel(ctx)
 
@@ -197,9 +165,6 @@ object Notifier {
         mgr.notify(NOTIF_ID_UPDATE, notification)
     }
 
-    /**
-     * Smaže staré notifikační kanály pro změnu ceníku, které uživatel už nepoužívá.
-     */
     fun cleanupUnusedPriceChannels(ctx: Context, currentSound: String) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
         
