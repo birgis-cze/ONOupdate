@@ -12,6 +12,7 @@ import cz.tankono.widget.notify.Notifier
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
 import cz.tankono.widget.widget.TankOnoWidget
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
 class UpdateWorker(
@@ -22,33 +23,35 @@ class UpdateWorker(
     override suspend fun doWork(): Result {
         AppLogger.i("=== UpdateWorker START (id=${id}) ===")
 
-        // Vytvoříme ForegroundInfo s explicitním typem služby (nutné pro Android 14+)
+        // Pokus o foreground notifikaci (nesmí shodit Worker)
         try {
             val notification = Notifier.getUpdateInProgressNotification(applicationContext)
-            
             val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ForegroundInfo(
-                    1002, 
-                    notification, 
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
+                ForegroundInfo(1002, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
             } else {
                 ForegroundInfo(1002, notification)
             }
-            
             setForeground(foregroundInfo)
             AppLogger.d("Foreground notifikace nastavena")
         } catch (t: Throwable) {
+            // Foreground selhal (např. Job was cancelled) – pokračujeme bez něj
             AppLogger.w("Nelze nastavit foreground notifikaci: ${t.message}")
-            // Pokud selže setForeground, zkusíme alespoň manuální notifikaci
-            try {
-                Notifier.showUpdateInProgress(applicationContext)
-            } catch (_: Throwable) {}
+        }
+
+        // KLÍČOVÉ: Pokud byl Worker zrušen, nepokračujeme
+        if (isStopped) {
+            AppLogger.w("UpdateWorker: Worker byl zrušen, končím.")
+            return Result.failure()
         }
 
         return try {
             val repo = PriceRepository(applicationContext)
             val changed = repo.refresh()
+
+            if (isStopped) {
+                AppLogger.w("UpdateWorker: Worker zrušen během refresh, končím.")
+                return Result.failure()
+            }
 
             // Zkusit obnovit polohu do cache.
             try {
@@ -72,11 +75,13 @@ class UpdateWorker(
             TankOnoWidget.requestUpdate(applicationContext)
             AppLogger.d("Požadavek na překreslení widgetu odeslán")
 
-            // Notifikace se smaže automaticky po dokončení Workera
             Result.success()
+        } catch (e: CancellationException) {
+            // Worker byl zrušen – není to chyba, jen ukončení
+            AppLogger.w("UpdateWorker: zrušen (CancellationException)")
+            Result.failure()
         } catch (t: Throwable) {
             AppLogger.e("Chyba v UpdateWorker", t)
-            // Notifikace se smaže automaticky i při Result.retry()
             Result.retry()
         }
     }
