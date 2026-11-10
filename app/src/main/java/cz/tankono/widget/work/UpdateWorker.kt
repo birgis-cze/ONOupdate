@@ -23,7 +23,7 @@ class UpdateWorker(
     override suspend fun doWork(): Result {
         AppLogger.i("=== UpdateWorker START (id=${id}) ===")
 
-        // 1. Bezpečné nastavení foreground notifikace
+        // Pokus o foreground notifikaci
         try {
             val notification = Notifier.getUpdateInProgressNotification(applicationContext)
             val foregroundInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -34,13 +34,13 @@ class UpdateWorker(
             setForeground(foregroundInfo)
             AppLogger.d("Foreground notifikace nastavena")
         } catch (t: Throwable) {
-            // Pokud selže foreground (např. Job was cancelled), pokračujeme bez něj
             AppLogger.w("Nelze nastavit foreground notifikaci: ${t.message}")
+            // Pokud selže foreground, zkusíme to bez něj (např. na starých Androidech)
         }
 
-        // 2. Kontrola, zda systém Workera nezrušil
+        // Pokud systém Workera zrušil, končíme, aniž bychom dělali chybu
         if (isStopped) {
-            AppLogger.w("UpdateWorker: Worker byl zrušen před začátkem práce, končím.")
+            AppLogger.w("UpdateWorker: Worker byl zrušen před začátkem práce.")
             return Result.failure()
         }
 
@@ -49,11 +49,11 @@ class UpdateWorker(
             val changed = repo.refresh()
 
             if (isStopped) {
-                AppLogger.w("UpdateWorker: Worker zrušen během refresh, končím.")
+                AppLogger.w("UpdateWorker: Worker zrušen během refresh.")
                 return Result.failure()
             }
 
-            // Zkusit obnovit polohu do cache
+            // Zkusit obnovit polohu do cache.
             try {
                 val loc = LocationProvider.getCurrentLocation(applicationContext)
                 if (loc != null) {
@@ -75,11 +75,8 @@ class UpdateWorker(
             TankOnoWidget.requestUpdate(applicationContext)
             AppLogger.d("Požadavek na překreslení widgetu odeslán")
 
-            // WorkManager sám smaže notifikaci, jakmile vrátíme Result.success()
             Result.success()
-            
         } catch (e: CancellationException) {
-            // Toto je normální ukončení, ne chyba
             AppLogger.w("UpdateWorker: zrušen (CancellationException)")
             Result.failure()
         } catch (t: Throwable) {

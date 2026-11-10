@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
+import androidx.work.ExistingWorkPolicy // <-- PŘIDÁNO
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
@@ -21,7 +21,6 @@ object WorkScheduler {
     private const val PERIODIC_WORK_NAME = "tankono_update_periodic"
     private const val ONE_TIME_WORK_NAME = "tankono_update_now"
     private const val PUMP_SYNC_WORK_NAME = "tankono_pump_sync"
-    private const val PUMP_SYNC_ONE_TIME = "tankono_pump_sync_now"
     private const val UPDATE_CHECK_WORK_NAME = "tankono_update_check_daily"
 
     fun schedule(context: Context) {
@@ -65,7 +64,13 @@ object WorkScheduler {
             )
             .build()
 
-        WorkManager.getInstance(context).enqueue(request)
+        // OPRAVA: Použijeme unikátní práci, aby se nespustily dva Workery zároveň.
+        // ExistingWorkPolicy.KEEP zajistí, že pokud už nějaký běží, tento se ignoruje.
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            ONE_TIME_WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            request
+        )
     }
 
     fun schedulePumpSync(context: Context) {
@@ -105,9 +110,6 @@ object WorkScheduler {
         WorkManager.getInstance(context).enqueue(request)
     }
 
-    /**
-     * Naplánuje denní kontrolu aktualizací na 15:00.
-     */
     fun scheduleUpdateCheck(context: Context) {
         AppLogger.i("WorkScheduler: plánuji denní kontrolu aktualizací (nejbližší 15:00)")
 
@@ -117,7 +119,6 @@ object WorkScheduler {
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
-            // Pokud je už po 15:00, naplánujeme to na zítra
             if (before(now)) {
                 add(Calendar.DAY_OF_MONTH, 1)
             }
@@ -137,7 +138,7 @@ object WorkScheduler {
 
         WorkManager.getInstance(context).enqueueUniqueWork(
             UPDATE_CHECK_WORK_NAME,
-            ExistingWorkPolicy.REPLACE, // REPLACE zajistí, že při každém otevření appky se časovač srovná na 15:00
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }
