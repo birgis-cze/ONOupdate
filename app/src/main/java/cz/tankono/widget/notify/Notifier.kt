@@ -126,7 +126,23 @@ object Notifier {
         mgr.notify(NOTIF_ID_NEW, notification)
     }
 
-    /** Tichá notifikace "Aktualizuji data…" */
+    /**
+     * Vytvoří a vrátí notifikaci pro průběh aktualizace.
+     * Tuto notifikaci si převezme WorkManager přes setForeground() a sám ji smaže.
+     */
+    fun getUpdateInProgressNotification(ctx: Context): android.app.Notification {
+        ensureSilentChannel(ctx)
+        return NotificationCompat.Builder(ctx, CHANNEL_SILENT_ID)
+            .setSmallIcon(R.drawable.ic_notif_station)
+            .setContentTitle("Tank ONO")
+            .setContentText("Aktualizuji data…")
+            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .build()
+    }
+
+    /** Tichá notifikace "Aktualizuji data…" (zůstává pro případ potřeby) */
     fun showUpdateInProgress(ctx: Context) {
         ensureSilentChannel(ctx)
 
@@ -144,7 +160,7 @@ object Notifier {
         mgr.notify(NOTIF_ID_PROGRESS, notification)
     }
 
-    /** Skryje tichou notifikaci */
+    /** Skryje tichou notifikaci (pro případ ručního volání) */
     fun hideUpdateInProgress(ctx: Context) {
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         mgr.cancel(NOTIF_ID_PROGRESS)
@@ -183,18 +199,15 @@ object Notifier {
 
     /**
      * Smaže staré notifikační kanály pro změnu ceníku, které uživatel už nepoužívá.
-     * Volá se POUZE tehdy, když uživatel v nastavení změní zvuk.
      */
     fun cleanupUnusedPriceChannels(ctx: Context, currentSound: String) {
-        // API 26+ (Android 8.0+), na starších systémech kanály neexistují
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
         
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         val allChannels = mgr.notificationChannels ?: return
         
-        // Zjistíme, jaký zvuk se reálně používá (pokud je prázdný, vezmeme první dostupný)
         val soundToPlay = if (currentSound.isBlank() || ctx.resources.getIdentifier(currentSound, "raw", ctx.packageName) == 0) {
-            cz.tankono.widget.util.SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
+            SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
         } else {
             currentSound
         }
@@ -202,7 +215,6 @@ object Notifier {
         val safeSoundName = soundToPlay.replace(" ", "_").lowercase()
         val currentChannelId = "tankono_prices_$safeSoundName"
 
-        // Projdeme všechny kanály a smažeme ty pro ceník, které nejsou ten aktuální
         allChannels.forEach { channel ->
             if (channel.id.startsWith("tankono_prices_") && channel.id != currentChannelId) {
                 AppLogger.d("Notifier: Mažu nepoužívaný notifikační kanál ${channel.id}")
