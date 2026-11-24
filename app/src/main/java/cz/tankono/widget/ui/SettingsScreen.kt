@@ -641,7 +641,7 @@ fun SettingsScreen(
                                     ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Zvuk při aktualizaci ceníku: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("Zvuk při aktualizaci: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     availableSounds.find { it.fileName == (if (s.notificationSound.isBlank()) defaultSoundFile else s.notificationSound) }?.displayName ?: "Žádný zvuk",
                                     color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Normal
