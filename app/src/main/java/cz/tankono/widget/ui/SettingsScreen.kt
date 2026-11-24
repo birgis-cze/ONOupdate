@@ -434,7 +434,7 @@ fun SettingsScreen(
 
                 // ---- Produkty ----
                 SettingsCard {
-                    SectionTitle("Zobrazované produkty")
+                    SectionTitle("Zobrazované produkty:")
                     ProductGroup("Paliva:", Product.entries.filter { it.kind == Product.Kind.FUEL }, s, state)
                     ProductGroup("Ostatní:", Product.entries.filter { it.kind == Product.Kind.OTHER }, s, state)
                     ProductGroup("Směnárna:", Product.entries.filter { it.kind == Product.Kind.EXCHANGE }, s, state)
@@ -450,7 +450,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Krátké názvy produktů:",
+                            "Krátké názvy na widgetu:",
                             color = OnoRed,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
@@ -498,7 +498,7 @@ fun SettingsScreen(
 
                 // ---- Špička ----
                 SettingsCard {
-                    SectionTitle("Špička (aktualizace cen)")
+                    SectionTitle("Špička (aktualizace cen):")
                     TwoSteppersRow(
                         value1 = formatTime(s.peakStartMinutes),
                         value2 = formatTime(s.peakEndMinutes),
@@ -519,7 +519,7 @@ fun SettingsScreen(
 
                 // ---- Interval ----
                 SettingsCard {
-                    SectionTitle("Interval aktualizací špička/mimo")
+                    SectionTitle("Interval aktualizací špička/mimo:")
                     TwoSteppersRow(
                         value1 = s.intervalPeakMin.toString(),
                         value2 = s.intervalOffPeakMin.toString(),
@@ -641,7 +641,7 @@ fun SettingsScreen(
                                     ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Zvuk při aktualizaci: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("Oznámení změny: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 Text(
                                     availableSounds.find { it.fileName == (if (s.notificationSound.isBlank()) defaultSoundFile else s.notificationSound) }?.displayName ?: "Žádný zvuk",
                                     color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Normal

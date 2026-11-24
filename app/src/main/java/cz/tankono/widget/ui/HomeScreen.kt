@@ -166,19 +166,21 @@ fun HomeScreen(
                 state = pullToRefreshState,
                 modifier = Modifier.fillMaxSize(),
                 indicator = {
-                    // Vlastní indikátor – žluté kolečko, větší, s červeným okrajem
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(56.dp), // Větší kolečko
-                            color = OnoRed,
-                            strokeWidth = 5.dp,
-                            trackColor = OnoYellow
-                        )
+                    // Zobrazíme kolečko POUZE když probíhá refresh
+                    if (isRefreshing) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(56.dp),
+                                color = OnoRed,
+                                strokeWidth = 5.dp,
+                                trackColor = OnoYellow
+                            )
+                        }
                     }
                 }
             ) {
@@ -310,7 +312,7 @@ fun HomeScreen(
                         fontSize = 11.sp,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp),
+                            .padding(top = 0.dp),
                         textAlign = TextAlign.Center
                     )
 
