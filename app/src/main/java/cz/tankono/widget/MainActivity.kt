@@ -15,6 +15,7 @@ import android.os.VibrationEffect
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
@@ -109,6 +109,11 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 var showSettings by remember { mutableStateOf(false) }
 
+                // Zpracování tlačítka Zpět – pokud jsme v nastavení, vrátíme se na Home
+                BackHandler(enabled = showSettings) {
+                    showSettings = false
+                }
+
                 if (showSettings) {
                     SettingsScreen(
                         locationGranted = locationGrantedState,
@@ -132,8 +137,6 @@ class MainActivity : ComponentActivity() {
         WorkScheduler.schedulePumpSync(this)
         WorkScheduler.scheduleUpdateCheck(this)
     }
-
-    // ... zbytek metod zůstává (hasLocationPermission, requestNotificationPermissionIfNeeded, openBatterySettings, installApk, saveSettings, refreshNow, exportLog, checkPendingUpdate, vibrateLong) ...
 
     private fun hasLocationPermission(): Boolean {
         val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED

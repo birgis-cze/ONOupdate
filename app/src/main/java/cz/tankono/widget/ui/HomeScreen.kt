@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -43,6 +44,7 @@ import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.remote.TankOnoScraper
 import cz.tankono.widget.data.repo.PriceRepository
 import cz.tankono.widget.data.repo.PumpRepository
+import cz.tankono.widget.ui.components.AllPumpsSheet
 import cz.tankono.widget.ui.components.NearestPumpSection
 import cz.tankono.widget.ui.components.OnoHeader
 import cz.tankono.widget.util.AppLogger
@@ -56,21 +58,18 @@ import java.util.Locale
 fun HomeScreen(onNavigateToSettings: () -> Unit) {
     val context = LocalContext.current
 
-    // Stavy pro ceny
     var state by remember { mutableStateOf<PriceState?>(null) }
-
-    // Stavy pro nastavení (navigace)
     var preferredNav by remember { mutableStateOf(NavigationApp.SYSTEM) }
 
-    // Stavy pro nejbližší stanici
     var nearestPump by remember { mutableStateOf<PumpEntity?>(null) }
     var nearestDistanceKm by remember { mutableStateOf<Double?>(null) }
     var hasLocation by remember { mutableStateOf(false) }
 
-    // Načtení cen a nastavení
+    var showAllPumpsSheet by remember { mutableStateOf(false) }
+    var allPumpsSorted by remember { mutableStateOf<List<Pair<PumpEntity, Double>>>(emptyList()) }
+
     LaunchedEffect(Unit) {
         state = PriceRepository(context).loadState()
-
         try {
             val settings = SettingsStore(context).settings.first()
             preferredNav = settings.preferredNavigation
@@ -79,7 +78,6 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
         }
     }
 
-    // Načtení polohy a nejbližší stanice
     LaunchedEffect(Unit) {
         try {
             val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -92,6 +90,7 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     val pumpRepo = PumpRepository(context)
                     val sorted = pumpRepo.getAllSortedByDistance(loc.first, loc.second)
                     if (sorted.isNotEmpty()) {
+                        allPumpsSorted = sorted
                         nearestPump = sorted.first().first
                         nearestDistanceKm = sorted.first().second
                     }
@@ -115,8 +114,8 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
-            // --- HLAVIČKA ---
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -134,13 +133,12 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // --- NEJBLIŽŠÍ STANICE ---
                 SettingsCard {
                     NearestPumpSection(
                         nearestPump = nearestPump,
                         distanceKm = nearestDistanceKm,
                         hasLocation = hasLocation,
-                        onShowAll = { /* Zde by šlo otevřít seznam všech stanic – zatím prázdné */ },
+                        onShowAll = { showAllPumpsSheet = true },
                         onNavigate = { pump ->
                             val lat = pump.lat
                             val lng = pump.lng
@@ -151,10 +149,8 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     )
                 }
 
-                // --- CENY ---
                 SettingsCard {
                     SectionTitle("Aktuální ceny")
-
                     Product.entries.forEach { product ->
                         val cur = s.current?.entries?.get(product)
                         val old = s.previous?.entries?.get(product)
@@ -164,30 +160,14 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    product.displayName,
-                                    color = OnoRed,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    PriceFormatter.format(old, Currency.CZK),
-                                    color = OnoRed.copy(alpha = 0.6f),
-                                    fontSize = 12.sp
-                                )
-                                Text(
-                                    PriceFormatter.format(cur, Currency.CZK),
-                                    color = OnoRed,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
+                                Text(product.displayName, color = OnoRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                Text(PriceFormatter.format(old, Currency.CZK), color = OnoRed.copy(alpha = 0.6f), fontSize = 12.sp)
+                                Text(PriceFormatter.format(cur, Currency.CZK), color = OnoRed, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
                     }
                 }
 
-                // --- ČASY AKTUALIZACÍ ---
                 SettingsCard {
                     SectionTitle("Poslední aktualizace")
                     Text(
@@ -204,7 +184,6 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     )
                 }
 
-                // --- TLAČÍTKO NASTAVENÍ ---
                 OutlinedButton(
                     onClick = onNavigateToSettings,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
@@ -214,5 +193,20 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                 }
             }
         }
+    }
+
+    if (showAllPumpsSheet) {
+        AllPumpsSheet(
+            pumps = allPumpsSorted,
+            onDismiss = { showAllPumpsSheet = false },
+            onPick = { pump ->
+                showAllPumpsSheet = false
+                val lat = pump.lat
+                val lng = pump.lng
+                if (lat != null && lng != null) {
+                    preferredNav.navigate(context, lat, lng, pump.name)
+                }
+            }
+        )
     }
 }
