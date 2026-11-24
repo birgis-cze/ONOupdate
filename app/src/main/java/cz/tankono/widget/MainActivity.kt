@@ -128,7 +128,10 @@ class MainActivity : ComponentActivity() {
                         onNavigateToHome = { showSettings = false }
                     )
                 } else {
-                    HomeScreen(onNavigateToSettings = { showSettings = true })
+                    HomeScreen(
+                        onNavigateToSettings = { showSettings = true },
+                        onRefresh = { refreshNow() }
+                    )
                 }
             }
         }

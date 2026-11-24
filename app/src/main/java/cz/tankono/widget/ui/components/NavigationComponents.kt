@@ -129,12 +129,12 @@ fun NearestPumpSection(
                 }
             }
             !hasLocation -> {
-                Text("Nejbližší stanice:", color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("Nejbližší stanice:", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("   Nedostupná poloha", color = OnoRed, fontSize = 12.sp)
             }
             else -> {
-                Text("Nejbližší stanice:", color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("Nejbližší stanice:", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text("   Zjišťuji…", color = OnoRed, fontSize = 12.sp)
             }

@@ -55,7 +55,10 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun HomeScreen(onNavigateToSettings: () -> Unit) {
+fun HomeScreen(
+    onNavigateToSettings: () -> Unit,
+    onRefresh: () -> Unit // <-- PŘIDÁNO
+) {
     val context = LocalContext.current
 
     var state by remember { mutableStateOf<PriceState?>(null) }
@@ -122,7 +125,8 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     .padding(top = 8.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                OnoHeader()
+                // Hlavička bez nadpisu "Nastavení"
+                OnoHeader(showTitle = false) // <-- PŘIDÁNO
             }
 
             Column(
@@ -149,8 +153,13 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     )
                 }
 
+                // --- CENY ---
                 SettingsCard {
-                    SectionTitle("Aktuální ceny")
+                    SectionTitle("Aktuální ceny:") // <-- PŘIDÁNA DVOJTEČKA
+
+                    // Zjistíme, zda je dnes nový ceník (pro zobrazení trendu)
+                    val showTrend = TankOnoScraper.isPublishedToday(s.current?.publishedAt)
+
                     Product.entries.forEach { product ->
                         val cur = s.current?.entries?.get(product)
                         val old = s.previous?.entries?.get(product)
@@ -160,16 +169,53 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(product.displayName, color = OnoRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                                Text(PriceFormatter.format(old, Currency.CZK), color = OnoRed.copy(alpha = 0.6f), fontSize = 12.sp)
-                                Text(PriceFormatter.format(cur, Currency.CZK), color = OnoRed, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+                                Text(
+                                    product.displayName,
+                                    color = OnoRed,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                // Stará cena
+                                Text(
+                                    PriceFormatter.format(old, Currency.CZK),
+                                    color = OnoRed.copy(alpha = 0.6f),
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.weight(0.8f) // <-- ZVĚTŠENÍ PROSTORU
+                                )
+                                // Trend
+                                val arrow = if (showTrend && old != null && cur != null) {
+                                    val oldVal = PriceFormatter.valueFor(old, Currency.CZK)
+                                    val curVal = PriceFormatter.valueFor(cur, Currency.CZK)
+                                    when {
+                                        oldVal == null || curVal == null -> ""
+                                        curVal > oldVal -> "▲"
+                                        curVal < oldVal -> "▼"
+                                        else -> "="
+                                    }
+                                } else ""
+                                Text(
+                                    arrow,
+                                    color = OnoRed,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.weight(0.3f) // <-- PŘIDÁNO
+                                )
+                                // Nová cena
+                                Text(
+                                    PriceFormatter.format(cur, Currency.CZK),
+                                    color = OnoRed,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    modifier = Modifier.weight(0.8f) // <-- ZVĚTŠENÍ PROSTORU
+                                )
                             }
                         }
                     }
                 }
 
+                // --- ČASY AKTUALIZACÍ ---
                 SettingsCard {
-                    SectionTitle("Poslední aktualizace")
+                    SectionTitle("Poslední aktualizace:") // <-- PŘIDÁNA DVOJTEČKA
                     Text(
                         "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(s.current?.publishedAt) ?: "--"),
                         color = OnoRed,
@@ -184,6 +230,16 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                     )
                 }
 
+                // --- TLAČÍTKO AKTUALIZOVAT ---
+                OutlinedButton(
+                    onClick = onRefresh,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Aktualizovat data")
+                }
+
+                // --- TLAČÍTKO NASTAVENÍ ---
                 OutlinedButton(
                     onClick = onNavigateToSettings,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),

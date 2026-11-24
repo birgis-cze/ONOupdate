@@ -22,7 +22,10 @@ import cz.tankono.widget.ui.OnoRed
 import cz.tankono.widget.ui.OnoYellow
 
 @Composable
-fun OnoHeader(modifier: Modifier = Modifier) {
+fun OnoHeader(
+    modifier: Modifier = Modifier,
+    showTitle: Boolean = true // <-- NOVÝ PARAMETR
+) {
     Box(
         modifier = modifier
             .fillMaxWidth(0.9f)
@@ -52,14 +55,16 @@ fun OnoHeader(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Fit,
             alignment = Alignment.CenterStart
         )
-        Text(
-            text = "Nastavení",
-            color = OnoRed,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 8.dp, top = 4.dp)
-        )
+        if (showTitle) {
+            Text(
+                text = "Nastavení",
+                color = OnoRed,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 8.dp, top = 4.dp)
+            )
+        }
     }
 }
