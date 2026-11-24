@@ -155,10 +155,7 @@ fun HomeScreen(
 
                 // --- CENY ---
                 SettingsCard {
-                    SectionTitle("Aktuální ceny:") // <-- PŘIDÁNA DVOJTEČKA
-
-                    // Zjistíme, zda je dnes nový ceník (pro zobrazení trendu)
-                    val showTrend = TankOnoScraper.isPublishedToday(s.current?.publishedAt)
+                    SectionTitle("Aktuální ceny:")
 
                     Product.entries.forEach { product ->
                         val cur = s.current?.entries?.get(product)
@@ -169,21 +166,25 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // Název produktu
                                 Text(
                                     product.displayName,
                                     color = OnoRed,
                                     fontSize = 14.sp,
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f) // Název zabere zbytek
                                 )
-                                // Stará cena
+                                
+                                // Stará cena – pevná šířka, zarovnáno vpravo
                                 Text(
                                     PriceFormatter.format(old, Currency.CZK),
                                     color = OnoRed.copy(alpha = 0.6f),
                                     fontSize = 12.sp,
-                                    modifier = Modifier.weight(0.8f) // <-- ZVĚTŠENÍ PROSTORU
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.width(60.dp) // Pevná šířka (o 2 znaky víc než dřív)
                                 )
-                                // Trend
-                                val arrow = if (showTrend && old != null && cur != null) {
+                                
+                                // Trend – vždy zobrazený
+                                val arrow = if (old != null && cur != null) {
                                     val oldVal = PriceFormatter.valueFor(old, Currency.CZK)
                                     val curVal = PriceFormatter.valueFor(cur, Currency.CZK)
                                     when {
@@ -198,15 +199,18 @@ fun HomeScreen(
                                     color = OnoRed,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
-                                    modifier = Modifier.weight(0.3f) // <-- PŘIDÁNO
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.width(20.dp) // Pevná šířka pro trend
                                 )
-                                // Nová cena
+                                
+                                // Nová cena – pevná šířka, zarovnáno vpravo
                                 Text(
                                     PriceFormatter.format(cur, Currency.CZK),
                                     color = OnoRed,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    modifier = Modifier.weight(0.8f) // <-- ZVĚTŠENÍ PROSTORU
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                                    modifier = Modifier.width(60.dp) // Pevná šířka (o 2 znaky víc než dřív)
                                 )
                             }
                         }
