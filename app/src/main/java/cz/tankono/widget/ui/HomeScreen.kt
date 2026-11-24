@@ -86,7 +86,7 @@ fun HomeScreen(
     val pullToRefreshState = rememberPullToRefreshState()
 
     // Načtení dat
-    fun loadData() {
+    suspend fun loadData() {
         state = PriceRepository(context).loadState()
     }
 
