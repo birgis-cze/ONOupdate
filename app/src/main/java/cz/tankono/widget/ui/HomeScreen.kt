@@ -64,6 +64,7 @@ import cz.tankono.widget.util.LocationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.foundation.layout.size
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,7 +164,23 @@ fun HomeScreen(
                     }
                 },
                 state = pullToRefreshState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                indicator = {
+                    // Vlastní indikátor – žluté kolečko, větší, s červeným okrajem
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(56.dp), // Větší kolečko
+                            color = OnoRed,
+                            strokeWidth = 5.dp,
+                            trackColor = OnoYellow
+                        )
+                    }
+                }
             ) {
                 Column(
                     modifier = Modifier
