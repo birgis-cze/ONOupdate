@@ -273,6 +273,7 @@ fun SettingsScreen(
 
         AppLogger.i("Auto-save: ukládám nastavení (font=${current.fontSizeSp}, nav=${current.preferredNavigation})")
         SettingsStore(context).save(current)
+        Toast.makeText(context, "Uloženo", Toast.LENGTH_SHORT).show()
 
         if (current.notificationSound != loadedLocal.notificationSound) {
             AppLogger.i("Zvuk změněn, čistím staré notifikační kanály...")
