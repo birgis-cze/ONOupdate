@@ -123,6 +123,8 @@ import cz.tankono.widget.UpdateState
 import cz.tankono.widget.ui.components.SoundSelectionSheet
 import cz.tankono.widget.vibrateLong
 import cz.tankono.widget.ui.components.QrCodeDialog
+import android.content.Context
+
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -130,7 +132,7 @@ enum class UpdateState {
     IDLE, CHECKING, DOWNLOADING, READY_TO_INSTALL, UP_TO_DATE
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     locationGranted: Boolean,
