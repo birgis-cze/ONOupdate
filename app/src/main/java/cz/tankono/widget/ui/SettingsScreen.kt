@@ -629,13 +629,21 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Zjistíme, jaký zvuk se má reálně použít (existující)
+                            val actualSoundFile = if (s.notificationSound.isBlank()) {
+                                defaultSoundFile
+                            } else {
+                                // Zkontrolujeme, zda vybraný zvuk existuje, jinak vezmeme výchozí
+                                availableSounds.find { it.fileName == s.notificationSound }?.fileName
+                                    ?: defaultSoundFile
+                            }
+
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
                                     .combinedClickable(
                                         onClick = { soundSelectionExpanded = true },
                                         onLongClick = {
-                                            val actualSoundFile = if (s.notificationSound.isBlank()) defaultSoundFile else s.notificationSound
                                             Notifier.notifyNewPrices(context, actualSoundFile)
                                             Toast.makeText(context, "Zkušební notifikace odeslána", Toast.LENGTH_SHORT).show()
                                         }
@@ -644,10 +652,11 @@ fun SettingsScreen(
                             ) {
                                 Text("Oznámení změny: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 Text(
-                                    availableSounds.find { it.fileName == (if (s.notificationSound.isBlank()) defaultSoundFile else s.notificationSound) }?.displayName ?: "Žádný zvuk",
+                                    availableSounds.find { it.fileName == actualSoundFile }?.displayName ?: "Žádný zvuk",
                                     color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Normal
                                 )
                             }
+
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
