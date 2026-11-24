@@ -215,7 +215,7 @@ class MainActivity : ComponentActivity() {
 
     private fun refreshNow() {
         AppLogger.i("Manuální refresh – ceník + pumpy")
-        Toast.makeText(this, getString(R.string.refreshing_toast), Toast.LENGTH_SHORT).show()
+        //Toast.makeText(this, getString(R.string.refreshing_toast), Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
             try {
                 val repo = cz.tankono.widget.data.repo.PriceRepository(this@MainActivity)

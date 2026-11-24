@@ -287,13 +287,13 @@ fun HomeScreen(
                         }
                     }
 
-                    OutlinedButton(
-                        onClick = onRefresh,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Aktualizovat data")
-                    }
+                    //OutlinedButton(
+                    //    onClick = onRefresh,
+                    //    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    //    modifier = Modifier.fillMaxWidth()
+                    //) {
+                    //    Text("Aktualizovat data")
+                    //}
 
                     OutlinedButton(
                         onClick = onNavigateToSettings,
@@ -302,6 +302,18 @@ fun HomeScreen(
                     ) {
                         Text("Nastavení")
                     }
+
+                    // --- NOVÝ TEXT ---
+                    Text(
+                        text = "Aktualizace potáhnutím",
+                        color = OnoRed.copy(alpha = 0.5f),
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+
                 }
             }
         }
