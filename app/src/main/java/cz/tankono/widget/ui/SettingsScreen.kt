@@ -122,6 +122,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import android.content.Context
+import cz.tankono.widget.ui.components.OnoHeader
+import cz.tankono.widget.ui.components.CurrencyButton
+import cz.tankono.widget.ui.components.ProductGroup
+import cz.tankono.widget.ui.components.NavigationRow
+import cz.tankono.widget.ui.components.NearestPumpSection
+import cz.tankono.widget.ui.components.TwoSteppersRow
+import cz.tankono.widget.ui.components.NumberStepper
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -1036,126 +1043,6 @@ fun SettingsScreen(
     }
 }
 
-// Pomocné composable funkce z MainActivity – zde je musíte mít také
-@Composable
-private fun OnoHeader(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth(0.9f)
-            .height(40.dp)
-            .background(OnoYellow)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .align(Alignment.BottomStart)
-                .offset(y = (-8).dp)
-                .background(OnoRed)
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .align(Alignment.BottomStart)
-                .offset(y = (-5).dp)
-                .background(OnoRed)
-        )
-        Image(
-            painter = painterResource(id = R.drawable.logo_text),
-            contentDescription = "Tank ONO",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Fit,
-            alignment = Alignment.CenterStart
-        )
-        Text(
-            text = "Nastavení",
-            color = OnoRed,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 8.dp, top = 4.dp)
-        )
-    }
-}
-
-@Composable
-fun NavigationRow(current: NavigationApp, installedApps: List<NavigationApp>, onSelect: (NavigationApp) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Text("Navigovat přes: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(current.displayName, color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Normal)
-            }
-            Box(
-                modifier = Modifier.size(40.dp).border(2.dp, OnoRed, RoundedCornerShape(8.dp)).clickable { expanded = true },
-                contentAlignment = Alignment.Center
-            ) { Text("▼", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(OnoYellow).border(2.dp, OnoRed)) {
-            DropdownMenuItem(
-                text = { Text("Systém (vždy hlavní pro geo)", color = OnoRed, fontSize = 14.sp, fontWeight = if (current == NavigationApp.SYSTEM) FontWeight.Bold else FontWeight.Normal) },
-                onClick = { onSelect(NavigationApp.SYSTEM); expanded = false }
-            )
-            installedApps.forEach { app ->
-                DropdownMenuItem(
-                    text = { Text(app.displayName, color = OnoRed, fontSize = 14.sp, fontWeight = if (current == app) FontWeight.Bold else FontWeight.Normal) },
-                    onClick = { onSelect(app); expanded = false }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun NearestPumpSection(
-    nearestPump: PumpEntity?,
-    distanceKm: Double?,
-    hasLocation: Boolean,
-    onShowAll: () -> Unit,
-    onNavigate: (PumpEntity) -> Unit
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        when {
-            nearestPump != null && distanceKm != null -> {
-                Text("Nejbližší stanice:", color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(nearestPump.name.removePrefix("ČS ").trim(), color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text(if (distanceKm < 10.0) "%.1f km".format(distanceKm).replace('.', ',') else "%.0f km".format(distanceKm), color = OnoRed, fontSize = 13.sp)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                        SquareButton("M") { onNavigate(nearestPump) }
-                        SquareButton("S") { onShowAll() }
-                    }
-                }
-            }
-            !hasLocation -> {
-                Text("Nejbližší stanice:", color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text("   Nedostupná poloha", color = OnoRed, fontSize = 12.sp)
-            }
-            else -> {
-                Text("Nejbližší stanice:", color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text("   Zjišťuji…", color = OnoRed, fontSize = 12.sp)
-            }
-        }
-    }
-}
-
-@Composable
-fun SquareButton(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(40.dp).border(2.dp, OnoRed, RoundedCornerShape(8.dp)).clickable { onClick() },
-        contentAlignment = Alignment.Center
-    ) { Text(label, color = OnoRed, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AllPumpsSheet(pumps: List<Pair<PumpEntity, Double>>, onDismiss: () -> Unit, onPick: (PumpEntity) -> Unit) {
@@ -1333,87 +1220,11 @@ fun QrCodeDialog(onDismiss: () -> Unit) {
     )
 }
 
-@Composable
-fun ProductGroup(title: String, products: List<Product>, settings: WidgetSettings, state: MutableState<WidgetSettings?>) {
-    Column {
-        Text(title, color = OnoRed, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        Box(modifier = Modifier.padding(top = 2.dp, bottom = 6.dp).fillMaxWidth(0.4f).height(1.dp).background(OnoRed))
-        products.forEach { product ->
-            val checked = product in settings.visibleProducts
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-                Text(product.displayName + " (" + product.shortName + ")", color = OnoRed, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = checked,
-                    onCheckedChange = { isChecked ->
-                        val newSet = if (isChecked) settings.visibleProducts + product else settings.visibleProducts - product
-                        state.value = settings.copy(visibleProducts = newSet)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = OnoYellow, checkedTrackColor = OnoRed, checkedBorderColor = OnoRed,
-                        uncheckedThumbColor = OnoRed, uncheckedTrackColor = Color.White, uncheckedBorderColor = OnoRed
-                    )
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun CurrencyButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) OnoRed else Color.White
-    val fg = if (selected) OnoYellow else OnoRed
-    Box(modifier = Modifier.width(70.dp).height(44.dp).border(2.dp, OnoRed, RoundedCornerShape(8.dp)).background(bg, RoundedCornerShape(8.dp)).clickable { onClick() }, contentAlignment = Alignment.Center) {
-        Text(label, color = fg, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
 fun formatTime(minutes: Int): String {
     if (minutes >= 1440) return "24:00"
     val h = (minutes / 60) % 24
     val m = minutes % 60
     return "%d:%02d".format(h, m)
-}
-
-@Composable
-fun TwoSteppersRow(
-    value1: String, value2: String,
-    onMinus1: () -> Unit, onPlus1: () -> Unit, onMinus2: () -> Unit, onPlus2: () -> Unit,
-    canMinus1: Boolean = true, canPlus1: Boolean = true, canMinus2: Boolean = true, canPlus2: Boolean = true,
-    onMin1: (() -> Unit)? = null, onMax1: (() -> Unit)? = null, onMin2: (() -> Unit)? = null, onMax2: (() -> Unit)? = null
-) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.weight(1f).padding(end = 8.dp), contentAlignment = Alignment.CenterEnd) {
-            NumberStepper(value1, onMinus1, onPlus1, canMinus1, canPlus1, onMin1, onMax1)
-        }
-        Box(modifier = Modifier.weight(1f).padding(start = 8.dp), contentAlignment = Alignment.CenterStart) {
-            NumberStepper(value2, onMinus2, onPlus2, canMinus2, canPlus2, onMin2, onMax2)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun NumberStepper(value: String, onMinus: () -> Unit, onPlus: () -> Unit, canMinus: Boolean = true, canPlus: Boolean = true, onMin: (() -> Unit)? = null, onMax: (() -> Unit)? = null) {
-    val buttonSize = 40.dp
-    BoxWithConstraints {
-        val availableWidth = maxWidth
-        val buttonsWidth = buttonSize * 2
-        val remaining = availableWidth - buttonsWidth
-        val gap = when { remaining >= 120.dp -> 4.dp; remaining >= 100.dp -> 3.dp; remaining >= 80.dp -> 2.dp; else -> 1.dp }
-        val valueWidth = (remaining - (gap * 2)).coerceAtLeast(40.dp)
-        val valueFontSize = when { valueWidth >= 70.dp -> 18.sp; valueWidth >= 60.dp -> 16.sp; valueWidth >= 50.dp -> 14.sp; else -> 12.sp }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
-            Box(modifier = Modifier.size(buttonSize).border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .then(if (canMinus && onMin != null) Modifier.combinedClickable(onClick = onMinus, onLongClick = onMin) else if (canMinus) Modifier.clickable { onMinus() } else Modifier),
-                contentAlignment = Alignment.Center) { if (canMinus) Text("−", color = OnoRed, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
-            Box(modifier = Modifier.width(valueWidth).height(buttonSize), contentAlignment = Alignment.Center) {
-                Text(text = value, color = OnoRed, fontSize = valueFontSize, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
-            }
-            Box(modifier = Modifier.size(buttonSize).border(2.dp, OnoRed, RoundedCornerShape(8.dp))
-                .then(if (canPlus && onMax != null) Modifier.combinedClickable(onClick = onPlus, onLongClick = onMax) else if (canPlus) Modifier.clickable { onPlus() } else Modifier),
-                contentAlignment = Alignment.Center) { if (canPlus) Text("+", color = OnoRed, fontSize = 24.sp, fontWeight = FontWeight.Bold) }
-        }
-    }
 }
 
 fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
