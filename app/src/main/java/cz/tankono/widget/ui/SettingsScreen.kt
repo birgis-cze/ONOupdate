@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -49,7 +48,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -74,18 +72,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -98,7 +93,6 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import cz.tankono.widget.BuildConfig
 import cz.tankono.widget.R
-import cz.tankono.widget.data.db.PumpEntity
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.prefs.NavigationApp
@@ -106,13 +100,17 @@ import cz.tankono.widget.data.prefs.SettingsStore
 import cz.tankono.widget.data.prefs.ThemeMode
 import cz.tankono.widget.data.prefs.WidgetSettings
 import cz.tankono.widget.data.remote.TankOnoScraper
-import cz.tankono.widget.data.repo.PumpRefreshProgress
-import cz.tankono.widget.data.repo.PumpRepository
 import cz.tankono.widget.notify.Notifier
+import cz.tankono.widget.ui.components.CurrencyButton
+import cz.tankono.widget.ui.components.NavigationRow
+import cz.tankono.widget.ui.components.NumberStepper
+import cz.tankono.widget.ui.components.OnoHeader
+import cz.tankono.widget.ui.components.ProductGroup
+import cz.tankono.widget.ui.components.SoundSelectionSheet
+import cz.tankono.widget.ui.components.TwoSteppersRow
 import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.InstallReporter
 import cz.tankono.widget.util.SoundHelper
-import cz.tankono.widget.util.SoundItem
 import cz.tankono.widget.util.UpdateChecker
 import cz.tankono.widget.work.WorkScheduler
 import kotlinx.coroutines.delay
@@ -121,13 +119,10 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.content.Context
-import cz.tankono.widget.ui.components.OnoHeader
-import cz.tankono.widget.ui.components.CurrencyButton
-import cz.tankono.widget.ui.components.ProductGroup
-import cz.tankono.widget.ui.components.NavigationRow
-import cz.tankono.widget.ui.components.TwoSteppersRow
-import cz.tankono.widget.ui.components.NumberStepper
+import cz.tankono.widget.UpdateState
+import cz.tankono.widget.ui.components.SoundSelectionSheet
+import cz.tankono.widget.vibrateLong
+import cz.tankono.widget.ui.components.QrCodeDialog
 
 private const val GITHUB_URL = "https://github.com/birgis-cze/ONOupdate"
 
@@ -147,7 +142,7 @@ fun SettingsScreen(
     onRequestNotification: () -> Unit,
     onInstallApk: (File) -> Boolean,
     isConfiguring: Boolean,
-    onNavigateToHome: () -> Unit
+    onNavigateToHome: () -> Unit // <-- Parametr zůstává, i když tlačítko zakomentujete
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -187,6 +182,7 @@ fun SettingsScreen(
         NavigationApp.installed(context)
     }
 
+    // --- ŽIVÁ KONTROLA SYSTÉMOVÝCH NASTAVENÍ ---
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -206,18 +202,7 @@ fun SettingsScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(Unit) {
-        val cachedLoc = SettingsStore(context).getCachedLocation()
-        if (cachedLoc != null && locationGranted) {
-            userLocation = cachedLoc
-            val sorted = pumpRepo.getAllSortedByDistance(cachedLoc.first, cachedLoc.second)
-            if (sorted.isNotEmpty()) {
-                nearestPump = sorted.first().first
-                nearestDistanceKm = sorted.first().second
-            }
-        }
-    }
-
+    // Načtení uloženého stavu
     LaunchedEffect(loaded) {
         val loadedLocal = loaded ?: return@LaunchedEffect
 
@@ -242,6 +227,7 @@ fun SettingsScreen(
         } catch (_: Throwable) {}
     }
 
+    // Zkontrolujeme, zda nezůstal viset stažený balíček z minula
     LaunchedEffect(Unit) {
         val pendingFile = cz.tankono.widget.checkPendingUpdate(context)
         if (pendingFile != null) {
@@ -251,6 +237,7 @@ fun SettingsScreen(
         }
     }
 
+    // Tichá kontrola aktualizací na pozadí při otevření nastavení
     LaunchedEffect(Unit) {
         if (downloadedFile == null && updateState == UpdateState.IDLE) {
             try {
@@ -268,6 +255,7 @@ fun SettingsScreen(
         }
     }
 
+    // Načtení počtu evidovaných zařízení + hashe tohoto zařízení
     LaunchedEffect(Unit) {
         deviceHash = InstallReporter.getDeviceHash(context)
         installCountLoading = true
@@ -275,6 +263,7 @@ fun SettingsScreen(
         installCountLoading = false
     }
 
+    // ---- Auto-save s debounce 500 ms ----
     LaunchedEffect(state.value) {
         val current = state.value ?: return@LaunchedEffect
         if (isConfiguring) return@LaunchedEffect
@@ -293,54 +282,6 @@ fun SettingsScreen(
         }
 
         WorkScheduler.schedule(context)
-    }
-
-    LaunchedEffect(locationGranted) {
-        try {
-            val settingsStore = SettingsStore(context)
-            val now = System.currentTimeMillis()
-            val lastSync = settingsStore.getLastPumpSync()
-            val dayMs = 24 * 60 * 60 * 1000L
-
-            if (now - lastSync > dayMs) {
-                AppLogger.i("SETTINGS: Sync pump (naposledy ${(now - lastSync) / 1000 / 60} min)")
-                val sync = pumpRepo.syncWithWeb()
-                if (!sync.failed) {
-                    settingsStore.saveLastPumpSync(now)
-                }
-            } else {
-                AppLogger.d("SETTINGS: Sync přeskočen (proběhl nedávno)")
-            }
-
-            val gpsCount = pumpRepo.refreshGpsForAllPumps()
-            if (gpsCount > 0) {
-                AppLogger.i("SETTINGS: Došti GPS pro $gpsCount pump")
-            }
-
-            if (locationGranted) {
-                AppLogger.i("SETTINGS: Zjišťuji polohu…")
-                val loc = cz.tankono.widget.util.LocationProvider.getCurrentLocation(context)
-                if (loc != null) {
-                    userLocation = loc
-                    AppLogger.i("SETTINGS: Poloha = ${loc.first}, ${loc.second}")
-
-                    val sorted = pumpRepo.getAllSortedByDistance(loc.first, loc.second)
-                    allPumpsSorted = sorted
-                    if (sorted.isNotEmpty()) {
-                        nearestPump = sorted.first().first
-                        nearestDistanceKm = sorted.first().second
-                    }
-                } else {
-                    AppLogger.w("SETTINGS: Polohu nelze získat")
-                }
-            } else {
-                AppLogger.w("SETTINGS: Chybí oprávnění k poloze")
-            }
-        } catch (t: Throwable) {
-            AppLogger.e("SETTINGS: chyba při načítání pump", t)
-        } finally {
-            pumpRepo.resetProgress()
-        }
     }
 
     val s = state.value
@@ -415,15 +356,16 @@ fun SettingsScreen(
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Tlačítko Zpět na ceny
-                //Button(
-                //    onClick = onNavigateToHome,
-                //    colors = ButtonDefaults.buttonColors(containerColor = OnoRed, contentColor = OnoYellow),
-                //    modifier = Modifier.fillMaxWidth()
-                //) {
-                //    Text("Zpět na ceny", fontWeight = FontWeight.Bold)
-                //}
+                // Tlačítko Zpět na ceny – ZAKOMENTOVÁNO
+                // Button(
+                //     onClick = onNavigateToHome,
+                //     colors = ButtonDefaults.buttonColors(containerColor = OnoRed, contentColor = OnoYellow),
+                //     modifier = Modifier.fillMaxWidth()
+                // ) {
+                //     Text("Zpět na ceny", fontWeight = FontWeight.Bold)
+                // }
 
+                // --- DYNAMICKÁ KARTA PRO SYSTÉMOVÁ NASTAVENÍ ---
                 if (!hasLoc || !hasNotif || !batteryOk) {
                     SettingsCard {
                         SectionTitle("Jsou potřeba povolení:")
@@ -456,6 +398,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Navigace ----
                 SettingsCard {
                     if (installedNavApps.size >= 2) {
                         NavigationRow(
@@ -491,6 +434,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Produkty ----
                 SettingsCard {
                     SectionTitle("Zobrazované produkty")
                     ProductGroup("Paliva:", Product.entries.filter { it.kind == Product.Kind.FUEL }, s, state)
@@ -501,6 +445,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Krátké názvy ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -528,6 +473,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Měna ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -552,6 +498,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Špička ----
                 SettingsCard {
                     SectionTitle("Špička (aktualizace cen)")
                     TwoSteppersRow(
@@ -572,6 +519,7 @@ fun SettingsScreen(
                     )
                 }
 
+                // ---- Interval ----
                 SettingsCard {
                     SectionTitle("Interval aktualizací špička/mimo")
                     TwoSteppersRow(
@@ -592,6 +540,7 @@ fun SettingsScreen(
                     )
                 }
 
+                // ---- Velikost textu ----
                 SettingsCard {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -624,6 +573,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Vzhled ----
                 SettingsCard {
                     var themeExpanded by remember { mutableStateOf(false) }
                     Box(modifier = Modifier.fillMaxWidth()) {
@@ -673,6 +623,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Zvuk ----
                 SettingsCard {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Row(
@@ -680,7 +631,16 @@ fun SettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .combinedClickable(
+                                        onClick = { soundSelectionExpanded = true },
+                                        onLongClick = {
+                                            val actualSoundFile = if (s.notificationSound.isBlank()) defaultSoundFile else s.notificationSound
+                                            Notifier.notifyNewPrices(context, actualSoundFile)
+                                            Toast.makeText(context, "Zkušební notifikace odeslána", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text("Zvuk při aktualizaci ceníku: ", color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -816,6 +776,7 @@ fun SettingsScreen(
                     }
                 }
 
+                // ---- Sdílení a QR ----
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -842,6 +803,7 @@ fun SettingsScreen(
                     ) { Text("QR kód") }
                 }
 
+                // ---- ZÁPATÍ ----
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -908,7 +870,7 @@ fun SettingsScreen(
                                 if (footerTapCount >= 10) {
                                     footerTapCount = 0
                                     showLogFlash = true
-                                    cz.tankono.widget.vibrateLong(context)
+                                    vibrateLong(context)
                                     scope.launch {
                                         delay(2000)
                                         showLogFlash = false
@@ -966,197 +928,9 @@ fun SettingsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun AllPumpsSheet(pumps: List<Pair<PumpEntity, Double>>, onDismiss: () -> Unit, onPick: (PumpEntity) -> Unit) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window
-            if (window != null) {
-                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = true
-                insetsController.isAppearanceLightNavigationBars = true
-            }
-        }
-    }
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = OnoYellow) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            Text("Všechny stanice", color = OnoRed, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(OnoRed))
-            Spacer(Modifier.height(12.dp))
-            if (pumps.isEmpty()) {
-                Text("Žádné stanice s GPS. Zkus později.", color = OnoRed, fontSize = 14.sp)
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(pumps, key = { it.first.id }) { (pump, dist) ->
-                        Surface(
-                            color = Color.White, shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
-                            modifier = Modifier.fillMaxWidth().clickable { onPick(pump) }
-                        ) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(pump.name.removePrefix("ČS ").trim(), color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                                Spacer(Modifier.width(8.dp))
-                                Text(if (dist < 10.0) "%.1f km".format(dist).replace('.', ',') else "%.0f km".format(dist), color = OnoRed, fontSize = 13.sp)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SoundSelectionSheet(currentSound: String, onDismiss: () -> Unit, onSelect: (String) -> Unit) {
-    val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var sounds by remember { mutableStateOf<List<SoundItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var mediaPlayer by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
-
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            val list = SoundHelper.getAvailableSounds(context)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                sounds = list
-                isLoading = false
-            }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            try { mediaPlayer?.release() } catch (_: Throwable) { }
-            mediaPlayer = null
-        }
-    }
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as? Activity)?.window
-            if (window != null) {
-                val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
-                insetsController.isAppearanceLightStatusBars = true
-                insetsController.isAppearanceLightNavigationBars = true
-            }
-        }
-    }
-
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = OnoYellow) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            Text("Zvuk při aktualizaci ceníku", color = OnoRed, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(2.dp).background(OnoRed))
-            Spacer(Modifier.height(12.dp))
-            if (isLoading) {
-                CircularProgressIndicator(color = OnoRed, modifier = Modifier.align(Alignment.CenterHorizontally))
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(sounds, key = { it.fileName }) { sound ->
-                        Surface(
-                            color = Color.White, shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, OnoRed.copy(alpha = 0.4f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Row(
-                                    modifier = Modifier.weight(1f).clickable {
-                                        try {
-                                            try { mediaPlayer?.release() } catch (_: Throwable) { }
-                                            mediaPlayer = null
-                                            val mp = android.media.MediaPlayer()
-                                            context.resources.openRawResourceFd(sound.resId).use { afd ->
-                                                mp.setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                                                mp.prepare()
-                                                mp.start()
-                                            }
-                                            mp.setOnCompletionListener {
-                                                it.release()
-                                                if (mediaPlayer == it) mediaPlayer = null
-                                            }
-                                            mediaPlayer = mp
-                                        } catch (t: Throwable) {
-                                            AppLogger.e("Chyba při přehrávání zvuku ${sound.fileName}", t)
-                                            Toast.makeText(context, "Tento zvuk nelze přehrát", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(sound.displayName, color = OnoRed, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("(${sound.durationSec}s)", color = OnoRed.copy(alpha = 0.7f), fontSize = 13.sp)
-                                }
-                                Box(
-                                    modifier = Modifier.size(22.dp).border(2.dp, OnoRed, RoundedCornerShape(4.dp))
-                                        .background(if (currentSound == sound.fileName) OnoRed else Color.Transparent, RoundedCornerShape(4.dp))
-                                        .clickable { onSelect(sound.fileName) },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (currentSound == sound.fileName) {
-                                        Text("✓", color = OnoYellow, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun QrCodeDialog(onDismiss: () -> Unit) {
-    val qrBitmap = remember { generateQrCode(GITHUB_URL) }
-    val uriHandler = LocalUriHandler.current
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text("Naskenuj a sdílej", color = OnoRed, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Naskenuj tento QR kód telefonem.", color = OnoRed.copy(alpha = 0.7f), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 16.dp))
-                Image(bitmap = qrBitmap, contentDescription = "QR kód pro stažení aplikace", modifier = Modifier.size(240.dp).border(4.dp, OnoRed, RoundedCornerShape(8.dp)).padding(8.dp))
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = GITHUB_URL,
-                    color = OnoRed,
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        try { uriHandler.openUri(GITHUB_URL) } catch (_: Throwable) { }
-                    }
-                )
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Zavřít", color = OnoRed, fontWeight = FontWeight.Bold) } },
-        containerColor = OnoYellow
-    )
-}
-
 fun formatTime(minutes: Int): String {
     if (minutes >= 1440) return "24:00"
     val h = (minutes / 60) % 24
     val m = minutes % 60
     return "%d:%02d".format(h, m)
-}
-
-fun generateQrCode(text: String, size: Int = 512): ImageBitmap {
-    val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
-    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-    for (x in 0 until size) {
-        for (y in 0 until size) {
-            bitmap.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-        }
-    }
-    return bitmap.asImageBitmap()
 }
