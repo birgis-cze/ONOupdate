@@ -426,58 +426,13 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Tlačítko Zpět na ceny
-                Button(
-                    onClick = onNavigateToHome,
-                    colors = ButtonDefaults.buttonColors(containerColor = OnoRed, contentColor = OnoYellow),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Zpět na ceny", fontWeight = FontWeight.Bold)
-                }
-
-                // ---- Poslední aktualizace + nejbližší ----
-                SettingsCard {
-                    SectionTitle("Poslední aktualizace:")
-                    Text(
-                        "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(lastPublished) ?: "--"),
-                        color = OnoRed,
-                        fontSize = 13.sp
-                    )
-                    Text(
-                        "Widget aktualizován: " + (lastFetched?.let {
-                            SimpleDateFormat("d.M.yyyy H:mm", Locale("cs", "CZ")).format(Date(it))
-                        } ?: "--"),
-                        color = OnoRed,
-                        fontSize = 13.sp
-                    )
-
-                    if (progress is PumpRefreshProgress.FetchingList) {
-                        Spacer(Modifier.height(1.dp))
-                        Text("Stahuji seznam stanic…", color = OnoRed, fontSize = 11.sp)
-                        Spacer(Modifier.height(2.dp))
-                        LinearProgressIndicator(
-                            color = OnoRed,
-                            trackColor = OnoRed.copy(alpha = 0.2f),
-                            modifier = Modifier.fillMaxWidth().height(4.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.height(0.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(OnoRed.copy(alpha = 0.3f))
-                    )
-                    Spacer(Modifier.height(0.dp))
-
-                    NearestPumpSection(
-                        nearestPump = nearestPump,
-                        distanceKm = nearestDistanceKm,
-                        hasLocation = userLocation != null,
-                        onShowAll = { showAllPumpsSheet = true },
-                        onNavigate = { pump -> navTargetPump = pump }
-                    )
-                }
+                //Button(
+                //    onClick = onNavigateToHome,
+                //    colors = ButtonDefaults.buttonColors(containerColor = OnoRed, contentColor = OnoYellow),
+                //    modifier = Modifier.fillMaxWidth()
+                //) {
+                //    Text("Zpět na ceny", fontWeight = FontWeight.Bold)
+                //}
 
                 if (!hasLoc || !hasNotif || !batteryOk) {
                     SettingsCard {

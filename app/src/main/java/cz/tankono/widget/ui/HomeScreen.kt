@@ -1,13 +1,17 @@
 package cz.tankono.widget.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -16,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,27 +35,66 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import cz.tankono.widget.data.db.PumpEntity
 import cz.tankono.widget.data.model.Currency
 import cz.tankono.widget.data.model.PriceFormatter
 import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
 import cz.tankono.widget.data.repo.PriceRepository
+import cz.tankono.widget.data.repo.PumpRepository
+import cz.tankono.widget.data.remote.TankOnoScraper
+import cz.tankono.widget.ui.components.NearestPumpSection
+import cz.tankono.widget.ui.components.OnoHeader
+import cz.tankono.widget.util.AppLogger
+import cz.tankono.widget.util.LocationProvider
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun HomeScreen(onNavigateToSettings: () -> Unit) {
     val context = LocalContext.current
+
+    // Stavy pro ceny
     var state by remember { mutableStateOf<PriceState?>(null) }
 
+    // Stavy pro nejbližší stanici
+    var nearestPump by remember { mutableStateOf<PumpEntity?>(null) }
+    var nearestDistanceKm by remember { mutableStateOf<Double?>(null) }
+    var hasLocation by remember { mutableStateOf(false) }
+
+    // Načtení cen
     LaunchedEffect(Unit) {
         state = PriceRepository(context).loadState()
     }
 
+    // Načtení polohy a nejbližší stanice
+    LaunchedEffect(Unit) {
+        try {
+            val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                          ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            hasLocation = hasPerm
+
+            if (hasPerm) {
+                val loc = LocationProvider.getCurrentLocation(context)
+                if (loc != null) {
+                    val pumpRepo = PumpRepository(context)
+                    val sorted = pumpRepo.getAllSortedByDistance(loc.first, loc.second)
+                    if (sorted.isNotEmpty()) {
+                        nearestPump = sorted.first().first
+                        nearestDistanceKm = sorted.first().second
+                    }
+                }
+            }
+        } catch (t: Throwable) {
+            AppLogger.e("HomeScreen: chyba při načítání polohy", t)
+        }
+    }
+
     val s = state
     if (s == null) {
-        Box(
-            Modifier.fillMaxSize().background(OnoYellow),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(Modifier.fillMaxSize().background(OnoYellow), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = OnoRed)
         }
         return
@@ -61,36 +105,56 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Button(
-                onClick = onNavigateToSettings,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = OnoRed,
-                    contentColor = OnoYellow
-                ),
-                modifier = Modifier.fillMaxWidth()
+            // --- HLAVIČKA ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Nastavení", fontWeight = FontWeight.Bold)
+                OnoHeader()
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // --- NEJBLIŽŠÍ STANICE ---
                 SettingsCard {
-                    SectionTitle("Aktuální ceny (všechny produkty)")
+                    NearestPumpSection(
+                        nearestPump = nearestPump,
+                        distanceKm = nearestDistanceKm,
+                        hasLocation = hasLocation,
+                        onShowAll = { /* Tlačítko S tady nemá smysl, můžeme skrýt, nebo nechat prázdné */ },
+                        onNavigate = { pump ->
+                            // Navigace – tady bychom potřebovali preferredNavigation, to je v SettingsStore
+                            // Pro zjednodušení použijeme systémovou navigaci
+                            val lat = pump.lat
+                            val lng = pump.lng
+                            if (lat != null && lng != null) {
+                                val uri = android.net.Uri.parse("geo:$lat,$lng?q=$lat,$lng(${android.net.Uri.encode(pump.name)})")
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
+                                context.startActivity(intent)
+                            }
+                        }
+                    )
+                }
+
+                // --- CENY ---
+                SettingsCard {
+                    SectionTitle("Aktuální ceny")
 
                     Product.entries.forEach { product ->
                         val cur = s.current?.entries?.get(product)
                         val old = s.previous?.entries?.get(product)
                         if (cur != null) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -115,6 +179,32 @@ fun HomeScreen(onNavigateToSettings: () -> Unit) {
                             }
                         }
                     }
+                }
+
+                // --- ČASY AKTUALIZACÍ ---
+                SettingsCard {
+                    SectionTitle("Poslední aktualizace")
+                    Text(
+                        "Ceník zveřejněn: " + (TankOnoScraper.formatPublished(s.current?.publishedAt) ?: "--"),
+                        color = OnoRed,
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        "Widget aktualizován: " + (s.current?.fetchedAt?.let {
+                            SimpleDateFormat("d.M.yyyy H:mm", Locale("cs", "CZ")).format(Date(it))
+                        } ?: "--"),
+                        color = OnoRed,
+                        fontSize = 13.sp
+                    )
+                }
+
+                // --- TLAČÍTKO NASTAVENÍ ---
+                OutlinedButton(
+                    onClick = onNavigateToSettings,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = OnoRed),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Nastavení")
                 }
             }
         }
