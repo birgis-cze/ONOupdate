@@ -126,7 +126,6 @@ import cz.tankono.widget.ui.components.OnoHeader
 import cz.tankono.widget.ui.components.CurrencyButton
 import cz.tankono.widget.ui.components.ProductGroup
 import cz.tankono.widget.ui.components.NavigationRow
-import cz.tankono.widget.ui.components.NearestPumpSection
 import cz.tankono.widget.ui.components.TwoSteppersRow
 import cz.tankono.widget.ui.components.NumberStepper
 
@@ -175,15 +174,6 @@ fun SettingsScreen(
     var hasNotif by remember { mutableStateOf(false) }
     var batteryOk by remember { mutableStateOf(false) }
 
-    val pumpRepo = remember { PumpRepository(context) }
-    val progress by pumpRepo.progress.collectAsStateWithLifecycle()
-
-    var nearestPump by remember { mutableStateOf<PumpEntity?>(null) }
-    var nearestDistanceKm by remember { mutableStateOf<Double?>(null) }
-    var allPumpsSorted by remember { mutableStateOf<List<Pair<PumpEntity, Double>>>(emptyList()) }
-    var userLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
-    var showAllPumpsSheet by remember { mutableStateOf(false) }
-    var navTargetPump by remember { mutableStateOf<PumpEntity?>(null) }
     var showQrDialog by remember { mutableStateOf(false) }
 
     var footerTapCount by remember { mutableIntStateOf(0) }
@@ -934,17 +924,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showAllPumpsSheet) {
-        AllPumpsSheet(
-            pumps = allPumpsSorted,
-            onDismiss = { showAllPumpsSheet = false },
-            onPick = { pump ->
-                showAllPumpsSheet = false
-                navTargetPump = pump
-            }
-        )
-    }
-
     if (showQrDialog) {
         QrCodeDialog(onDismiss = { showQrDialog = false })
     }
@@ -983,17 +962,6 @@ fun SettingsScreen(
                     lineHeight = 34.sp
                 )
             }
-        }
-    }
-
-    navTargetPump?.let { pump ->
-        LaunchedEffect(pump) {
-            val lat = pump.lat
-            val lng = pump.lng
-            if (lat != null && lng != null) {
-                s.preferredNavigation.navigate(context, lat, lng, pump.name)
-            }
-            navTargetPump = null
         }
     }
 }
