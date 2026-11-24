@@ -68,6 +68,16 @@ class UpdateWorker(
                 AppLogger.i("Nový ceník – notifikace")
                 val settings = SettingsStore(applicationContext).settings.first()
                 Notifier.notifyNewPrices(applicationContext, settings.notificationSound)
+                try {
+                    val intent = android.content.Intent("cz.tankono.widget.PRICES_UPDATED").apply {
+                        putExtra("published_at", repo.loadState().current?.publishedAt ?: "")
+                        putExtra("fetched_at", System.currentTimeMillis())
+                    }
+                    applicationContext.sendBroadcast(intent)
+                    AppLogger.d("UpdateWorker: broadcast PRICES_UPDATED odeslán")
+                } catch (t: Throwable) {
+                    AppLogger.e("UpdateWorker: chyba při odesílání broadcastu", t)
+                }
             } else {
                 AppLogger.d("Ceník beze změny")
             }

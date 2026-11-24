@@ -68,6 +68,11 @@
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
+        <provider
+            android:name=".data.PriceProvider"
+            android:authorities="cz.tankono.widget.provider"
+            android:exported="true" />
+
     </application>
 
 </manifest>
