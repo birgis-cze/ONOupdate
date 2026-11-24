@@ -63,6 +63,7 @@ import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.compose.ui.text.AnnotatedString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -310,8 +311,8 @@ fun HomeScreen(
  * @param value Cena v haléřích (CZK) nebo tisícinách (EUR).
  * @param isCzk True pokud se má formátovat jako CZK (2 desetinná místa), false pro EUR (3 místa).
  */
-private fun buildPriceSpannable(value: Int?, isCzk: Boolean): CharSequence {
-    if (value == null) return "--"
+private fun buildPriceSpannable(value: Int?, isCzk: Boolean): AnnotatedString {
+    if (value == null) return buildAnnotatedString { append("--") }
     
     val whole: String
     val frac: String
