@@ -37,13 +37,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import cz.tankono.widget.data.db.PumpEntity
 import cz.tankono.widget.data.model.Currency
+import cz.tankono.widget.data.model.PriceEntry
 import cz.tankono.widget.data.model.PriceFormatter
 import cz.tankono.widget.data.model.PriceState
 import cz.tankono.widget.data.model.Product
@@ -59,9 +63,6 @@ import cz.tankono.widget.util.AppLogger
 import cz.tankono.widget.util.LocationProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +75,7 @@ fun HomeScreen(
 
     var state by remember { mutableStateOf<PriceState?>(null) }
     var preferredNav by remember { mutableStateOf(NavigationApp.SYSTEM) }
+    var currency by remember { mutableStateOf(Currency.CZK) } // <-- PŘIDÁNO
 
     var nearestPump by remember { mutableStateOf<PumpEntity?>(null) }
     var nearestDistanceKm by remember { mutableStateOf<Double?>(null) }
@@ -95,6 +97,7 @@ fun HomeScreen(
         try {
             val settings = SettingsStore(context).settings.first()
             preferredNav = settings.preferredNavigation
+            currency = settings.currency // <-- NAČTENÍ MĚNY
         } catch (t: Throwable) {
             AppLogger.e("HomeScreen: chyba při načítání nastavení", t)
         }
@@ -218,32 +221,43 @@ fun HomeScreen(
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.weight(1f)
                                     )
+                                    
+                                    // Stará cena - bez závorek, se superscriptem, podle měny
+                                    val oldValue = if (product.kind == Product.Kind.EXCHANGE) old?.czk else PriceFormatter.valueFor(old, currency)
+                                    val oldText = buildPriceSpannable(oldValue, product.kind == Product.Kind.EXCHANGE || currency == Currency.CZK)
                                     Text(
-                                        PriceFormatter.format(old, Currency.CZK),
+                                        text = oldText,
                                         color = OnoRed.copy(alpha = 0.6f),
                                         fontSize = 12.sp,
                                         textAlign = TextAlign.End,
                                         modifier = Modifier.width(60.dp)
                                     )
+
+                                    // Trend
+                                    val arrow = if (old != null && cur != null) {
+                                        val oldVal = if (product.kind == Product.Kind.EXCHANGE) old.czk else PriceFormatter.valueFor(old, currency)
+                                        val curVal = if (product.kind == Product.Kind.EXCHANGE) cur.czk else PriceFormatter.valueFor(cur, currency)
+                                        when {
+                                            oldVal == null || curVal == null -> ""
+                                            curVal > oldVal -> "▲"
+                                            curVal < oldVal -> "▼"
+                                            else -> "="
+                                        }
+                                    } else ""
                                     Text(
-                                        text = if (old != null && cur != null) {
-                                            val oldVal = PriceFormatter.valueFor(old, Currency.CZK)
-                                            val curVal = PriceFormatter.valueFor(cur, Currency.CZK)
-                                            when {
-                                                oldVal == null || curVal == null -> ""
-                                                curVal > oldVal -> "▲"
-                                                curVal < oldVal -> "▼"
-                                                else -> "="
-                                            }
-                                        } else "",
+                                        text = arrow,
                                         color = OnoRed,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp,
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.width(20.dp)
                                     )
+
+                                    // Nová cena - se superscriptem, podle měny
+                                    val newValue = if (product.kind == Product.Kind.EXCHANGE) cur.czk else PriceFormatter.valueFor(cur, currency)
+                                    val newText = buildPriceSpannable(newValue, product.kind == Product.Kind.EXCHANGE || currency == Currency.CZK)
                                     Text(
-                                        PriceFormatter.format(cur, Currency.CZK),
+                                        text = newText,
                                         color = OnoRed,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
@@ -287,6 +301,42 @@ fun HomeScreen(
                     preferredNav.navigate(context, lat, lng, pump.name)
                 }
             }
+        )
+    }
+}
+
+/**
+ * Vytvoří text ceny s horním indexem (stejně jako na widgetu).
+ * @param value Cena v haléřích (CZK) nebo tisícinách (EUR).
+ * @param isCzk True pokud se má formátovat jako CZK (2 desetinná místa), false pro EUR (3 místa).
+ */
+private fun buildPriceSpannable(value: Int?, isCzk: Boolean): CharSequence {
+    if (value == null) return "--"
+    
+    val whole: String
+    val frac: String
+    if (isCzk) {
+        whole = (value / 100).toString()
+        frac = "%02d".format(value % 100)
+    } else {
+        whole = (value / 1000).toString()
+        frac = "%03d".format(value % 1000)
+    }
+    
+    val full = whole + frac
+    
+    return buildAnnotatedString {
+        append(full)
+        val start = whole.length
+        val end = full.length
+        
+        addStyle(
+            style = SpanStyle(
+                fontSize = 8.sp,
+                baselineShift = BaselineShift.Superscript
+            ),
+            start = start,
+            end = end
         )
     }
 }
