@@ -71,15 +71,20 @@ object Notifier {
     }
 
     fun notifyNewPrices(ctx: Context, preferredSound: String) {
+        // Zjistíme, jaký zvuk se má reálně přehrát (existující)
         val soundToPlay = if (preferredSound.isBlank() || ctx.resources.getIdentifier(preferredSound, "raw", ctx.packageName) == 0) {
             SoundHelper.getAvailableSounds(ctx).firstOrNull()?.fileName ?: ""
-        } else preferredSound
+        } else {
+            preferredSound
+        }
 
+        // Unikátní ID kanálu pro každý zvuk (Android nedovolí měnit zvuk u existujícího)
         val safeSoundName = soundToPlay.replace(" ", "_").lowercase()
         val dynamicChannelId = "tankono_prices_$safeSoundName"
         
         val mgr = ctx.getSystemService(NotificationManager::class.java)
         
+        // Smažeme starý kanál, abychom vynutili nové nastavení zvuku
         if (mgr.getNotificationChannel(dynamicChannelId) != null) {
             mgr.deleteNotificationChannel(dynamicChannelId)
         }
